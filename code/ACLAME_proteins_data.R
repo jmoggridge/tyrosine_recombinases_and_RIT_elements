@@ -5,6 +5,8 @@ aclame <-
   read_tsv("./Data/aclame_proteins_all_0.4.tab", skip = 1) %>% 
   clean_names()
 
+summary(factor(aclame$mge_id))
+
 glimpse(aclame)
 
 aclame_integrase <- aclame %>% 
