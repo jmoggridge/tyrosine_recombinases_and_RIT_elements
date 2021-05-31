@@ -86,52 +86,12 @@ prot_df <- MGEs %>%
   unnest(protein_data)
 prot_df
 
-map(c(prot_df, dna_df), ~sum(.x ==''))
-full_join(dna_df, prot_df, by = 'id')
 
-# 
-# # Save a fasta file with all the protein sequences from iceberg
-# writeLines(readLines("https://db-mml.sjtu.edu.cn/ICEberg2/download/ICE_aa_all.fas"), con = file("./Data/ICEberg_all_ICEs_protein.fasta"))
+MGE_db <- full_join(dna_df, prot_df, by = c('type', 'id'))
+glimpse(MGE_db)
 
-# Download fasta of all ICEberg protein sequences for filtering
-ice_fasta <- readDNAStringSet("https://db-mml.sjtu.edu.cn/ICEberg2/download/ICE_aa_all.fas")
+write_delim(MGE_db, "./Data/ICE_db.tsv")
 
-# Create a dataframe to filter integrases from all ICEberg proteins
-ice_df <- 
-  tibble(
-    name = names(ice_fasta),
-    seq = paste(ice_fasta),
-    type = "ICE"
-  ) %>% 
-  # extract annotation info from sequence headers
-  mutate(
-    header = map(name, ~unlist(str_split(.x, "\\|"))),
-    database = map_chr(header, 1),
-    gi = map_chr(header, 2),
-    not_sure_what_this_is = map_chr(header, 3),
-    # seqs from genbank, refseq, emb, dbj
-    source = map_chr(header, 4),
-    accession = map_chr(header, 5),
-    annotation = map_chr(header, 6),
-    # which ICE
-    element = str_extract(annotation, "\\[.+\\]"),
-    element = str_remove_all(element, "\\[|\\]"),
-    # protein annotation
-    protein = str_remove(annotation, " \\[.+\\]")
-  ) %>% 
-  select(-annotation)
-glimpse(ice_df)  
+rm(dna_df, prot_df)
 
-integrase <- ice_df %>% 
-  filter(str_detect(protein, 'integrase'))
-  
-summary(factor(ice_df$source))
-
-view(
-  ice_df %>% 
-    group_by(protein) %>% 
-    filter()
-)
-
-
-
+#
