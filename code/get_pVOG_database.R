@@ -10,7 +10,6 @@ library(Biostrings)
 # 296,595 proteins
 
 
-
 pvog_raw <- read_delim("./Data/pVOGs_AllFamilyProteinList.tsv", '\t') %>%
   janitor::clean_names()
 
@@ -27,16 +26,20 @@ pvog <- pvog_raw %>%
     str_detect(vog_number, '^#'), NA, vog_number)
     ) %>% 
   fill(family) %>% 
-  filter(str_detect(vog_number, '^#'))
+  filter(str_detect(vog_number, '^#')) %>% 
+  mutate(vog_number = str_remove(vog_number, '^#'))
 
 glimpse(pvog)
+rm(pvog_raw)
 
 # expand protein accession list
+pvog <- pvog %>% 
+  mutate(protein_accessions = str_split(protein_accessions, ',')) %>% 
+  unnest(cols = protein_accessions) %>% 
+  arrange(vog_number)
+
 pvog %>% 
-  mutate(protein_accessions = str_split(protein_accessions, ','))
-
-
-
+  mutate(protein_accessions = str_split(protein_accessions, '-'))
 
 
 
