@@ -1,0 +1,115 @@
+---
+title: "Tyrosine recombinase subfamily annotation pipeline"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Research Objective 1: 
+
+**Annotate tyrosine integrase proteins from MGE databases to subfamilies from Smyshlaev et al. (2021) using SMART reference seqeunces**
+
+Smyshlaev et al's HMMs are available in their [supplementary data](https://www.embopress.org/action/downloadSupplement?doi=10.15252%2Fmsb.20209880&file=msb20209880-sup-0001-Appendix.pdf). Their HMMs don't include all the available sequences from the SMART nr database though. We could possibly improve the HMM somewhat by including the extra data.
+
+
+### SMART reference data
+
+Sequences for each domain subfamily can be downloaded from:
+http://smart.embl-heidelberg.de/smart/search.cgi?keywords=tyrosine+recombinase. It is a bit tricky to find the link for each sub-family, and from what I can tell, there is no static links for programmatic downloads.
+
+To download the sequences, go to each domain subfamily page (eg. Cyan), click the number of proteins in the domain database: eg. 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database.". On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' and put the SMART domain name in. Save the FASTA data to a plain text file for the subfamily. (We can choose full sequences or specific domain here. I think it is better to keep only the domain of interest)
+
+These are in `./data/SMART/domains_fasta/`
+
+The data have been collected in R as follows:
+
+
+
+I aligned the amino acid sequences for each subfamily with the decipher package with default settings, as follows:
+
+```{r}
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install("Biostrings")
+
+library(Biostrings)
+library(tidyverse)
+
+# make dataframe of fastas for each subfamily
+subfamilies <- 
+  tibble(path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |> 
+  mutate(name = str_remove_all(path, './data/SMART/domain_fasta/|\\.fasta'),
+         fasta = map(path, readAAStringSet),
+         nseq = map_int(fasta, ~length(.x)),
+         prot_names = map(fasta, ~names(.x)),
+         prot_seqs = map(fasta, paste)
+         ) |> 
+  left_join(read_csv('./data/SMART_YR_ids.csv') |> 
+              janitor::clean_names()
+            )  |>  
+  select(name, id, nseq, everything()) |> 
+  arrange(nseq)
+subfamilies
+```
+
+
+```{r, eval=FALSE, include=TRUE}
+# BiocManager::install("DECIPHER")
+library(DECIPHER)
+
+# Create alignment using decipher from fasta file, given path
+make_alignment <- function(name, path){
+  message(paste("\n\nAligning subfamily:", name))
+  aligned <- AlignSeqs(readAAStringSet(path))
+  outpath <- paste0('./data/SMART/domain_alignments/', name, '.aln')
+  writeXStringSet(aligned, filepath = outpath)
+  return(aligned)
+}
+
+# Do all the alignments. Will create .aln files
+subfamilies <- subfamilies |> 
+  mutate(aligned = map2(.x = name, .y = path, .f = ~make_alignment(.x,.y)))
+```
+
+
+
+
+## HMMER
+
+I installed HMMER through conda using:  
+```
+conda install -c bioconda hmmer
+```
+
+
+HMMs are built with HMMER `hmmbuild` from multiple sequence alignments
+```
+hmmbuild subfam1.hmm subfam1.aln
+```
+
+To do all the alignments, I ran hmmbuild on the aligned fastas from decipher (within the `./data/SMART/` folder):
+```
+mkdir ./domain_hmm
+for file in ./domain_alignments/*.aln
+do
+  outfile=`echo $file | sed 's/alignments/hmm/g;s/\\.aln/.hmm/g'`
+  hmmbuild $outfile $file
+  echo $outfile
+done
+```
+ 
+ Hmmbuild output shows
+ - n_eff: effective total seq number
+ - re/pos: relative entropy per position
+ 
+ 
+ 
+ ## Search the sequence database with hmmsearch
+ 
+ hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection.
+ 
+ 
+ 
