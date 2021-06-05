@@ -1,7 +1,7 @@
 library(Biostrings)
 library(tidyverse)
  
-## The ICEberg2.0 database has a set of 26,566 proteins associated with integrative conjugative genetic elements (ICEs) as those or predicted to be. https://db-mml.sjtu.edu.cn/ICEberg2/download.html. Here, I obtained  data for all experimental-validated elements with intact sequences in DNA and protein fastas for ICEs, IMEs, AICEs, CIMEs, T4SS-type ICEs
+## The ICEberg2.0 database has a set of proteins from integrative conjugative genetic elements (ICEs) and other MGEs. https://db-mml.sjtu.edu.cn/ICEberg2/download.html. Here, I obtained  data for all experimental-validated elements with intact sequences in DNA and protein fastas for ICEs, IMEs, AICEs, CIMEs, T4SS-type ICEs. There are a total of 16,752 proteins (predicted at least) in the full dataset, from 
 #' 
 
 ## collect data from ICEberg website
@@ -24,8 +24,32 @@ MGEs <-
     aa_fasta = map(type, ~get_ICEberg(.x, "aa"))
     )
 
+# check that all sequences are obtained
+MGEs |> 
+  mutate(n_dna = map_int(dna_fasta, length),
+         n_protein = map_int(aa_fasta, length))
+# # A tibble: 5 x 5
+# type          dna_fasta  aa_fasta   n_dna n_protein
+# <chr>         <list>     <list>     <int>     <int>
+# 1 AICE          <DNAStrnS> <AAStrngS>     7       113
+# 2 CIME          <DNAStrnS> <AAStrngS>     3        40
+# 3 ICE           <DNAStrnS> <AAStrngS>   113      7493
+# 4 IME           <DNAStrnS> <AAStrngS>    23       624
+# 5 T4SS-type_ICE <DNAStrnS> <AAStrngS>   100      6555
+# 
+# Check total number of elements and proteins
+MGEs |>
+  mutate(n_dna = map_int(dna_fasta, length),
+         n_protein = map_int(aa_fasta, length)) |> 
+  summarise(elements = sum(n_dna),
+            proteins = sum(n_protein))
+# A tibble: 1 x 2
+# elements proteins
+# <int>    <int>
+#   1      246    14825
+
 # save raw nested dataset to file
-write_rds(MGEs, "./Data/ICEberg_experimental_intact_database_raw.rds")
+write_rds(MGEs, "./data/ICEberg_experimental_intact_database_raw.rds")
 
 
 # Extract ICE seqs and header labels from fasta (ea. row is an element)
@@ -54,6 +78,9 @@ dna_df <- MGEs %>%
   unnest(dna_data)
 dna_df
 
+dna_df |> 
+  ggplot(aes(y = type)) +
+  geom_bar()
 
 # Extract protein seqs and header labels from fasta (multiple/element)
 parse_protein_fasta <- function(aa_fasta){
@@ -86,12 +113,27 @@ prot_df <- MGEs %>%
   unnest(protein_data)
 prot_df
 
-
+# combine the full elements (dna fasta data) with their proteins
 MGE_db <- full_join(dna_df, prot_df, by = c('type', 'id'))
+
 glimpse(MGE_db)
 
-write_delim(MGE_db, "./Data/ICE_db.tsv")
+write_delim(MGE_db, "./data/ICE_db.tsv")
 
 rm(dna_df, prot_df)
 
-#
+# Fasta files
+dna_fasta_db <- purrr::reduce(MGEs$dna_fasta, ~c(.x,.y))
+length(dna_fasta_db)
+aa_fasta_db <- purrr::reduce(MGEs$aa_fasta, ~c(.x,.y))
+length(aa_fasta_db)
+
+writeXStringSet(dna_fasta_db, filepath = './data/iceberg_dna.fa')
+writeXStringSet(aa_fasta_db, filepath = './data/iceberg_aa.fa')
+
+
+
+
+
+
+

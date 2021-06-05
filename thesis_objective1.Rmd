@@ -4,11 +4,11 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 
-### Research Objective 1: 
+## Research Objective 1: 
 
 **Annotate tyrosine integrase proteins from MGE databases to subfamilies from Smyshlaev et al. (2021) using SMART reference seqeunces**
 
@@ -27,14 +27,10 @@ These are in `./data/SMART/domains_fasta/`
 The data have been collected in R as follows:
 
 
-
-I aligned the amino acid sequences for each subfamily with the decipher package with default settings, as follows:
-
 ```{r}
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
 # BiocManager::install("Biostrings")
-
 library(Biostrings)
 library(tidyverse)
 
@@ -52,9 +48,14 @@ subfamilies <-
             )  |>  
   select(name, id, nseq, everything()) |> 
   arrange(nseq)
-subfamilies
+
+glimpse(subfamilies)
 ```
 
+
+### Multiple sequence alignment
+
+I aligned the amino acid sequences for each subfamily with the decipher package with default settings, as follows:
 
 ```{r, eval=FALSE, include=TRUE}
 # BiocManager::install("DECIPHER")
@@ -74,25 +75,22 @@ subfamilies <- subfamilies |>
   mutate(aligned = map2(.x = name, .y = path, .f = ~make_alignment(.x,.y)))
 ```
 
+This creates the aligned fasta files in `./data/SMART/domain_alignments' as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
 
 
+### Building hidden Markov models
 
-## HMMER
-
-I installed HMMER through conda using:  
+I installed HMMER through conda
 ```
 conda install -c bioconda hmmer
 ```
 
-
-HMMs are built with HMMER `hmmbuild` from multiple sequence alignments
+HMMs were created for each sub-family.
 ```
-hmmbuild subfam1.hmm subfam1.aln
-```
-
-To do all the alignments, I ran hmmbuild on the aligned fastas from decipher (within the `./data/SMART/` folder):
-```
+# cd into the `./data/SMART/` folder
 mkdir ./domain_hmm
+
+# loop to build model for each subfamily
 for file in ./domain_alignments/*.aln
 do
   outfile=`echo $file | sed 's/alignments/hmm/g;s/\\.aln/.hmm/g'`
@@ -100,16 +98,64 @@ do
   echo $outfile
 done
 ```
+
+The statistics for each subfamily were recorded from the output of `hmmbuild` 
+```{r}
+hmms_output <- read_csv('./data/SMART/hmm_output.csv')
+glimpse(hmms_output)
+# nseqs
+a <- hmms_output |> 
+  ggplot(aes(nseq, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n sequences',
+       subtitle = 'Number of sequences for profile HMMs by sub-family')
+# alignment columns
+b <- hmms_output |>
+  ggplot(aes(alen, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n columns',
+       subtitle = 'Number of alignment columns by sub-family')
+# number of consensus positions in hmm
+c <- hmms_output |>
+  ggplot(aes(mlen, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n nodes',
+       subtitle = 'Number of positions in HMM by subfamily')
+# effective number of sequences
+d <- hmms_output |>
+  ggplot(aes(eff_nseq, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n sequences',
+       subtitle = 'Effective number of sequences by sub-family')
+library(patchwork)
+(a+b+c+d) + plot_layout(nrow = 4)
+```
  
- Hmmbuild output shows
- - n_eff: effective total seq number
- - re/pos: relative entropy per position
+
+ <!-- Hmmbuild output shows -->
+ <!-- - n_eff: effective total seq number -->
+ <!-- - re/pos: relative entropy per position -->
+ <!-- .... -->
  
  
  
- ## Search the sequence database with hmmsearch
  
- hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection.
+## Search the sequence database with hmmsearch
+
+ <!-- hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection. -->
+ 
+
+```
+hmmsearch < hmm > < sequences >   > < outfile >
+```
+
+```
+
+```
+
+
+ 
+ 
  
  
  
