@@ -144,13 +144,18 @@ library(patchwork)
 
  <!-- hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection. -->
  
+hmmsearch takes a single hmm and sequences and scores hits in the sequences.
 
 ```
-hmmsearch < hmm > < sequences >   > < outfile >
+hmmsearch --tblout <outfile> < family.hmm > < sequences.fa >   > < outfile >
 ```
 
-```
+Parse hmmsearch results into R
 
+```{r}
+library(rhmmer)
+ritc_ritc <- rhmmer::read_tblout(file = './data/SMART/hmmsearch_ritc_ritc.out')
+glimpse(ritc_ritc)
 ```
 
 
