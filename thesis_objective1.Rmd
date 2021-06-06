@@ -164,3 +164,35 @@ glimpse(ritc_ritc)
  
  
  
+ 
+## CDD batch search
+
+**Input fasta ids (> lines) have to not have anything after a space. **  
+Batch can handle 4000 queries.
+
+CDD batch search with SMART does not detect the same integrase subfamilies - seems like it hasn't been updated since these new domains were added.
+
+CDD domains match SMART domains??
+
+*SMART has a batch annotation tool, though: 'You will only get results for sequences that have a match in SMART database, ie. only precomputed results will be displayed'.*
+
+
+CDD has web api
+
+HTTP GET
+```{r}
+library(httr)
+base <- "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
+
+# databases: "cdd," "pfam," "smart," "tigrfam," "cog," "kog"
+db <- 'db=CDD' 
+
+# tdata: hits, aligns, or feats
+tdata <- 'tdata=hits'
+
+# sequences
+queries <- input_fasta
+```
+ 
+ 
+ 
