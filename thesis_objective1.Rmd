@@ -97,6 +97,10 @@ do
   hmmbuild $outfile $file
   echo $outfile
 done
+
+# compile the models into a single hmm database
+cat domain_hmm/* > subfamilies.hmm
+
 ```
 
 The statistics for each subfamily were recorded from the output of `hmmbuild` 
@@ -190,9 +194,20 @@ db <- 'db=CDD'
 # tdata: hits, aligns, or feats
 tdata <- 'tdata=hits'
 
+# data output: rep, std, or full
+dmode <- 'dmode=std'
+
 # sequences
 queries <- input_fasta
 ```
  
  
  
+ 
+## Pfam HMMs for annotating other domains
+
+I downloaded the Pfam-A.seed alignment from ftp.ebi.ac.uk.  
+I build the HMMs with HMMER
+```
+tar -xvf Pfam-A.seed.gz
+hmmbuild Pfam-A.hmm Pfam-A.seed
