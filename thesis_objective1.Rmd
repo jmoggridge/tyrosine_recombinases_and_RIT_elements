@@ -20,30 +20,29 @@ Smyshlaev et al's HMMs are available in their [supplementary data](https://www.e
 Sequences for each domain subfamily can be downloaded from:
 http://smart.embl-heidelberg.de/smart/search.cgi?keywords=tyrosine+recombinase. It is a bit tricky to find the link for each sub-family, and from what I can tell, there is no static links for programmatic downloads.
 
-To download the sequences, go to each domain subfamily page (eg. Cyan), click the number of proteins in the domain database: eg. 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database.". On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' and put the SMART domain name in. Save the FASTA data to a plain text file for the subfamily. (We can choose full sequences or specific domain here. I think it is better to keep only the domain of interest)
+To download the sequences, go to each domain subfamily page (eg. Cyan), click the number of proteins in the domain database: eg. 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database.". On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' download the text to `./data/SMART/domains_fasta/`. (We can choose full sequences or specific domain here. Download the full proteins are in `./data/SMART/full_protein_fasta/`.
 
-These are in `./data/SMART/domains_fasta/`
 
 The data have been collected in R as follows:
 
 
-```{r}
+```{r SMART fasta}
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
 # BiocManager::install("Biostrings")
 library(Biostrings)
 library(tidyverse)
 
-# make dataframe of fastas for each subfamily
+# make dataframe of fastas for each subfamily of domains
 subfamilies <- 
   tibble(path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |> 
   mutate(name = str_remove_all(path, './data/SMART/domain_fasta/|\\.fasta'),
          fasta = map(path, readAAStringSet),
          nseq = map_int(fasta, ~length(.x)),
-         prot_names = map(fasta, ~names(.x)),
-         prot_seqs = map(fasta, paste)
+         domain_names = map(fasta, ~names(.x)),
+         domain_seqs = map(fasta, paste)
          ) |> 
-  left_join(read_csv('./data/SMART_YR_ids.csv') |> 
+  left_join(read_csv('./data/SMART/SMART_YR_ids.csv') |> 
               janitor::clean_names()
             )  |>  
   select(name, id, nseq, everything()) |> 
@@ -53,11 +52,11 @@ glimpse(subfamilies)
 ```
 
 
-### Multiple sequence alignment
+### Multiple sequence alignment with DECIPHER
 
 I aligned the amino acid sequences for each subfamily with the decipher package with default settings, as follows:
 
-```{r, eval=FALSE, include=TRUE}
+```{r alignment, eval=FALSE, include=TRUE}
 # BiocManager::install("DECIPHER")
 library(DECIPHER)
 
@@ -78,15 +77,14 @@ subfamilies <- subfamilies |>
 This creates the aligned fasta files in `./data/SMART/domain_alignments' as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
 
 
+
 ### Building hidden Markov models
 
-I installed HMMER through conda
+I installed HMMER through conda and created HMMs for each 'phage integrase' domain sub-family.
+
 ```
 conda install -c bioconda hmmer
-```
 
-HMMs were created for each sub-family.
-```
 # cd into the `./data/SMART/` folder
 mkdir ./domain_hmm
 
@@ -101,10 +99,15 @@ done
 # compile the models into a single hmm database
 cat domain_hmm/* > subfamilies.hmm
 
+# compress and index the hmm files
+hmmpress subfamilies.hmm
+
 ```
 
+I now have a database of domain models that I can use to annotate the SMART domains in any query protein.
+
 The statistics for each subfamily were recorded from the output of `hmmbuild` 
-```{r}
+```{r hmm graphs}
 hmms_output <- read_csv('./data/SMART/hmm_output.csv')
 glimpse(hmms_output)
 # nseqs
@@ -131,47 +134,97 @@ d <- hmms_output |>
   geom_col() +
   labs(y = '', x = 'n sequences',
        subtitle = 'Effective number of sequences by sub-family')
+```
+
+
+```{r, fig.width=8}
 library(patchwork)
-(a+b+c+d) + plot_layout(nrow = 4)
+((a+b)|(c+d)) + plot_layout(nrow = 4)
 ```
  
 
- <!-- Hmmbuild output shows -->
+ <!-- Hmmbuild output shows some data that might be of interest-->
  <!-- - n_eff: effective total seq number -->
  <!-- - re/pos: relative entropy per position -->
  <!-- .... -->
  
  
- 
- 
-## Search the sequence database with hmmsearch
+## Check annotations of full proteins from SMART subfamilies
+
+I used hmmscan with the database of SMART hmms to align & score domains in the full sequences of all the SMART proteins. I think that the scores should indicate the discriminatory power of the ensemble of models for differentiating the subfamilies; i.e. if scores are close for multiple domains for a given sequence then it will be difficult to classify domains accurately and vice-versa if the scores are very different across hmms.
+```
+cd ./data/SMART
+hmmscan -o smart.scan.raw --tblout smart.scan.tbl --domtblout smart.scan.domtbl --pfamtblout smart.scan.pftblout subfamilies.hmm full_protein_fasta/Arch1_proteins.fasta
+```
+Save the output to file
+-o <f>
+Direct the main human-readable output to a file <f> instead of the default stdout.
+--tblout <f>
+Save a simple tabular (space-delimited) file summarizing the per-target output, with one data line per homologous target model found.
+--domtblout <f>
+Save a simple tabular (space-delimited) file summarizing the per-domain output, with one data line per homologous domain detected in a query sequence for each homologous model.
+--pfamtblout <f>
+and to not clip names with
+--notextw
+
+<!-- ## Search the sequence database with hmmsearch -->
 
  <!-- hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection. -->
- 
-hmmsearch takes a single hmm and sequences and scores hits in the sequences.
 
-```
-hmmsearch --tblout <outfile> < family.hmm > < sequences.fa >   > < outfile >
-```
+<!-- hmmsearch takes a single hmm and sequences and scores hits in the sequences. -->
 
-Parse hmmsearch results into R
+<!-- ``` -->
+<!-- hmmsearch --tblout <outfile> < family.hmm > < sequences.fa >   > < outfile > -->
+<!-- ``` -->
+
+<!-- Parse hmmsearch results into R -->
+
+<!-- ```{r} -->
+<!-- library(rhmmer) -->
+<!-- ritc_ritc <- rhmmer::read_tblout(file = './data/SMART/hmmsearch_ritc_ritc.out') -->
+<!-- glimpse(ritc_ritc) -->
+<!-- ``` -->
+
 
 ```{r}
-library(rhmmer)
-ritc_ritc <- rhmmer::read_tblout(file = './data/SMART/hmmsearch_ritc_ritc.out')
-glimpse(ritc_ritc)
+# need to create a database of SMART proteins to establish the gathering threshold and to test the pipeline.
+
+```
+ 
+
+ 
+## Pfam HMMs for annotating other domains
+
+I downloaded the Pfam-A.seed alignment from ftp.ebi.ac.uk.  
+I built the Pfam HMMs database with HMMER.
+
+```
+# unpack seed alignments
+tar -xvf Pfam-A.seed.gz
+
+# build hmm for each alignment
+hmmbuild Pfam-A.hmm Pfam-A.seed
+
+# compress and index the flatfile; 
+# create 4 binary files .h3m .h3i .h3f and .h3p
+hmmpress Pfam-A.hmm
+
+
 ```
 
 
- 
- 
+```{r}
+pfam_clans <- read_tsv('./data/Pfam-A/Pfam-A.clans.tsv',
+         col_names = c('family_id','clan', 'family_name', 'description'))
+
+``` 
  
  
  
  
 ## CDD batch search
 
-**Input fasta ids (> lines) have to not have anything after a space. **  
+**Input fasta ids (> lines) have to not have anything after a space. And the pipe symbol messes it up too.**  
 Batch can handle 4000 queries.
 
 CDD batch search with SMART does not detect the same integrase subfamilies - seems like it hasn't been updated since these new domains were added.
@@ -181,10 +234,10 @@ CDD domains match SMART domains??
 *SMART has a batch annotation tool, though: 'You will only get results for sequences that have a match in SMART database, ie. only precomputed results will be displayed'.*
 
 
-CDD has web api
+CDD has web api or can use stand-alone RPS-blast with CDD data from ftp.ncbi.nih.gov > cdd.  
 
-HTTP GET
-```{r}
+HTTP GET command to send request
+```{r, eval=FALSE}
 library(httr)
 base <- "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
 
@@ -198,16 +251,16 @@ tdata <- 'tdata=hits'
 dmode <- 'dmode=std'
 
 # sequences
-queries <- input_fasta
+# queries <- input_fasta
 ```
  
  
  
- 
-## Pfam HMMs for annotating other domains
 
-I downloaded the Pfam-A.seed alignment from ftp.ebi.ac.uk.  
-I build the HMMs with HMMER
-```
-tar -xvf Pfam-A.seed.gz
-hmmbuild Pfam-A.hmm Pfam-A.seed
+
+
+
+
+
+
+

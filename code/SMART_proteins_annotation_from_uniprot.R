@@ -5,7 +5,7 @@ library(tidyverse)
 Sys.glob("./Data/SMART_tyrosine_recombinase_proteins/*")
 
 
-RitC_fasta <- readBStringSet("./Data/SMART_tyrosine_recombinase_proteins/RitC_proteins.fasta.fasta") 
+RitC_fasta <- readBStringSet("./Data/SMART_tyrosine_recombinase_proteins/RitC_proteins.fasta") 
 
 RitC <- tibble(
   name = names(RitC_fasta),
