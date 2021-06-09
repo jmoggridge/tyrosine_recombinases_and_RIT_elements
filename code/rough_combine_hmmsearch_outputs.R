@@ -5,7 +5,7 @@ library(rhmmer)
 # All the full protein sequences for 20 subfamilies from SMART
 # Unnest and split protein names to match hmmsearch results
 integrases <- 
-  read_rds('./data/SMART_integrases.rds') |> 
+  read_rds('./data/SMART_db_full.rds') |> 
   select(subfamily, id, prot_name) |> 
   unnest(cols = prot_name) |> 
   mutate(temp = trimws(str_extract(prot_name, '.*? ')),
