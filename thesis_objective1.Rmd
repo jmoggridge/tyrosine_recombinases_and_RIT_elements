@@ -23,7 +23,7 @@ http://smart.embl-heidelberg.de/smart/search.cgi?keywords=tyrosine+recombinase. 
 To download the sequences, go to each domain subfamily page (eg. Cyan), click the number of proteins in the domain database: eg. 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database.". On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' download the text to `./data/SMART/domains_fasta/`. (We can choose full sequences or specific domain here. Download the full proteins are in `./data/SMART/full_protein_fasta/`.
 
 
-The data have been collected in R as follows:
+The domains data have been collected in R as follows:
 
 
 ```{r SMART fasta}
@@ -34,21 +34,60 @@ library(Biostrings)
 library(tidyverse)
 
 # make dataframe of fastas for each subfamily of domains
-subfamilies <- 
-  tibble(path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |> 
-  mutate(name = str_remove_all(path, './data/SMART/domain_fasta/|\\.fasta'),
-         fasta = map(path, readAAStringSet),
-         nseq = map_int(fasta, ~length(.x)),
-         domain_names = map(fasta, ~names(.x)),
-         domain_seqs = map(fasta, paste)
-         ) |> 
-  left_join(read_csv('./data/SMART/SMART_YR_ids.csv') |> 
-              janitor::clean_names()
-            )  |>  
-  select(name, id, nseq, everything()) |> 
-  arrange(nseq)
+ref_domains <- 
+  tibble(dom_path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |> 
+  mutate(
+    subfamily = str_remove_all(dom_path,
+                               './data/SMART/domain_fasta/|\\.fasta'),
+    dom_fasta = map(dom_path, readAAStringSet),
+    dom_n = map_int(dom_fasta, ~length(.x)),
+    dom_name = map(dom_fasta, ~names(.x)),
+    dom_seq = map(dom_fasta, paste)
+  ) |> 
+  # add accession numbers
+  left_join(read_csv('./data/SMART/smart_subfamily_ids.csv') |> 
+              janitor::clean_names() |> 
+              select(-n_domains),
+            by = 'subfamily') |> 
+  select(subfamily, id, everything())
 
-glimpse(subfamilies)
+write_rds(ref_domains, './data/SMART_domains.rds')
+glimpse(ref_domains)
+```
+
+I compiled all the full AA sequences for the integrases from SMART
+
+```{r}
+# All the full protein sequences for 20 subfamilies from SMART
+ref_integrases <- 
+  tibble(
+    prot_path = Sys.glob('./data/SMART/full_protein_fasta/*.fasta')) |> 
+  mutate(
+    subfamily = str_remove_all(
+      prot_path, './data/SMART/full_protein_fasta/|\\_proteins.fasta'),
+    prot_fasta = map(prot_path, readAAStringSet),
+    prot_n = map_int(prot_fasta, ~length(.x)),
+    prot_name = map(prot_fasta, ~names(.x)),
+    prot_seq = map(prot_fasta, paste)
+  ) |> 
+  # add accession numbers
+  left_join(read_csv('./data/SMART/smart_subfamily_ids.csv') |> 
+              janitor::clean_names() |> 
+              select(-n_domains),
+            by = 'subfamily') |> 
+  select(subfamily, id, everything())
+write_rds(ref_integrases, './data/SMART_integrases.rds')
+glimpse(ref_integrases)
+```
+
+```{r}
+SMART_db <- 
+  left_join(ref_domains, ref_integrases, by = c('subfamily', 'id'))
+
+glimpse(SMART_db)
+write_rds(SMART_db, './data/SMART_db_full.rds')
+
+rm(ref_domains, ref_integrases)
 ```
 
 
@@ -60,7 +99,9 @@ I aligned the amino acid sequences for each subfamily with the decipher package 
 # BiocManager::install("DECIPHER")
 library(DECIPHER)
 
-# Create alignment using decipher from fasta file, given path
+# Create alignment of for each subfamily using decipher; 
+# reads fasta files from glob of paths
+# writes alignments as they finish
 make_alignment <- function(name, path){
   message(paste("\n\nAligning subfamily:", name))
   aligned <- AlignSeqs(readAAStringSet(path))
@@ -70,8 +111,10 @@ make_alignment <- function(name, path){
 }
 
 # Do all the alignments. Will create .aln files
-subfamilies <- subfamilies |> 
-  mutate(aligned = map2(.x = name, .y = path, .f = ~make_alignment(.x,.y)))
+domains <- read_rds('./data/SMART_domains.rds')
+domains <- domains |> 
+  mutate(aligned = map2(.x = subfamily, .y = path,
+                        .f = ~make_alignment(.x,.y)))
 ```
 
 This creates the aligned fasta files in `./data/SMART/domain_alignments' as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
@@ -106,58 +149,19 @@ hmmpress subfamilies.hmm
 
 I now have a database of domain models that I can use to annotate the SMART domains in any query protein.
 
-The statistics for each subfamily were recorded from the output of `hmmbuild` 
-```{r hmm graphs}
-hmms_output <- read_csv('./data/SMART/hmm_output.csv')
-glimpse(hmms_output)
-# nseqs
-a <- hmms_output |> 
-  ggplot(aes(nseq, fct_rev(name))) +
-  geom_col() +
-  labs(y = '', x = 'n sequences',
-       subtitle = 'Number of sequences for profile HMMs by sub-family')
-# alignment columns
-b <- hmms_output |>
-  ggplot(aes(alen, fct_rev(name))) +
-  geom_col() +
-  labs(y = '', x = 'n columns',
-       subtitle = 'Number of alignment columns by sub-family')
-# number of consensus positions in hmm
-c <- hmms_output |>
-  ggplot(aes(mlen, fct_rev(name))) +
-  geom_col() +
-  labs(y = '', x = 'n nodes',
-       subtitle = 'Number of positions in HMM by subfamily')
-# effective number of sequences
-d <- hmms_output |>
-  ggplot(aes(eff_nseq, fct_rev(name))) +
-  geom_col() +
-  labs(y = '', x = 'n sequences',
-       subtitle = 'Effective number of sequences by sub-family')
-```
 
-
-```{r, fig.width=8}
-library(patchwork)
-((a+b)|(c+d)) + plot_layout(nrow = 4)
-```
- 
-
- <!-- Hmmbuild output shows some data that might be of interest-->
- <!-- - n_eff: effective total seq number -->
- <!-- - re/pos: relative entropy per position -->
- <!-- .... -->
- 
- 
-## Check annotations of full proteins from SMART subfamilies (hmmscan)
+## hmmscan: Check annotations of full proteins from SMART subfamilies 
 
 I used hmmscan with the database of SMART hmms to align & score domains in the full sequences of all the SMART proteins. I think that the scores should indicate the discriminatory power of the ensemble of models for differentiating the subfamilies; i.e. if scores are close for multiple domains for a given sequence then it will be difficult to classify domains accurately and vice-versa if the scores are very different across hmms.
 ```
 # in the directory with all the SMART data
 cd ./data/SMART
 
+# concatenate all fasta files with full protein seqs for each subfamily
+cat ./full_protein_fasta/*.fasta > all_SMART_integrases.fa
+
 # scan all smart integrases using all 20 subfamily hmms
-hmmscan -o smart.scan.raw --tblout smart.scan.tbl --domtblout hmmscan -o smart.scan.raw --tblout smart.scan.tbl --domtblout smart.scan.domtbl --pfamtblout smart.scan.pftblout subfamilies.hmm SMART_full_proteins.fasta 
+hmmscan -o smart.scan.raw --tblout smart.scan.tbl --domtblout smart.scan.domtbl --pfamtblout smart.scan.pftblout subfamilies.hmm all_SMART_integrases.fa 
 
 # store output in hmmscan_results
 mkdir hmmscan_results
@@ -166,23 +170,28 @@ mv smart.scan.* hmmscan_results
 
 Save the output to file; still need to figure out how to parse and link with true domains.
 
-<!-- ## Search the sequence database with hmmsearch -->
 
- <!-- hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection. -->
+```{r}
+# read in hmmscan results and organize by sequence with columns for domains
 
-<!-- hmmsearch takes a single hmm and sequences and scores hits in the sequences. -->
+```
 
-<!-- ``` -->
-<!-- hmmsearch --tblout <outfile> < family.hmm > < sequences.fa >   > < outfile > -->
-<!-- ``` -->
 
-<!-- Parse hmmsearch results into R -->
+## Search the sequence database with hmmsearch
 
-<!-- ```{r} -->
-<!-- library(rhmmer) -->
-<!-- ritc_ritc <- rhmmer::read_tblout(file = './data/SMART/hmmsearch_ritc_ritc.out') -->
-<!-- glimpse(ritc_ritc) -->
-<!-- ``` -->
+Similar to hmmscan but searches for a single domain subfamily at a time, results might be easier to rectangle in R than the hmmscan tables.
+
+Do a search for each subfamily hmm on the whole set of SMART integrases.
+```
+mkdir hmmsearch_res
+
+for hmm in domain_hmm/*;
+  do
+  outfile=`echo $hmm | sed 's|domain_hmm/||g;s|.hmm|.search|g'`
+  echo $outfile
+  hmmsearch -o hmmsearch_res/$outfile.raw --tblout hmmsearch_res/$outfile.tbl --domtblout hmmsearch_res/$outfile.domtbl $hmm all_SMART_integrases.fa
+done
+```
 
 
 ```{r}
@@ -263,3 +272,72 @@ dmode <- 'dmode=std'
 
 
 
+
+## Figures
+
+The hmm model statistics for each subfamily were recorded from the output of `hmmbuild` 
+```{r hmm graphs}
+hmms_output <- read_csv('./data/SMART/hmm_output.csv')
+glimpse(hmms_output)
+# nseqs
+a <- hmms_output |> 
+  ggplot(aes(nseq, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n sequences',
+       subtitle = 'Number of sequences for profile HMMs by sub-family')
+# alignment columns
+b <- hmms_output |>
+  ggplot(aes(alen, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n columns',
+       subtitle = 'Number of alignment columns by sub-family')
+# number of consensus positions in hmm
+c <- hmms_output |>
+  ggplot(aes(mlen, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n nodes',
+       subtitle = 'Number of positions in HMM by subfamily')
+# effective number of sequences
+d <- hmms_output |>
+  ggplot(aes(eff_nseq, fct_rev(name))) +
+  geom_col() +
+  labs(y = '', x = 'n sequences',
+       subtitle = 'Effective number of sequences by sub-family')
+```
+
+
+```{r, fig.width=8}
+library(patchwork)
+((a+b)|(c+d)) + plot_layout(nrow = 4)
+```
+ 
+
+ <!-- Hmmbuild output shows some data that might be of interest-->
+ <!-- - n_eff: effective total seq number -->
+ <!-- - re/pos: relative entropy per position -->
+ <!-- .... -->
+ 
+
+
+
+
+
+
+
+
+
+ <!-- hmmsearch accepts any fasta, embl/uniprot text, and genbank format files, with automatic detection. -->
+
+<!-- hmmsearch takes a single hmm and sequences and scores hits in the sequences. -->
+
+<!-- ``` -->
+<!-- hmmsearch --tblout <outfile> < family.hmm > < sequences.fa >   > < outfile > -->
+<!-- ``` -->
+
+<!-- Parse hmmsearch results into R -->
+
+<!-- ```{r} -->
+<!-- library(rhmmer) -->
+<!-- ritc_ritc <- rhmmer::read_tblout(file = './data/SMART/hmmsearch_ritc_ritc.out') -->
+<!-- glimpse(ritc_ritc) -->
+<!-- ``` -->
