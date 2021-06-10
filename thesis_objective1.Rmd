@@ -1,30 +1,36 @@
 ---
 title: "Tyrosine recombinase subfamily annotation pipeline"
-output: html_notebook
+output:
+  html_notebook:
+    theme: paper
+    toc: yes
+    toc_float: 
+        collapsed: false
+        smooth_scroll: false
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
+   
+### Objective:    
+    
+**Annotate tyrosine integrase proteins from MGE databases to subfamilies from Smyshlaev et al. (2021) using SMART reference sequences.**    
 
-
-## Research Objective 1: 
-
-**Annotate tyrosine integrase proteins from MGE databases to subfamilies from Smyshlaev et al. (2021) using SMART reference seqeunces**
-
-Smyshlaev et al's HMMs are available in their [supplementary data](https://www.embopress.org/action/downloadSupplement?doi=10.15252%2Fmsb.20209880&file=msb20209880-sup-0001-Appendix.pdf). Their HMMs don't include all the available sequences from the SMART nr database though. We could possibly improve the HMM somewhat by including the extra data.  
-\  
 
 ----
 
 ### SMART reference data
 
+     
+Smyshlaev et al's HMMs are available in their [supplementary data](https://www.embopress.org/action/downloadSupplement?doi=10.15252%2Fmsb.20209880&file=msb20209880-sup-0001-Appendix.pdf). Their HMMs don't include all the available sequences from the SMART nr database though. We could possibly improve the HMM somewhat by including the extra data available in the SMART database.   
+  
 Sequences for each domain subfamily can be downloaded from:
-http://smart.embl-heidelberg.de/smart/search.cgi?keywords=tyrosine+recombinase. It is a bit tricky to find the link for each sub-family, and from what I can tell, there is no static links for programmatic downloads.
+http://smart.embl-heidelberg.de/smart/search.cgi?keywords=tyrosine+recombinase. It is a bit tricky to find the link for each sub-family, and from what I can tell, there are no static links or API for programmatic downloads.
 
 To download the sequences, go to each domain subfamily page (eg. Cyan), click the number of proteins in the domain database: eg. 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database.". On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' download the text to `./data/SMART/domains_fasta/`. (We can choose full sequences or specific domain here. Download the full proteins are in `./data/SMART/full_protein_fasta/`.  
-\  
-
+  
 I collected all the domain reference sequences from SMART integrase subfamilies into an R dataframe:
 
 ```{r SMART domains, message=FALSE, warning=FALSE}
@@ -56,8 +62,9 @@ ref_domains <-
 glimpse(ref_domains)
 ```
 
+----
+
 I compiled all the full AA sequences for the reference integrases from SMART (*i.e.* the full sequences containing the domain sequences above).  
-\  
 
 ```{r SMART proteins}
 # All the full protein sequences for 20 subfamilies from SMART
@@ -83,7 +90,9 @@ ref_integrases <-
 glimpse(ref_integrases)
 ```
 
-I joined the domains and full sequence files into a single huge dataset for all the integrases from SMART.
+----
+
+Finally, I joined the domains and full sequence files into a single huge dataset for all the integrases from SMART.
 
 ```{r join SMART db}
 SMART_db <- 
@@ -95,11 +104,12 @@ write_rds(SMART_db, './data/SMART_db.rds', compress = 'gz')
 rm(ref_domains, ref_integrases)
 ```  
 \  
-\  
+  
+----
 
-### Multiple sequence alignment with DECIPHER
+### Multiple sequence alignment of subfamilies
 
-I aligned the amino acid sequences for each subfamily with the decipher package with default settings, as follows:
+I aligned the domain AA sequences for each subfamily with the decipher package (with default settings), as follows:
 
 ```{r MSA, eval=FALSE, include=TRUE}
 # BiocManager::install("DECIPHER")
@@ -128,8 +138,8 @@ domains <- domains |>
 ```
 
 This creates the aligned fasta files in `./data/SMART/domain_alignments' as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
-\  
-\  
+
+----
 
 ### Building hidden Markov models
 
@@ -247,19 +257,33 @@ hmmsearches |>
  
 
 
-## Train a classifier
+### Train a classifier
  
 ```{r split data, message=FALSE, warning=FALSE}
 library(tidymodels)
 
-initial_split(hmmsearches)
 # split train and test
-vfold_cv(hmmsearches, v = 5, strata = subfamily)
+# initial_split(hmmsearches)
+# 
+# set up resampling scheme
+# vfold_cv(hmmsearches, v = 5, strata = subfamily)
+
+# create model specifications
+# set up hyperparameter search ranges
+
+# create data preprocessing specification
+
+# do parameter tuning through CV
+
+# examine performance metrics
+
+# explore stacking / ensembles
+
 ```
  
  
  
-## Pfam HMMs for annotating other domains
+### Pfam HMMs for annotating other domains
 
 It might be useful to add other domains found in tyrosine recombinases, specifically the arm-binding domain and the SAM domains
 
@@ -312,7 +336,7 @@ pfam_clans <-
  
  
  
-## CDD batch search
+### CDD batch search
 
 **Input fasta ids (> lines) have to not have anything after a space. And the pipe symbol messes it up too.**  
 Batch can handle 4000 queries.
@@ -358,10 +382,10 @@ dmode <- 'dmode=std'
 
 
 
-## Other Figures
+### Other Figures
 
 
-### HMM model statistics
+#### HMM model statistics
 
 The hmm model statistics for each subfamily were recorded from the output of `hmmbuild` 
 ```{r hmm graphs, fig.width=8}
