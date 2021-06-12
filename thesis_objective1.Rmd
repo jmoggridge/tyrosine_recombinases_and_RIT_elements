@@ -6,12 +6,22 @@ output:
     toc: yes
     toc_float: 
         collapsed: false
-        smooth_scroll: false
+        smooth_scroll: true
     toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+
+```{r libraries, include=FALSE}
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install("Biostrings")
+library(Biostrings)
+library(tidyverse)
+library(DECIPHER)
 ```
    
 ### Objective:    
@@ -29,23 +39,17 @@ Smyshlaev et al's HMMs are available in their [supplementary data](https://www.e
 Sequences for each domain subfamily can be downloaded from:
 http://smart.embl-heidelberg.de/smart/search.cgi?keywords=tyrosine+recombinase. It is a bit tricky to find the link for each sub-family, and from what I can tell, there are no static links or API for programmatic downloads.
 
-To download the sequences, go to each domain subfamily page (eg. Cyan), click the number of proteins in the domain database: eg. 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database.". On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' download the text to `./data/SMART/domains_fasta/`. (We can choose full sequences or specific domain here. Download the full proteins are in `./data/SMART/full_protein_fasta/`.  
+To download the sequences, go to each integrase catalytic domain subfamily page (eg. Cyan) after searching for 'tyrosine recombinase', click the number of proteins in the domain database (eg. the 3164 in "There are 3164 Cyan domains in 3164 proteins in SMART's nrdb database."). On the 'All proteins containing <name> domain' page, change 'Action' to 'download protein sequences as a FASTA file'. In the next box, select 'specific domain only' download the text to a file in `./data/SMART/domains_fasta/`. Then go back and choose full sequences and download the full proteins to `./data/SMART/full_protein_fasta/`.  
   
-I collected all the domain reference sequences from SMART integrase subfamilies into an R dataframe:
+I collected all the domain sequences from these SMART integrase subfamilies fasta files into an R dataframe (`ref_domains`) and did the same for the full proteins (`ref_integrases`). Then, I joined the domains and full sequence files into a single dataset for all the integrases from SMART (`SMART_db`). The total number of domains and proteins for each family do not necessarily match because a couple have multiple domains
 
 ```{r SMART domains, message=FALSE, warning=FALSE}
-# if (!requireNamespace("BiocManager", quietly = TRUE))
-#   install.packages("BiocManager")
-# BiocManager::install("Biostrings")
-library(Biostrings)
-library(tidyverse)
 
 # make dataframe of fastas for each subfamily of domains
 ref_domains <- 
-  tibble(dom_path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |> 
+  tibble(dom_path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |>
   mutate(
-    subfamily = str_remove_all(dom_path,
-                               './data/SMART/domain_fasta/|\\.fasta'),
+    subfamily = str_remove_all(dom_path, './data/SMART/domain_fasta/|\\.fasta'),
     dom_fasta = map(dom_path, readAAStringSet),
     dom_n = map_int(dom_fasta, ~length(.x)),
     dom_name = map(dom_fasta, ~names(.x)),
@@ -59,14 +63,6 @@ ref_domains <-
             by = 'subfamily') |> 
   select(subfamily, id, everything())
 
-glimpse(ref_domains)
-```
-
-----
-
-I compiled all the full AA sequences for the reference integrases from SMART (*i.e.* the full sequences containing the domain sequences above).  
-
-```{r SMART proteins}
 # All the full protein sequences for 20 subfamilies from SMART
 ref_integrases <- 
   tibble(
@@ -87,21 +83,15 @@ ref_integrases <-
             by = 'subfamily') |> 
   select(subfamily, id, everything())
 
-glimpse(ref_integrases)
-```
-
-----
-
-Finally, I joined the domains and full sequence files into a single huge dataset for all the integrases from SMART.
-
-```{r join SMART db}
+# join the full proteins and domains data together by subfamily
 SMART_db <- 
-  left_join(ref_domains, ref_integrases, by = c('subfamily', 'id'))
+  left_join(ref_domains, ref_integrases, by = c('subfamily', 'id')) |> 
+  mutate(subfamily = as_factor(subfamily))
 
 glimpse(SMART_db)
 write_rds(SMART_db, './data/SMART_db.rds', compress = 'gz')
 
-rm(ref_domains, ref_integrases)
+rm(ref_domains, ref_integrases, SMART_db)
 ```  
 \  
   
@@ -109,9 +99,10 @@ rm(ref_domains, ref_integrases)
 
 ### Multiple sequence alignment of subfamilies
 
-I aligned the domain AA sequences for each subfamily with the decipher package (with default settings), as follows:
+I aligned the domain AA sequences for each subfamily with the decipher package (with default settings). This creates the aligned fasta files in `./data/SMART/domain_alignments` as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
 
-```{r MSA, eval=FALSE, include=TRUE}
+<!-- # ```{r MSA, eval=FALSE, include=TRUE} -->
+```
 # BiocManager::install("DECIPHER")
 library(DECIPHER)
 
@@ -137,16 +128,17 @@ domains <- domains |>
                         .f = ~make_alignment(.x,.y)))
 ```
 
-This creates the aligned fasta files in `./data/SMART/domain_alignments' as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
 
 ----
 
 ### Building hidden Markov models
 
-I installed HMMER (v3.3.2) through Conda and created HMMs for each 'phage integrase' domain sub-family using the multiple alignments. I now have a database of domain models that I can use to annotate the SMART domains in any query protein.
+I installed HMMER (v3.3.2) through Conda and created HMMs for each 'phage integrase' domain sub-family using the multiple alignments. I concatenated have a database of domain models that I can use to annotate the SMART domains in any query protein.
 
 
-```{bash hmmbuild, eval = FALSE, include = TRUE}
+<!-- ```{bash hmmbuild, eval = FALSE, include = TRUE} -->
+```
+# in bash
 conda install -c bioconda hmmer
 
 # cd into the `./data/SMART/` folder
@@ -160,7 +152,8 @@ do
   hmmbuild $outfile $file
 done
 
-# compile the models into a single hmm database
+# **might not need this bit if not using hmmscan**
+# compile the models into a single hmm database for hmmscan
 # compress and index the hmm files
 cat domain_hmm/* > subfamilies.hmm
 hmmpress subfamilies.hmm
@@ -173,7 +166,9 @@ hmmpress subfamilies.hmm
 
 I did an `hmmsearch` for each subfamily HMM against the collection of SMART integrases. `hmmsearch` takes a single HMM and a set of protein sequences, returning scores for all significant hits in the sequences. Significant hits are found for multiple subfamilies though, so we'll still need a precise way to discriminate between classes.
 
-```{bash hmmsearch, eval = FALSE, include = TRUE}
+<!-- ```{bash hmmsearch, eval = FALSE, include = TRUE} -->
+```
+# bash
 mkdir hmmsearch_res
 
 for hmm in domain_hmm/*;
@@ -185,11 +180,12 @@ done
 ```
 \  
   
-I parsed all the `hmmsearch` results tables and rectangled the data by joining bitscores to protein names & their true subfamilies from the SMART_db.rds dataframe.  
+I parsed all the `hmmsearch` results tables and rectangled the data by joining the bitscores to the protein names with their true subfamilies in the `SMART_db` dataframe.  
   
 ```{r join hmmsearches}
 # read hmmsearch tblout result
-# keep only the best_domain_score column, renamed to the subfamily name
+# keep only the best_domain_score column, 
+# rename it as the subfamily name for the hmm
 read_hmmersearch_tbl <- function(path){
   read_table(
     file = path,
@@ -215,15 +211,16 @@ read_hmmersearch_tbl <- function(path){
 # Unnest and split protein names to match hmmsearch results
 integrases <- 
   read_rds('./data/SMART_db.rds') |> 
-  select(subfamily, id, prot_name) |> 
-  unnest(cols = prot_name) |> 
+  select(subfamily, id, prot_name, prot_seq) |> 
+  unnest(cols = c(prot_name, prot_seq)) |> 
   mutate(temp = trimws(str_extract(prot_name, '.*? ')),
          prot_description = str_remove(prot_name,  '.*?\\s'),
          prot_name = temp) |> 
   select(-temp)
 
 # read all the results and join into one table
-# join to ref_integrases table
+# join to ref_integrases table by protein names, such that each row has the
+# scores across all models for a given sequence
 hmmsearches <- 
   Sys.glob("./data/SMART/hmmsearch_res/*.search.tbl") |> 
   map(read_hmmersearch_tbl) |> 
@@ -232,10 +229,13 @@ hmmsearches <-
   select(prot_name, prot_description, subfamily, id, everything())
 
 glimpse(hmmsearches)
+rm(integrases, read_hmmersearch_tbl)
+
+write_rds(hmmsearches, './data/smart_refseqs_hmm_scores.rds', compress = 'gz')
 ```
 \  
 \  
-I plotted the score profiles for each subfamily to explore the discriminative power of the bit-scores. This shows the distribution of scores for a set of sequences from a given subfamily (panel) against each subfamily hmm (y-axis), in terms of the bit scores (x-axis).  
+I plotted the score profiles for each subfamily to explore the discriminative power of the bit-scores. This shows the distribution of scores for a set of sequences from a given subfamily (panel) against each subfamily hmm (y-axis), in terms of the bit scores (x-axis). Mostly the true subfamily has the best-scoring HMM alignment but in the case of `Int_Tn916` and `Int_BPP-1` integrases, the scores are very similar between the two HMMs.
    
 ```{r plot bitscores}
 hmmsearches |> 
@@ -246,29 +246,75 @@ hmmsearches |>
   ggplot(aes(x = hmm_score, y = fct_rev(hmm_dom),
              color = highlight)) +
   geom_violin() +
-  facet_wrap(~subfamily) +
   labs(x = 'Best domain bit score', y = 'Hidden Markov model', 
        subtitle = 'HMM bit score profiles for each set of tyrosine integrases from the SMART subfamilies') +
+  facet_wrap(~subfamily, nrow = 3) +
   theme_light() + 
   theme(legend.position = 'null', 
-        axis.text.y = element_text(size = 5))
+        axis.text.y = element_text(size = 5),
+        panel.grid.major.x = element_blank()
+        )
 
 ```
  
+We could also exchange the HMMs and true subfamilies in the plot above to get the scores for each model as a panel, with the true classes on the y-axis.
 
+```{r plot bitscores2}
+hmmsearches |> 
+  pivot_longer(cols = c(Arch1:Xer), 
+               names_to = 'hmm_dom', values_to = 'hmm_score') |> 
+  mutate(hmm_score = replace_na(hmm_score, 0)) |> 
+  mutate(highlight = ifelse(hmm_dom == subfamily, T, F)) |> 
+  ggplot(aes(x = hmm_score, y = fct_rev(subfamily),
+             color = highlight)) +
+  geom_violin() +
+  # ggthemes::geom_tufteboxplot(stat = "fivenumber",
+  #                             size = 1.5, whisker.type = 'line') +
+  facet_wrap(~hmm_dom, nrow = 2) +
+  labs(x = 'Best domain bit score', y = 'True subfamily', 
+       subtitle = 'HMM bit score profiles for each hidden Markov model') +
+  theme_light() + 
+  theme(legend.position = 'null', 
+        axis.text.y = element_text(size = 5))
+```
+
+
+
+```{r}
+rm(hmmsearches)
+```
 
 ### Train a classifier
  
 ```{r split data, message=FALSE, warning=FALSE}
+library(tidyverse)
 library(tidymodels)
 
-# split train and test
-# initial_split(hmmsearches)
-# 
+set.seed(1)
+
+# make a small dataset with stratified sampling for code development
+df <- 
+  read_rds('./data/smart_refseqs_hmm_scores.rds') |>
+  group_by(subfamily) |> 
+  sample_frac(0.1)
+
+summary(df$subfamily)
+
+# split train and test, stratified by true subfamily
+df_split <- initial_split(df, strata = subfamily)
+df_train <- training(df_split)
+df_test <- testing(df_split)
+
 # set up resampling scheme
-# vfold_cv(hmmsearches, v = 5, strata = subfamily)
+cv <- nested_cv(df_train, v = 5, strata = subfamily)
+
+```
+
+
+```{r}
 
 # create model specifications
+
 # set up hyperparameter search ranges
 
 # create data preprocessing specification
