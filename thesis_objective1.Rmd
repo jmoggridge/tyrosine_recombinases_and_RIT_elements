@@ -285,6 +285,37 @@ rm(hmmsearches)
 ```
 
 ### Train a classifier
+
+
+#### Get variety of random protein sequences to train & assess 'other' category for non-integrases.
+
+human proteome: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz
+
+
+```{r}
+
+```
+
+ 
+#### k-mer profile features
+
+```{r}
+library(Biostrings)
+
+# function generates sequence feature columns [(1-4)-mers] for classification
+generate_kmer_features <- function(df, k){
+  df <- as.data.frame(df)
+  df$seq <- Biostrings::DNAStringSet(df$seq)
+  features.df <- df %>%
+    cbind(
+      Biostrings::oligonucleotideFrequency(df$seq, k, as.prob = TRUE)
+    ) %>%
+    dplyr::select(-seq) 
+  return(features.df)
+}
+```
+
+#### Split data / Resampling
  
 ```{r split data, message=FALSE, warning=FALSE}
 library(tidyverse)
