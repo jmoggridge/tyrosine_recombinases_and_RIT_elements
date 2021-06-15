@@ -284,12 +284,22 @@ hmmsearches |>
 rm(hmmsearches)
 ```
 
+### Collect non-integrase sequences for negative classifion
+
+```{r}
+source('./code/ncbi_entrez_functions.R')
+
+
+```
+
+
 ### Train a classifier
 
 
 #### Get variety of random protein sequences to train & assess 'other' category for non-integrases.
 
 human proteome: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz
+
 
 
 ```{r}
