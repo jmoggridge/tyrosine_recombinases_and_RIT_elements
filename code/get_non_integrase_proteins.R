@@ -1,6 +1,5 @@
 
-## get ncbi fasta records
-
+## functions I wrote get ncbi fasta records
 source('./code/ncbi_entrez_functions.R')
 
 # set api key and choose database
@@ -15,49 +14,36 @@ queries <- list(
   'DNA helicase recQ' = 'DNA helicase recQ',
   'Thermonuclease' = 'thermonuclease',
   'Ribonuclease' = 'ribonuclease',
+  'Helicase' = 'helicase',
   'Histone' = 'histone',
   'Argonaute' = 'argonaute',
+  'Exodeoxyribonuclease' = 'Exodeoxyribonuclease',
   'Restriction enz' = 'restriction endonuclease',
   'MbeA' = 'DNA relaxase mbeA domain protein',
-  'Exodeoxyribonuclease' = 'Exodeoxyribonuclease',
+  'RpnA' = 'Recombination-promoting nuclease RpnA',
   'RpnB' = 'Recombination-promoting nuclease RpnB',
   'RpnC' = 'recombination-promoting nuclease RpnC',
   'GamL' = 'host nuclease inhibitor GamL',
   'Nuclease SbcCD subunit D' = 'Nuclease SbcCD subunit D',
-  'Helicase' = 'helicase',
   'NikB' = 'NikB',
   'RecB' = 'exodeoxyribonuclease V subunit beta',
   'RecC' = 'exodeoxyribonuclease V subunit gamma',
   'RecD' = 'exodeoxyribonuclease V subunit alpha',
+  'RecJ' = 'single-stranded-DNA-specific exonuclease RecJ',
+  'RecN' = 'DNA repair protein RecN',
+  'RecR' = 'recombination protein RecR',
   'Exonuclease V' = 'Exonuclease V',
   'IS607' = 'IS607 family transposase',
-  'RecJ' = 'single-stranded-DNA-specific exonuclease RecJ',
   'DnaX' = 'DNA polymerase III subunit gamma/tau',
   'Gntr' = 'gntr family transcriptional regulator',
   'Adenylosuccinate lyase' = 'Adenylosuccinate lyase',
   'IhfA' = 'integration host factor subunit alpha',
   'IhfB' = 'Integration host factor subunit beta',
-  'radA' = 'DNA repair protein RadA',
-  'RecR' = 'recombination protein RecR',
-  'RecN' = 'DNA repair protein RecN'
+  'radA' = 'DNA repair protein RadA'
   
 ) |> 
   map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
 queries
-
-
-# Crossover junction endodeoxyribonuc...
-
-queries2 <- list(
-  'RecR' = 'recombination protein RecR',
-  'RecN' = 'DNA repair protein RecN'
-  ) |> 
-  map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
-
-other_seqs2 <- 
-  map(queries2, ~ get_Efasta(.x, db, apikey, fetch_max = 1000)) |> 
-  enframe(name = "name", value = "value") |> 
-  unnest_wider(value)
 
 
 other_seqs <- 
@@ -66,6 +52,25 @@ other_seqs <-
   unnest_wider(value)
 
 glimpse(other_seqs)
+
+other_seqs |> 
+  unnest(df)
+
+write_rds(other_seqs, './data/non_integrases_df.rds')
+
+
+# 
+# queries2 <- list(
+#   'RecR' = 'recombination protein RecR',
+#   'RecN' = 'DNA repair protein RecN'
+#   ) |> 
+#   map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
+# 
+# other_seqs2 <- 
+#   map(queries2, ~ get_Efasta(.x, db, apikey, fetch_max = 1000)) |> 
+#   enframe(name = "name", value = "value") |> 
+#   unnest_wider(value)
+
 
 
 
