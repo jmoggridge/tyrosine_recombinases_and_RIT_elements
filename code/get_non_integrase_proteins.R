@@ -8,41 +8,49 @@ apikey <- '889fdb9786a14019a0a1257196a09ba4ba08'
 db <- 'protein'
 
 queries <- list(
-  'thermonuclease' = 'thermonuclease',
-  'ribonuclease' = 'ribonuclease',
-  'histone' = 'histone',
-  'argonaute' = 'argonaute',
-  'restriction enz' = 'restriction endonuclease',
+  'Serine recombinase' = "serine recombinase",
+  'Holliday junction resolvase' = 'Holliday junction resolvase',
+  'Topoisomerase' = 'topoisomerase',
+  'DDE transposase' = "DDE transposase",
+  'DNA helicase recQ' = 'DNA helicase recQ',
+  'Thermonuclease' = 'thermonuclease',
+  'Ribonuclease' = 'ribonuclease',
+  'Histone' = 'histone',
+  'Argonaute' = 'argonaute',
+  'Restriction enz' = 'restriction endonuclease',
   'MbeA' = 'DNA relaxase mbeA domain protein',
   'Exodeoxyribonuclease' = 'Exodeoxyribonuclease',
   'RpnB' = 'Recombination-promoting nuclease RpnB',
   'RpnC' = 'recombination-promoting nuclease RpnC',
   'GamL' = 'host nuclease inhibitor GamL',
   'Nuclease SbcCD subunit D' = 'Nuclease SbcCD subunit D',
-  'helicase' = 'helicase',
+  'Helicase' = 'helicase',
   'NikB' = 'NikB',
-  'RecB' = 'RecB',
-  'RecC' = 'RecC',
-  'RecD' = 'RecD',
-  'Holliday junction resolvase' = 'Holliday junction resolvase',
+  'RecB' = 'exodeoxyribonuclease V subunit beta',
+  'RecC' = 'exodeoxyribonuclease V subunit gamma',
+  'RecD' = 'exodeoxyribonuclease V subunit alpha',
+  'Exonuclease V' = 'Exonuclease V',
+  'IS607' = 'IS607 family transposase',
+  'RecJ' = 'single-stranded-DNA-specific exonuclease RecJ',
+  'DnaX' = 'DNA polymerase III subunit gamma/tau',
   'Gntr' = 'gntr family transcriptional regulator',
-  'topoisomerase' = 'topoisomerase',
-  'DDE transposase' = "DDE transposase",
-  'DNA helicase recQ' = 'DNA helicase recQ',
   'Adenylosuccinate lyase' = 'Adenylosuccinate lyase',
-  'serine recombinase' = "serine recombinase"
+  'IhfA' = 'integration host factor subunit alpha',
+  'IhfB' = 'Integration host factor subunit beta',
+  'radA' = 'DNA repair protein RadA',
+  'RecR' = 'recombination protein RecR',
+  'RecN' = 'DNA repair protein RecN'
+  
 ) |> 
   map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
 queries
 
+
+# Crossover junction endodeoxyribonuc...
+
 queries2 <- list(
-  'RecC' = 'exodeoxyribonuclease V subunit gamma',
-  'RecD' = 'exodeoxyribonuclease V subunit alpha',
-  'RecB' = 'exodeoxyribonuclease V subunit beta',
-  'Exonuclease V' = 'Exonuclease V',
-  'helicase AddB' = 'helicase AddB',
-  'dnaX' = 'DNA polymerase III subunit gamma/tau'
-  
+  'RecR' = 'recombination protein RecR',
+  'RecN' = 'DNA repair protein RecN'
   ) |> 
   map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
 
