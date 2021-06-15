@@ -102,7 +102,7 @@ rm(ref_domains, ref_integrases, SMART_db)
 
 ### Non-integrase sequences (negative examples)
 
-I obtained a number of sequences that are (almost certainly) not tyrosine recombinases by searching RefSeq for specific protein names.
+I obtained some sequences (~23k) that are (almost certainly) not tyrosine recombinases by searching RefSeq for specific protein names. Here, I mainly focus on proteins with similar DNA-binding and nuclease activity. 
 
 ```{r message=FALSE, warning=FALSE}
 # functions I wrote get ncbi fasta records
@@ -120,7 +120,6 @@ queries <- list(
   'Helicase' = 'helicase',
   'Histone' = 'histone',
   'Argonaute' = 'argonaute',
-  'Exodeoxyribonuclease' = 'Exodeoxyribonuclease',
   'Restriction enz' = 'restriction endonuclease',
   'MbeA' = 'DNA relaxase mbeA domain protein',
   'RpnA' = 'Recombination-promoting nuclease RpnA',
@@ -129,6 +128,7 @@ queries <- list(
   'GamL' = 'host nuclease inhibitor GamL',
   'Nuclease SbcCD subunit D' = 'Nuclease SbcCD subunit D',
   'NikB' = 'NikB',
+  'Exodeoxyribonuclease' = 'Exodeoxyribonuclease',
   'RecB' = 'exodeoxyribonuclease V subunit beta',
   'RecC' = 'exodeoxyribonuclease V subunit gamma',
   'RecD' = 'exodeoxyribonuclease V subunit alpha',
@@ -156,27 +156,71 @@ other_seqs <-
       ~get_Efasta(.x, db = 'protein', apikey, verbose = F,
                   fetch_max = 1000)) |>
   enframe(name = "name", value = "value") |> 
-  unnest_wider(value) |> 
-  unnest(df)
+  unnest_wider(value)
 
 glimpse(other_seqs)
 
+# remove any duplicates
+
+
+# write dataset to file
 write_rds(other_seqs, './data/non_integrases_df.rds', compress = 'gz')
-rm(queries)
+rm(queries, apikey, get_Efasta, get_ncbi_ids)
 ```
 
 
-Write non-integrases to fasta for HMM scoring later
+
+
+Write non-integrases to fasta for HMM scoring later on.
+
 ```{r}
-other_seqs <- read_rds('./data/non_integrases_df.rds')
-fasta <- other_seqs |> 
+other_seqs <- read_rds('./data/non_integrases_df.rds') 
+glimpse(other_seqs)
+
+# check for any duplicate records -> none
+other_seqs |>  select(-name, -fasta) |>  unnest(df) |>
+  duplicated() |>  any()
+# protein names (title) are all unique
+other_seqs |> select(-name, -fasta) |> unnest(df) |>
+  pull(title) |> unique() |> length()
+# there are duplicated sequences though (285)
+other_seqs |> select(-name, -fasta) |> unnest(df) |>
+  pull(seq) |> unique() |> length()
+
+# Keep 22250 unique sequences of 22535 in dataframe
+other_seqs |> 
+  select(-fasta) |> 
+  unnest(df) |>
+  group_by(seq) |> 
+  sample_n(1) |> 
+  nest(df = c(title, seq)) |> 
+  left_join(other_seqs |> select(name, fasta), by = 'name')
+
+# check for right number of seqs
+other_seqs |> select(-name, -fasta) |> unnest(df) |>
+  pull(seq) |> unique() |> length()
+# string sets still contain the 
+other_seqs |> pull(fasta) |> map_int(length) |> sum()
+
+# combine stringsets to write a fasta file
+other_seqs |> 
   pull(fasta) |> 
-  BStringSet()
+  reduce(c) |> 
+  writeXStringSet('./data/all_non_integrase.fa')
 
-# write to `./data/all_non_integrase.fa`
-
+# tidy up protein names for joining with hmmer results
+other_seqs |> 
+  select(name, df) |> 
+  unnest(df) |> 
+  mutate(prot_acc = trimws(str_extract(title, '^.*? ')),
+         prot_name = str_remove(title, '^.*? ')) 
+  
+  
 ```
 
+```{r}
+
+```
 
 
 ### Multiple sequence alignment of subfamilies
