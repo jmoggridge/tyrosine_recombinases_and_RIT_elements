@@ -20,8 +20,11 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 #   install.packages("BiocManager")
 # BiocManager::install("Biostrings")
 library(Biostrings)
-library(tidyverse)
 library(DECIPHER)
+library(tidyverse)
+library(janitor)
+library(furrr)
+library(rentrez)
 ```
    
 ### Objective:    
@@ -97,6 +100,85 @@ rm(ref_domains, ref_integrases, SMART_db)
   
 ----
 
+### Non-integrase sequences (negative examples)
+
+I obtained a number of sequences that are (almost certainly) not tyrosine recombinases by searching RefSeq for specific protein names.
+
+```{r message=FALSE, warning=FALSE}
+# functions I wrote get ncbi fasta records
+source('./code/ncbi_entrez_functions.R')
+
+# list of proteins
+queries <- list(
+  'Serine recombinase' = "serine recombinase",
+  'Holliday junction resolvase' = 'Holliday junction resolvase',
+  'Topoisomerase' = 'topoisomerase',
+  'DDE transposase' = "DDE transposase",
+  'DNA helicase recQ' = 'DNA helicase recQ',
+  'Thermonuclease' = 'thermonuclease',
+  'Ribonuclease' = 'ribonuclease',
+  'Helicase' = 'helicase',
+  'Histone' = 'histone',
+  'Argonaute' = 'argonaute',
+  'Exodeoxyribonuclease' = 'Exodeoxyribonuclease',
+  'Restriction enz' = 'restriction endonuclease',
+  'MbeA' = 'DNA relaxase mbeA domain protein',
+  'RpnA' = 'Recombination-promoting nuclease RpnA',
+  'RpnB' = 'Recombination-promoting nuclease RpnB',
+  'RpnC' = 'recombination-promoting nuclease RpnC',
+  'GamL' = 'host nuclease inhibitor GamL',
+  'Nuclease SbcCD subunit D' = 'Nuclease SbcCD subunit D',
+  'NikB' = 'NikB',
+  'RecB' = 'exodeoxyribonuclease V subunit beta',
+  'RecC' = 'exodeoxyribonuclease V subunit gamma',
+  'RecD' = 'exodeoxyribonuclease V subunit alpha',
+  'RecJ' = 'single-stranded-DNA-specific exonuclease RecJ',
+  'RecN' = 'DNA repair protein RecN',
+  'RecR' = 'recombination protein RecR',
+  'Exonuclease V' = 'Exonuclease V',
+  'IS607' = 'IS607 family transposase',
+  'DnaX' = 'DNA polymerase III subunit gamma/tau',
+  'Gntr' = 'gntr family transcriptional regulator',
+  'Adenylosuccinate lyase' = 'Adenylosuccinate lyase',
+  'IhfA' = 'integration host factor subunit alpha',
+  'IhfB' = 'Integration host factor subunit beta',
+  'RadA' = 'DNA repair protein RadA'
+) |> 
+  # add search syntax
+  map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
+
+# set api key
+apikey <- '889fdb9786a14019a0a1257196a09ba4ba08'
+
+# send queries to entrez; max n seqs returned is set to 1k
+other_seqs <- 
+  map(queries, 
+      ~get_Efasta(.x, db = 'protein', apikey, verbose = F,
+                  fetch_max = 1000)) |>
+  enframe(name = "name", value = "value") |> 
+  unnest_wider(value) |> 
+  unnest(df)
+
+glimpse(other_seqs)
+
+write_rds(other_seqs, './data/non_integrases_df.rds', compress = 'gz')
+rm(queries)
+```
+
+
+Write non-integrases to fasta for HMM scoring later
+```{r}
+other_seqs <- read_rds('./data/non_integrases_df.rds')
+fasta <- other_seqs |> 
+  pull(fasta) |> 
+  BStringSet()
+
+# write to `./data/all_non_integrase.fa`
+
+```
+
+
+
 ### Multiple sequence alignment of subfamilies
 
 I aligned the domain AA sequences for each subfamily with the decipher package (with default settings). This creates the aligned fasta files in `./data/SMART/domain_alignments` as they are finished. The Int_SXT, Int_Tn916, and Xer sub-families take many hours to align.
@@ -140,8 +222,7 @@ I installed HMMER (v3.3.2) through Conda and created HMMs for each 'phage integr
 ```
 # in bash
 conda install -c bioconda hmmer
-
-# cd into the `./data/SMART/` folder
+cd ./data/SMART/
 mkdir ./domain_hmm
 
 # loop to build model for each subfamily
@@ -179,6 +260,13 @@ for hmm in domain_hmm/*;
 done
 ```
 \  
+
+I did the same HMM alignment scoring for non-integrase sequences
+``` 
+# bash
+
+```
+  
   
 I parsed all the `hmmsearch` results tables and rectangled the data by joining the bitscores to the protein names with their true subfamilies in the `SMART_db` dataframe.  
   
