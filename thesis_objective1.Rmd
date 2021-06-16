@@ -47,7 +47,6 @@ To download the sequences, go to each integrase catalytic domain subfamily page 
 I collected all the domain sequences from these SMART integrase subfamilies fasta files into an R dataframe (`ref_domains`) and did the same for the full proteins (`ref_integrases`). Then, I joined the domains and full sequence files into a single dataset for all the integrases from SMART (`SMART_db`). The total number of domains and proteins for each family do not necessarily match because a couple have multiple domains
 
 ```{r SMART domains, message=FALSE, warning=FALSE}
-
 # make dataframe of fastas for each subfamily of domains
 ref_domains <- 
   tibble(dom_path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |>
@@ -102,6 +101,9 @@ rm(ref_domains, ref_integrases, SMART_db)
 
 ### Non-integrase sequences (negative examples)
 
+
+#### Specific proteins from RefSeq (by name)
+
 I obtained some sequences (~23k) that are (almost certainly) not tyrosine recombinases by searching RefSeq for specific protein names. Here, I mainly focus on proteins with similar DNA-binding and nuclease activity. 
 
 ```{r message=FALSE, warning=FALSE}
@@ -151,76 +153,107 @@ queries <- list(
 apikey <- '889fdb9786a14019a0a1257196a09ba4ba08'
 
 # send queries to entrez; max n seqs returned is set to 1k
-other_seqs <- 
+non_integrases <- 
   map(queries, 
       ~get_Efasta(.x, db = 'protein', apikey, verbose = F,
                   fetch_max = 1000)) |>
   enframe(name = "name", value = "value") |> 
   unnest_wider(value)
 
-glimpse(other_seqs)
-
-# remove any duplicates
-
-
-# write dataset to file
-write_rds(other_seqs, './data/non_integrases_df.rds', compress = 'gz')
+glimpse(non_integrases)
 rm(queries, apikey, get_Efasta, get_ncbi_ids)
+
 ```
 
 
-
-
-Write non-integrases to fasta for HMM scoring later on.
-
+Write non-integrases to fasta for HMM scoring later on. 
 ```{r}
-other_seqs <- read_rds('./data/non_integrases_df.rds') 
-glimpse(other_seqs)
+# combine stringsets and write a fasta file
+non_integrases |> 
+  pull(fasta) |> 
+  reduce(c) |> 
+  writeXStringSet('./data/all_non_integrase.fa')
+```
 
-# check for any duplicate records -> none
-other_seqs |>  select(-name, -fasta) |>  unnest(df) |>
-  duplicated() |>  any()
-# protein names (title) are all unique
-other_seqs |> select(-name, -fasta) |> unnest(df) |>
+Remove duplicated sequences from the dataframe (leaving them in the fasta is ok for now). Tidy up the protein names (title) to separate accession number from the descriptions.
+
+```{r message=FALSE, warning=FALSE}
+# count total number of seqs
+n <- non_integrases |> select(-name, -fasta) |> unnest(df) |> nrow()
+n
+# any duplicated records? -> none
+non_integrases |> select(-name, -fasta) |> unnest(df) |>
+  duplicated() |> any()
+# any duplicated protein names? (title = acc + desc); no
+non_integrases |> select(-name, -fasta) |> unnest(df) |>
   pull(title) |> unique() |> length()
 # there are duplicated sequences though (285)
-other_seqs |> select(-name, -fasta) |> unnest(df) |>
+non_integrases |> select(-name, -fasta) |> unnest(df) |>
   pull(seq) |> unique() |> length()
 
-# Keep 22250 unique sequences of 22535 in dataframe
-other_seqs |> 
+# Keep 22250 unique sequences of 22535 in dataframe; keeping first occurrences.
+non_integrases <- non_integrases |> 
   select(-fasta) |> 
   unnest(df) |>
   group_by(seq) |> 
   sample_n(1) |> 
-  nest(df = c(title, seq)) |> 
-  left_join(other_seqs |> select(name, fasta), by = 'name')
-
-# check for right number of seqs
-other_seqs |> select(-name, -fasta) |> unnest(df) |>
-  pull(seq) |> unique() |> length()
-# string sets still contain the 
-other_seqs |> pull(fasta) |> map_int(length) |> sum()
-
-# combine stringsets to write a fasta file
-other_seqs |> 
-  pull(fasta) |> 
-  reduce(c) |> 
-  writeXStringSet('./data/all_non_integrase.fa')
-
-# tidy up protein names for joining with hmmer results
-other_seqs |> 
-  select(name, df) |> 
-  unnest(df) |> 
+  # tidy up protein names for joining with hmmer results
   mutate(prot_acc = trimws(str_extract(title, '^.*? ')),
-         prot_name = str_remove(title, '^.*? ')) 
-  
-  
+         prot_name = str_remove(title, '^.*? ')) |> 
+  # re-nest data and join to names,
+  nest(df = c(title, seq)) |> 
+  left_join(non_integrases |> select(name, fasta),
+            by = 'name')
+
+# Write non-integrase df to file for later
+write_rds(non_integrases, './data/non_integrases_df.rds')
+rm(non_integrases, n)
+```
+
+
+
+
+#### Eukaryotic proteomes from Uniprot (non-integrases)
+
+Human, yeast and arabidopsis reference proteomes will be used as representative eukaryote sequences to classify as non-integrases. Reference proteomes have one sequence per protein.
+
+```{r}
+library(tidyverse)
+library(Biostrings)
+
+# read in eukaryotic proteomes, then pfam non_integrases - seqs associated with other domains
+other_non_integrases <- 
+  tibble(
+    path = Sys.glob('./data/non_integrase_seqs/uniprot_eukaryote_proteomes/*.fasta')) |> 
+  mutate(name = str_remove_all(path, './.*/.*/|_proteome|.fasta')) |> 
+  bind_rows(
+    tibble(path = Sys.glob('./data/non_integrase_seqs/pfam_non_integrases/*.fa')) |> 
+      mutate(name = str_remove_all(path, './.*/.*/|_[:alnum:]+_full|.fa'))
+    ) |> 
+  # extract titles and sequences
+  mutate(fasta = map(path, ~readAAStringSet(.x))) |> 
+  mutate(title = map(fasta, names),
+         seq = map(fasta, paste)
+         ) |> 
+  relocate(name, title, seq)
+
+glimpse(other_non_integrases) 
+
+```
+```{r message=FALSE, warning=FALSE}
+non_integrases <- read_rds('./data/non_integrases_df.rds') 
+glimpse(non_integrases)
 ```
 
 ```{r}
+bind_rows(non_integrases, other_non_integrases)
+# join refseq, uniprot, and pfam non_integrases
 
+# remove duplicates
+
+# downsample to 1000
 ```
+
 
 
 ### Multiple sequence alignment of subfamilies
@@ -416,30 +449,10 @@ hmmsearches |>
 rm(hmmsearches)
 ```
 
-### Collect non-integrase sequences for negative classifion
-
-```{r}
-source('./code/ncbi_entrez_functions.R')
-
-
-```
-
-
-### Train a classifier
-
-
-#### Get variety of random protein sequences to train & assess 'other' category for non-integrases.
-
-human proteome: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz
 
 
 
-```{r}
-
-```
-
- 
-#### k-mer profile features
+### k-mer profile features
 
 ```{r}
 library(Biostrings)
@@ -456,6 +469,9 @@ generate_kmer_features <- function(df, k){
   return(features.df)
 }
 ```
+
+
+### Train a classifier
 
 #### Split data / Resampling
  
@@ -543,16 +559,7 @@ Other phage integrase domains that are worth annotating / using for classificati
 
 ----
 
-Pfam clans??
 
-```{r}
-pfam_clans <- 
-  read_tsv('./data/Pfam-A/Pfam-A.clans.tsv',
-         col_names = c('family_id','clan', 'family_name', 'description'))
-
-``` 
- 
- 
  
  
 ### CDD batch search
@@ -653,29 +660,3 @@ library(patchwork)
 
 
 
-
-<!-- ## hmmscan: Check annotations of full proteins from SMART subfamilies  -->
-
-<!-- I used hmmscan with the database of SMART hmms to align & score domains in the full sequences of all the SMART proteins. I think that the scores should indicate the discriminatory power of the ensemble of models for differentiating the subfamilies; i.e. if scores are close for multiple domains for a given sequence then it will be difficult to classify domains accurately and vice-versa if the scores are very different across hmms. -->
-<!-- ``` -->
-<!-- # in the directory with all the SMART data -->
-<!-- cd ./data/SMART -->
-
-<!-- # concatenate all fasta files with full protein seqs for each subfamily -->
-<!-- cat ./full_protein_fasta/*.fasta > all_SMART_integrases.fa -->
-
-<!-- # scan all smart integrases using all 20 subfamily hmms -->
-<!-- hmmscan -o smart.scan.raw --tblout smart.scan.tbl --domtblout smart.scan.domtbl --pfamtblout smart.scan.pftblout subfamilies.hmm all_SMART_integrases.fa  -->
-
-<!-- # store output in hmmscan_results -->
-<!-- mkdir hmmscan_results -->
-<!-- mv smart.scan.* hmmscan_results -->
-<!-- ``` -->
-
-<!-- Save the output to file; still need to figure out how to parse and link with true domains. -->
-
-
-<!-- ```{r} -->
-<!-- # read in hmmscan results and organize by sequence with columns for domains -->
-
-<!-- ``` -->
