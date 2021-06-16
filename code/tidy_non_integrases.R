@@ -50,7 +50,7 @@ other_non_integrases <-
   filter(!str_detect(title, 'A0A1K1NN93_9FIRM')) |> 
   # downsample to 1000 per group
   group_by(name) |> 
-  sample_n(1000) |> 
+  sample_n(2000) |> 
   ungroup() |> 
   # create accession keys as '<family>_<row#>'
   mutate(prot_acc = paste0(name, '_', row_number()),
@@ -87,6 +87,7 @@ non_int_fa <- AAStringSet(toupper(non_integrases$seq))
 names(non_int_fa) <- non_integrases$prot_acc
 non_int_fa
 writeXStringSet(non_int_fa, './data/non_integrases.fa')
+
 rm(refseq, pfam, proteomes, other_non_integrases)
 
 

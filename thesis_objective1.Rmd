@@ -318,7 +318,15 @@ I did the same HMM alignment scoring for non-integrase sequences
 # bash
 
 # one fasta with all non-integrases
+cd ./data
+mkdir non_integrase_hmmsearch
 
+for hmm in domain_hmm/*;
+  do
+  outfile=`echo $hmm | sed 's|domain_hmm/||g;s|.hmm|.search|g'`
+  echo $outfile
+  hmmsearch -o hmmsearch_res/$outfile.raw --tblout hmmsearch_res/$outfile.tbl --domtblout hmmsearch_res/$outfile.domtbl $hmm all_SMART_integrases.fa
+done
 
 ```
 
