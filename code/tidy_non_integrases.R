@@ -14,8 +14,8 @@ refseq <-
   slice_max(1) |> 
   ungroup() |> 
   # tidy up protein names for joining with hmmer results
-  mutate(prot_acc = trimws(str_extract(title, '^.*? ')),
-         prot_name = str_remove(title, '^.*? '))
+  mutate(prot_name = trimws(str_extract(title, '^.*? ')),
+         prot_description = str_remove(title, '^.*? '))
 
 glimpse(refseq)
 
@@ -53,8 +53,8 @@ other_non_integrases <-
   sample_n(2000) |> 
   ungroup() |> 
   # create accession keys as '<family>_<row#>'
-  mutate(prot_acc = paste0(name, '_', row_number()),
-         prot_name = title)
+  mutate(prot_name = paste0(name, '_', row_number()),
+         prot_description = title)
 
 # join all the data
 non_integrases <- 
@@ -62,7 +62,7 @@ non_integrases <-
   group_by(seq) |> 
   sample_n(1) |> 
   ungroup() |> 
-  relocate(name, prot_acc, prot_name)
+  relocate(name, prot_name, prot_description)
 
 non_integrases |> 
   mutate(length = nchar(seq)) |> 
@@ -73,7 +73,7 @@ non_integrases |>
 non_integrases |> 
   mutate(length = nchar(seq)) |> 
   filter(length == max(length)) |> 
-  pull(prot_acc)
+  pull(prot_name)
 
 # verify no duplicate sequences
 length(unique(non_integrases$seq)) == nrow(non_integrases)
@@ -84,7 +84,7 @@ write_rds(non_integrases, './data/non_integrases_df.rds')
 
 
 non_int_fa <- AAStringSet(toupper(non_integrases$seq))
-names(non_int_fa) <- non_integrases$prot_acc
+names(non_int_fa) <- non_integrases$prot_name
 non_int_fa
 writeXStringSet(non_int_fa, './data/non_integrases.fa')
 
