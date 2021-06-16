@@ -1,0 +1,31 @@
+# bash
+# install HMMER with conda: conda install -c bioconda hmmer
+
+cd ./data/SMART/
+mkdir ./domain_hmm
+
+# loop to build model for each subfamily
+for file in ./domain_alignments/*.aln
+do
+  outfile=`echo $file | sed 's/alignments/hmm/g;s/\\.aln/.hmm/g'`
+  echo $outfile
+  hmmbuild $outfile $file
+done
+
+# **might not need this bit if not using hmmscan**
+# compile the models into a single hmm database for hmmscan
+# compress and index the hmm files
+cat domain_hmm/* > subfamilies.hmm
+hmmpress subfamilies.hmm
+
+### HMM domain searches on full protein sequences of 20 SMART groups
+
+mkdir hmmsearch_res
+
+for hmm in domain_hmm/*;
+  do
+  outfile=`echo $hmm | sed 's|domain_hmm/||g;s|.hmm|.search|g'`
+  echo $outfile
+  hmmsearch -o hmmsearch_res/$outfile.raw --tblout hmmsearch_res/$outfile.tbl --domtblout hmmsearch_res/$outfile.domtbl $hmm all_SMART_integrases.fa
+done
+
