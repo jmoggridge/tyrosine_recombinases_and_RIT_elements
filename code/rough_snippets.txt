@@ -1,0 +1,73 @@
+
+#### Feature generation: k-mer profiles----
+# function generates sequence feature columns [(1-4)-mers] for classification
+generate_kmer_features <- function(df){
+  df <- as.data.frame(df)
+  df$seq <- Biostrings::DNAStringSet(df$seq)
+  features.df <- df %>%
+    cbind(
+      Biostrings::letterFrequency(df$seq, letters = c('A', 'C','G'),
+                      as.prob = TRUE),
+      Biostrings::dinucleotideFrequency(df$seq, as.prob = TRUE),
+      Biostrings::trinucleotideFrequency(df$seq, as.prob = TRUE),
+      Biostrings::oligonucleotideFrequency(df$seq, 4, as.prob = TRUE)
+    ) %>%
+    dplyr::select(-seq) 
+  return(features.df)
+}
+
+
+
+
+
+
+Complete proteomes:
+ - *H. sapiens*: 
+ https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000005640/UP000005640_9606.fasta.gz  
+
+ - *A. thaliana*: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000006548/UP000006548_3702.fasta.gz
+
+  - *S. cerevisiae*: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/reference_proteomes/Eukaryota/UP000002311/UP000002311_559292.fasta.gz
+
+
+
+
+Pfam clans??
+
+```{r}
+pfam_clans <- 
+  read_tsv('./data/Pfam-A/Pfam-A.clans.tsv',
+         col_names = c('family_id','clan', 'family_name', 'description'))
+
+``` 
+ 
+ 
+
+
+
+
+<!-- ## hmmscan: Check annotations of full proteins from SMART subfamilies  -->
+
+<!-- I used hmmscan with the database of SMART hmms to align & score domains in the full sequences of all the SMART proteins. I think that the scores should indicate the discriminatory power of the ensemble of models for differentiating the subfamilies; i.e. if scores are close for multiple domains for a given sequence then it will be difficult to classify domains accurately and vice-versa if the scores are very different across hmms. -->
+<!-- ``` -->
+<!-- # in the directory with all the SMART data -->
+<!-- cd ./data/SMART -->
+
+<!-- # concatenate all fasta files with full protein seqs for each subfamily -->
+<!-- cat ./full_protein_fasta/*.fasta > all_SMART_integrases.fa -->
+
+<!-- # scan all smart integrases using all 20 subfamily hmms -->
+<!-- hmmscan -o smart.scan.raw --tblout smart.scan.tbl --domtblout smart.scan.domtbl --pfamtblout smart.scan.pftblout subfamilies.hmm all_SMART_integrases.fa  -->
+
+<!-- # store output in hmmscan_results -->
+<!-- mkdir hmmscan_results -->
+<!-- mv smart.scan.* hmmscan_results -->
+<!-- ``` -->
+
+<!-- Save the output to file; still need to figure out how to parse and link with true domains. -->
+
+
+<!-- ```{r} -->
+<!-- # read in hmmscan results and organize by sequence with columns for domains -->
+
+<!-- ``` -->
