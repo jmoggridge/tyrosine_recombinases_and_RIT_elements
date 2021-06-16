@@ -1,0 +1,63 @@
+---
+title: "Project_management"
+output: html_document
+---
+
+
+### Objective 1
+
+**Create a tool to classify 'phage integrase' proteins by their catalytic domains, in line with the 20 subfamilies described by Smyshlaev *et al.* (2021).**
+
+
+#### Datasets
+
+- **SMART**: domain sequences and protein sequences for 20 subfamilies
+- **non-integrase**: various searches of Refseq, some Pfam families of transposases, Uniprot proteomes of yeast, arabidopsis, and human proteomes
+
+#### Workflow
+
+1.  Obtain SMART reference data for classifier
+2.  Align SMART domain sequences, build HMMs
+3.  Obtain non-integrase sequences as negative examples
+4.  Generate k-mer features
+
+#### Scripts
+
+- `./code/tidy_smart_data.R`: reads domain and protein fasta sequences for 20 subfamilies
+- `./code/align_smart_domains.R`: creates 20 alignments for each of the subfamilies using 'decipher'
+- `./code/hmms_build_and.txt`: bash loop to create 20 HMMs
+
+- `./code/get_refseq_non_integrases.R`: downloads non-integrases from ncbi entrez
+- `./code/tidy_non_integrases.R`: combines all non-integrase sequences
+
+Markdown version:   
+  -`./thesis_objective1.Rmd`
+
+### Objective 2
+
+**Identify integrases in assembled genomes** and mobile element databases and classify by subfamily. For **RitA, RitB, and RitC** domains, map their genomic coordinates and check whether these constitute a **RIT element**.
+
+#### Search for flanking repeats
+
+- Extract flanking genomic sequence
+- Algorithm for identifying inverted repeat:
+    - subsequence's reverse complement is the same as the reverse of the subsequence, for perfect base-pairing
+
+
+
+
+
+
+### Other work done so far
+
+Obtaining mobile genetic element data to search: Iceberg, Aclame, pVOG
+
+- 
+
+
+
+
+
+
+
+

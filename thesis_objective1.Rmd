@@ -99,29 +99,6 @@ rm(ref_domains, ref_integrases, SMART_db)
 ```  
 \  
   
-----
-
-### Non-integrase sequences (negative examples)
-
-scripts:
-- `./code/get_refseq_non_integrases.R`
-- `./code/tidy_non_integrases.R`
-
-**Specific proteins from RefSeq (by name)**
-
-I obtained some sequences (~23k) that are (almost certainly) not tyrosine recombinases by searching RefSeq for specific protein names. Here, I mainly focus on proteins with similar DNA-binding and nuclease activity. 
-
-**Eukaryotic proteomes from Uniprot (non-integrases)**
-
-Human, yeast and arabidopsis reference proteomes will be used as representative eukaryote sequences to classify as non-integrases. Reference proteomes have one sequence per protein.
-
-**Pfam domain families**
-
-Several DDE transposases, HTH transposases, .... *could add a variety of others, where to stop though?*
-
-```{r}
-read_rds('./data/non_integrases_df.rds)
-```
 
 
 
@@ -207,11 +184,6 @@ done
 ```
 \  
 
-I did the same HMM alignment scoring for non-integrase sequences
-``` 
-# bash
-
-```
   
   
 I parsed all the `hmmsearch` results tables and rectangled the data by joining the bitscores to the protein names with their true subfamilies in the `SMART_db` dataframe.  
@@ -319,7 +291,36 @@ rm(hmmsearches)
 ```
 
 
+----
 
+### Non-integrase sequences (negative examples)
+
+scripts:
+- `./code/get_refseq_non_integrases.R`
+- `./code/tidy_non_integrases.R`
+
+**Specific proteins from RefSeq (by name)**
+
+I obtained some sequences (~23k) that are (almost certainly) not tyrosine recombinases by searching RefSeq for specific protein names. Here, I mainly focus on proteins with similar DNA-binding and nuclease activity. 
+
+**Eukaryotic proteomes from Uniprot (non-integrases)**
+
+Human, yeast and arabidopsis reference proteomes will be used as representative eukaryote sequences to classify as non-integrases. Reference proteomes have one sequence per protein.
+
+**Pfam domain families**
+
+Several DDE transposases, HTH transposases, .... *could add a variety of others, where to stop though?*
+
+#### HMM search scores
+
+I did the same HMM alignment scoring for non-integrase sequences
+``` 
+# bash
+
+# one fasta with all non-integrases
+
+
+```
 
 ### k-mer profile features
 
