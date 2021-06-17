@@ -56,6 +56,7 @@ assembled genomes.
 - `./code/score_non_integrases.txt`: bash loop to score all non-integrases against the 20 hmms. Saves results to *./data/non_integrase_seqs/hmmsearc_res/*.  
 
 - `./code/tidy_hmmsearch_res.R`: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to *./data/smart_refseqs_hmm_scores.rds* and *./data/non_integrases_hmm_scores.rds*.  
+-  `./code/add_kmer_features.R`: joins integrase and non-integrase datasets and computes kmer proportions, saves *./data/full_classifier_data.rds* for modelling.
 
 - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it....
 
