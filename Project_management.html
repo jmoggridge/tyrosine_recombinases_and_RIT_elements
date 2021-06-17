@@ -198,13 +198,15 @@ assembled genomes.</p></li>
 </div>
 <div id="scripts" class="section level4">
 <h4>Scripts</h4>
+<p>1 - <code>./code/tidy_smart_data.R</code>: reads domain and protein fasta sequences for 20 subfamilies from <em>./data/SMART/domain_fasta/</em> and <em>/full_protein_fasta/</em>.</p>
+<p>2 - <code>./code/align_smart_domains.R</code>: creates 20 alignments for each of the subfamilies using ‘decipher’. Saves them to <em>./data/SMART/domain_alignments/</em>.</p>
+<p>3 - <code>./code/hmms_build_and_score_SMART.txt</code>: bash loop to create 20 HMMs with <code>hmmbuild</code>, saved to <em>./data/SMART/domain_hmm/</em> another to get scores for all SMART full proteins against each model with <code>hmmsearch.</code> and saves to <em>./data/SMART/hmmsearch_res/</em>.</p>
+<p>4 - <code>./code/get_refseq_non_integrases.R</code>: downloads non-integrases from ncbi entrez. Saves raw data for next script <em>.data//non_integrase_seqs/refseq_non_integrases_raw.rds</em>.</p>
+<p>5 - <code>./code/tidy_non_integrases.R</code>: combines all non-integrase sequences in <em>./data/non_integrase_seqs/</em> and saves a fasta file for hmmsearches <em>./data/non_integrases.fa</em> and dataframe for the classifier <em>./data/non_integrases_df.rds</em>.</p>
+<p>6 - <code>./code/score_non_integrases.txt</code>: bash loop to score all non-integrases against the 20 hmms. Saves results to <em>./data/non_integrase_seqs/hmmsearc_res/</em>.</p>
+<p>7 - <code>./code/tidy_hmmsearch_res.R</code>: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to <em>./data/smart_refseqs_hmm_scores.rds</em> and <em>./data/non_integrases_hmm_scores.rds</em>.</p>
 <ul>
-<li><code>./code/tidy_smart_data.R</code>: reads domain and protein fasta sequences for 20 subfamilies from <em>./data/SMART/domain_fasta/</em> and <em>/full_protein_fasta/</em>.</li>
-<li><code>./code/align_smart_domains.R</code>: creates 20 alignments for each of the subfamilies using ‘decipher’. Saves them to <em>./data/SMART/domain_alignments/</em>.</li>
-<li><code>./code/hmms_build_and_score_SMART.txt</code>: bash loop to create 20 HMMs with <code>hmmbuild</code>, saved to <em>./data/SMART/domain_hmm/</em> another to get scores for all SMART full proteins against each model with <code>hmmsearch.</code> and saves to <em>./data/SMART/hmmsearch_res/</em>.</li>
-<li><code>./code/get_refseq_non_integrases.R</code>: downloads non-integrases from ncbi entrez. Saves raw data for next script <em>.data//non_integrase_seqs/refseq_non_integrases_raw.rds</em>.</li>
-<li><code>./code/tidy_non_integrases.R</code>: combines all non-integrase sequences in <em>./data/non_integrase_seqs/</em> and saves a fasta file for hmmsearches <em>./data/non_integrases.fa</em> and dataframe for the classifier <em>./data/non_integrases_df.rds</em>.</li>
-<li><code>./code/score_non_integrases.txt</code>: bash loop to score all non-integrases against the 20 hmms. Saves results to <em>./non_integrase_seqs/hmmsearc_res/</em></li>
+<li>8 <code>./code/classifier1.R</code>: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it….</li>
 </ul>
 <p>Markdown version:<br />
 -<code>./thesis_objective1.Rmd</code></p>
@@ -214,6 +216,12 @@ assembled genomes.</p></li>
 <div id="objective-2" class="section level2">
 <h2>Objective 2</h2>
 <p><strong>Identify integrases in assembled genomes</strong> and mobile element databases and <strong>classify by subfamily</strong>. For <strong>RitA, RitB, and RitC</strong> domains, map their genomic coordinates and check whether these constitute a <strong>RIT element</strong>.</p>
+<div id="search-mge-databases" class="section level4">
+<h4>Search MGE databases</h4>
+</div>
+<div id="search-assembled-genomes" class="section level4">
+<h4>Search assembled genomes</h4>
+</div>
 <div id="search-for-flanking-repeats" class="section level4">
 <h4>Search for flanking repeats</h4>
 <ul>

@@ -184,7 +184,7 @@ done
 ```
 \  
 
-  
+### Tidy hmmsearch results (from `tidy_hmm_search_results.R`)
   
 I parsed all the `hmmsearch` results tables and rectangled the data by joining the bitscores to the protein names with their true subfamilies in the `SMART_db` dataframe.  
   
@@ -329,6 +329,70 @@ for hmm in domain_hmm/*;
 done
 
 ```
+
+#### Tidying non_integrase `hmmsearch` results: (from `tidy_hmm_search_results.R`)
+
+```{r}
+## Non-integrase seqs ----
+# had to alter the parsing a bit for these
+read_hmmersearch_tbl2 <- function(path){
+  read_delim(
+    file = path,
+    na = '-',
+    delim = '  ',
+    trim_ws = T,
+    comment = '#',
+    col_types = cols(),
+    col_names =  c(
+      "prot_name", "prot_accession", 
+      "hmm_name", "hmm_accesion",
+      "seq_eval", "seq_score", "seq_bias",
+      "best_dom_eval", "best_dom_score", "best_dom_bias",
+      'domain_n_exp', 'domain_n_reg', 'domain_n_clu', 'domain_n_ov',
+      'domain_n_env', 'domain_n_dom', 'domain_n_rep', 'domain_n_inc',
+      "description")
+  ) |> 
+    select(prot_name, hmm_name, best_dom_score) |> 
+    distinct() |> 
+    pivot_wider(names_from = hmm_name, values_from = best_dom_score) |> 
+    unnest(cols = c())
+}
+
+# ./data/non_integrase_seqs/hmmsearch_res/
+non_int_rs <- 
+  Sys.glob('./data/non_integrase_seqs/hmmsearch_res/*.tbl') |> 
+  map(read_hmmersearch_tbl2) |> 
+  purrr::reduce(full_join, by = 'prot_name')
+
+non_integrases <- 
+  # read non-int data
+  read_rds('./data/non_integrases_df.rds') |> 
+  # WP_161670389.1 has an integrase domain, discard
+  filter(!prot_name == 'WP_161670389.1') |> 
+  left_join(y = non_int_rs, 
+            by = 'prot_name') |> 
+  mutate(across(Arch1:Xer, ~replace_na(.x, 0)))
+
+# hmm scores of non_integrases are very low indeed.
+non_integrases |> 
+  summarise(across(.cols = Arch1:Xer, ~mean(.x))) |> 
+  pivot_longer(everything())
+non_integrases |> 
+  summarise(across(.cols = Arch1:Xer, ~max(.x))) |> 
+  pivot_longer(everything())
+
+non_integrases |> 
+  filter(`Int_BPP-1` == max(`Int_BPP-1`)) |> 
+  pull(prot_name)
+non_integrases |> 
+  filter(`Int_Tn916` == max(`Int_Tn916`)) |>
+  pull(prot_name)
+
+
+write_rds(non_integrases, './data/non_integrases_hmm_scores.rds', compress = 'gz')
+
+```
+
 
 ### k-mer profile features
 

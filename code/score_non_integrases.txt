@@ -1,0 +1,19 @@
+# bash code for scoring all non-integrases against 20 integrase HMMs
+
+# one fasta with all non-integrases
+# ./data/non_integrases.fa
+
+# score against each model in ./data/SMART/domain_hmm/ with hmmsearch
+# get tabular output to ./data/non_integrase_seqs/hmmsearch_res/
+
+
+cd ./data
+# mkdir non_integrase_seqs/hmmsearch_res
+
+for hmm in SMART/domain_hmm/*;
+  do
+  outfile=`echo $hmm | sed 's|SMART/domain_hmm/||g;s|.hmm|.search|g'`
+  hmmsearch --tblout ./non_integrase_seqs/hmmsearch_res/$outfile.tbl $hmm ./non_integrases.fa
+  echo $outfile
+done
+
