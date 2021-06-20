@@ -129,7 +129,8 @@ smart_df <- filtered_proteins |>
             by = c("subfamily", "acc", "acc_alt","description"))
 
 glimpse(smart_df)
-rm(proteins)
+write_rds(smart_df, './data/smart_df.rds', compress = 'gz')
+
 
 ## # All protein accessions and sequences are unique!
 ## smart_df |> pull(acc) |> unique() |> length()
@@ -140,6 +141,36 @@ rm(proteins)
 ## sum(is.na(smart_df))
 ## 
 
-write_rds(smart_df, './data/smart_df.rds', compress = 'gz')
+rm(proteins, filtered_domains, filtered_proteins, garbage_annotations)
 
 
+# Might as well split data now
+
+library(rsample)
+df_split <- initial_split(smart_df, 0.75, strata = subfamily)
+
+smart_train <- training(df_split)
+write_rds(train_df, './data/SMART/smart_train.rds', compress = 'gz')
+
+smart_test <- testing(df_split)
+write_rds(test_df, './data/SMART/smart_train.rds', compress = 'gz')
+
+rm(df_split)
+
+
+# function to write fasta 
+make_fasta <- function(df){
+  fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
+  names(fasta) <- df$acc
+  dest <- paste0('./data/SMART/training_domain_fasta/', df$label[1], '.fa')
+  writeXStringSet(fasta, filepath = dest)
+}
+
+# create set fasta files of training domains for alignment
+system('mkdir ./data/SMART/training_domain_fasta')
+smart_train |> 
+  mutate(label = subfamily) |> 
+  group_by(subfamily) |> 
+  group_walk(.f = ~make_fasta(.x))
+         
+         
