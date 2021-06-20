@@ -184,9 +184,11 @@ pre code {
 <div id="workflow" class="section level4">
 <h4>Workflow</h4>
 <ol style="list-style-type: decimal">
-<li><p>Obtain SMART reference data for classifier</p></li>
-<li><p>Align SMART domain sequences, build HMMs</p></li>
-<li><p>Obtain non-integrase sequences as negative examples</p></li>
+<li><p>Obtain SMART reference data &amp; other non-integrase sequences as negative examples<br />
+</p></li>
+<li><p>Align SMART domain sequences</p></li>
+<li><p>Create hold-out set for final testing</p></li>
+<li><p>Build HMMs from training data</p></li>
 <li><p>Score 20 integrase HMM alignments for each sequence</p></li>
 <li><p>Generate k-mer features</p></li>
 <li><p>Tune &amp; assess classifiers</p></li>
@@ -198,15 +200,17 @@ assembled genomes.</p></li>
 </div>
 <div id="scripts" class="section level4">
 <h4>Scripts</h4>
-<p>1 - <code>./code/tidy_smart_data.R</code>: reads domain and protein fasta sequences for 20 subfamilies from <em>./data/SMART/domain_fasta/</em> and <em>/full_protein_fasta/</em>.</p>
-<p>2 - <code>./code/align_smart_domains.R</code>: creates 20 alignments for each of the subfamilies using ‘decipher’. Saves them to <em>./data/SMART/domain_alignments/</em>.</p>
-<p>3 - <code>./code/hmms_build_and_score_SMART.txt</code>: bash loop to create 20 HMMs with <code>hmmbuild</code>, saved to <em>./data/SMART/domain_hmm/</em> another to get scores for all SMART full proteins against each model with <code>hmmsearch.</code> and saves to <em>./data/SMART/hmmsearch_res/</em>.</p>
-<p>4 - <code>./code/get_refseq_non_integrases.R</code>: downloads non-integrases from ncbi entrez. Saves raw data for next script <em>.data//non_integrase_seqs/refseq_non_integrases_raw.rds</em>.</p>
-<p>5 - <code>./code/tidy_non_integrases.R</code>: combines all non-integrase sequences in <em>./data/non_integrase_seqs/</em> and saves a fasta file for hmmsearches <em>./data/non_integrases.fa</em> and dataframe for the classifier <em>./data/non_integrases_df.rds</em>.</p>
-<p>6 - <code>./code/score_non_integrases.txt</code>: bash loop to score all non-integrases against the 20 hmms. Saves results to <em>./data/non_integrase_seqs/hmmsearc_res/</em>.</p>
-<p>7 - <code>./code/tidy_hmmsearch_res.R</code>: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to <em>./data/smart_refseqs_hmm_scores.rds</em> and <em>./data/non_integrases_hmm_scores.rds</em>.</p>
 <ul>
-<li>8 <code>./code/classifier1.R</code>: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it….</li>
+<li><p><code>./code/1_tidy_smart_data.R</code>: reads domain and protein fasta sequences for 20 subfamilies from <em>./data/SMART/domain_fasta/</em> and <em>/full_protein_fasta/</em>.</p></li>
+<li><p><code>./code/1b_tidy_non_integrases.R</code>: combines all non-integrase sequences in <em>./data/non_integrase_seqs/</em> and saves a fasta file for hmmsearches <em>./data/non_integrases.fa</em> and dataframe for the classifier <em>./data/non_integrases_df.rds</em>.</p></li>
+<li><p><code>./code/2_align_smart_domains.R</code>: creates 20 alignments for each of the subfamilies using ‘decipher’. Saves them to <em>./data/SMART/domain_alignments/</em>.</p></li>
+<li><p><code>./code/3_hmms_build_and_score_SMART.txt</code>: bash loop to create 20 HMMs with <code>hmmbuild</code>, saved to <em>./data/SMART/domain_hmm/</em> another to get scores for all SMART full proteins against each model with <code>hmmsearch.</code> and saves to <em>./data/SMART/hmmsearch_res/</em>.</p></li>
+<li><p><code>./code/get_refseq_non_integrases.R</code>: downloads non-integrases from ncbi entrez. Saves raw data for next script <em>.data//non_integrase_seqs/refseq_non_integrases_raw.rds</em>.</p></li>
+<li><p><code>./code/score_non_integrases.txt</code>: bash loop to score all non-integrases against the 20 hmms. Saves results to <em>./data/non_integrase_seqs/hmmsearc_res/</em>.</p></li>
+<li><p><code>./code/tidy_hmmsearch_res.R</code>: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to <em>./data/smart_refseqs_hmm_scores.rds</em> and <em>./data/non_integrases_hmm_scores.rds</em>.<br />
+</p></li>
+<li><p><code>./code/add_kmer_features.R</code>: joins integrase and non-integrase datasets and computes kmer proportions, saves <em>./data/full_classifier_data.rds</em> for modelling.</p></li>
+<li><p><code>./code/classifier1.R</code>: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it….</p></li>
 </ul>
 <p>Markdown version:<br />
 -<code>./thesis_objective1.Rmd</code></p>
@@ -239,6 +243,10 @@ assembled genomes.</p></li>
 <!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
 <p> </p>
 <hr />
+<p>New questions:</p>
+<ul>
+<li>what to do about ambiguous characters in sequences?? one sequence contains an XXXXX segment? <strong>need to remove these seqs from kmer counting</strong>? kmer::kcount doesn’t work with them …</li>
+</ul>
 </div>
 </div>
 

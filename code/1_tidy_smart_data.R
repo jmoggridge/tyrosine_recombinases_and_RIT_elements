@@ -4,7 +4,7 @@ library(tidyverse)
 library(janitor)
 
 # make dataframe of fastas for each subfamily of domains
-ref_domains <- 
+smart_domains <- 
   tibble(dom_path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |>
   mutate(
     subfamily = str_remove_all(dom_path, './data/SMART/domain_fasta/|\\.fasta'),
@@ -22,7 +22,7 @@ ref_domains <-
   select(subfamily, id, everything())
 
 # All the full protein sequences for 20 subfamilies from SMART
-ref_integrases <- 
+smart_integrase_proteins <- 
   tibble(
     prot_path = Sys.glob('./data/SMART/full_protein_fasta/*.fasta')) |> 
   mutate(
@@ -42,11 +42,16 @@ ref_integrases <-
   select(subfamily, id, everything())
 
 # join the full proteins and domains data together by subfamily
-SMART_db <- 
-  left_join(ref_domains, ref_integrases, by = c('subfamily', 'id')) |> 
-  mutate(subfamily = as_factor(subfamily))
+smart_df <- 
+  left_join(smart_domains, 
+            smart_integrase_proteins, by = c('subfamily', 'id')) |> 
+  mutate(subfamily = as_factor(subfamily)) |> 
+  select(-contains('path'))
 
-glimpse(SMART_db)
-write_rds(SMART_db, './data/SMART_db.rds', compress = 'gz')
+glimpse(smart_df)
 
-rm(ref_domains, ref_integrases, SMART_db)
+write_rds(smart_df, './data/smart_df.rds', compress = 'gz')
+
+
+
+

@@ -20,7 +20,7 @@ make_alignment <- function(name, path){
 # Creates .aln files in ./data/SMART/domain_alignments 
 # Don't need to save obj when finished
 # Takes 1 day or more
-domains <- read_rds('./data/SMART_db.rds')
+domains <- read_rds('./data/smart_df.rds')
 domains <- domains |> 
   mutate(aligned = map2(.x = subfamily, 
                         .y = dom_path,

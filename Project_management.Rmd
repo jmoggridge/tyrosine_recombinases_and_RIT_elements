@@ -21,11 +21,10 @@ output: html_document
 
 #### Workflow
 
-1.  Obtain SMART reference data for classifier    
-
-2.  Align SMART domain sequences, build HMMs    
-
-3.  Obtain non-integrase sequences as negative examples    
+1.  Obtain SMART reference data & other non-integrase sequences as negative examples    
+2.  Align SMART domain sequences
+3.  Create hold-out set for final testing
+4.  Build HMMs from training data
 
 4.  Score 20 integrase HMM alignments for each sequence    
 
@@ -43,15 +42,17 @@ assembled genomes.
 
 #### Scripts
 
-- `./code/tidy_smart_data.R`: reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and */full_protein_fasta/*.  
+- `./code/1_tidy_smart_data.R`: reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and */full_protein_fasta/*.  
 
-- `./code/align_smart_domains.R`: creates 20 alignments for each of the subfamilies using 'decipher'. Saves them to *./data/SMART/domain_alignments/*.  
+- `./code/1b_tidy_non_integrases.R`: combines all non-integrase sequences in *./data/non_integrase_seqs/* and saves a fasta file for hmmsearches *./data/non_integrases.fa* and dataframe for the classifier *./data/non_integrases_df.rds*.  
 
-- `./code/hmms_build_and_score_SMART.txt`: bash loop to create 20 HMMs with `hmmbuild`, saved to *./data/SMART/domain_hmm/* another to get scores for all SMART full proteins against each model with `hmmsearch.` and saves to *./data/SMART/hmmsearch_res/*.  
+- `./code/2_align_smart_domains.R`: creates 20 alignments for each of the subfamilies using 'decipher'. Saves them to *./data/SMART/domain_alignments/*.  
+
+- `./code/3_train_test_split.R`: joins domains to their parent protein and then samples rows to create a hold-out set for final classifier testing. Outputs aligned fasta for each family to *./data/training_aligns/*.
+
+- `./code/4_hmms_build_and_score_SMART.txt`: bash loop to create 20 HMMs with `hmmbuild`, saved to *./data/SMART/domain_hmm/* another to get scores for all SMART full proteins against each model with `hmmsearch.` and saves to *./data/SMART/hmmsearch_res/*.  
 
 - `./code/get_refseq_non_integrases.R`: downloads non-integrases from ncbi entrez. Saves raw data for next script *.data//non_integrase_seqs/refseq_non_integrases_raw.rds*.  
-
-- `./code/tidy_non_integrases.R`: combines all non-integrase sequences in *./data/non_integrase_seqs/* and saves a fasta file for hmmsearches *./data/non_integrases.fa* and dataframe for the classifier *./data/non_integrases_df.rds*.  
 
 - `./code/score_non_integrases.txt`: bash loop to score all non-integrases against the 20 hmms. Saves results to *./data/non_integrase_seqs/hmmsearc_res/*.  
 
