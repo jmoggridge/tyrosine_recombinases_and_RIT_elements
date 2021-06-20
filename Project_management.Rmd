@@ -42,7 +42,8 @@ assembled genomes.
 
 #### Scripts
 
-- `./code/1_tidy_smart_data.R`: reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and */full_protein_fasta/*.  
+- `./code/1_tidy_smart_data.R`: reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and */full_protein_fasta/*.  Joins domain and protein datasets into *./data/smart_df.rds*. Splits refences integrases into test and training datasets. Creates a set of fasta files of training domains for alignment
+in *./data/SMART/training_domain_fasta*
 
 - `./code/1b_tidy_non_integrases.R`: combines all non-integrase sequences in *./data/non_integrase_seqs/* and saves a fasta file for hmmsearches *./data/non_integrases.fa* and dataframe for the classifier *./data/non_integrases_df.rds*.  
 
