@@ -38,7 +38,7 @@ done
 # 
 system('mkdir hmmsearch_res')
 # 
-# for hmm in domain_hmm/*;
+# for hmm in ./data/SMART/domain_hmm_train/*;
 # do
 # outfile=`echo $hmm | sed 's|domain_hmm/||g;s|.hmm|.search|g'`
 # echo $outfile

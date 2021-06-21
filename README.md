@@ -64,13 +64,9 @@ assembled genomes (objective 2).
 **Consolidate data, score sequences, join scores**
 
 - `./code/3_join_data.R`: 
-  - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier.
-  - Consolidates fasta files for hmmsearch scores
-  
-- Score hmmsearches for training and test data...
-- Join hmmsearch scores...
+  - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as *train_df.rds* and *test_df.rds*.
+  - Consolidates fasta files for hmmsearch scores: *train_seq.fa* & *test_seq.fa*
 
-- Nested 
 
 <!-- - `./code/4_hmms_build_and_score_SMART.txt`: bash loop to create 20 HMMs with `hmmbuild`, saved to *./data/SMART/domain_hmm/* another to get scores for all SMART full proteins against each model with `hmmsearch.` and saves to *./data/SMART/hmmsearch_res/*.   -->
 

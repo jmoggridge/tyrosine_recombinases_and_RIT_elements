@@ -133,7 +133,7 @@ smart_df <- filtered_proteins |>
             by = c("subfamily", "acc", "acc_alt","description"))
 
 glimpse(smart_df)
-write_rds(smart_df, './data/smart_df.rds', compress = 'gz')
+write_rds(smart_df, './data/SMART/smart_df.rds', compress = 'gz')
 
 
 ## # All protein accessions and sequences are unique!
