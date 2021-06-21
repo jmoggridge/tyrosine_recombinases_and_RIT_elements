@@ -31,83 +31,28 @@ training_domains <- read_rds('./data/SMART/smart_train.rds') |>
   ungroup() |> 
   select(subfamily, acc, dom_seq)
   
-# subset to check code works
-training_domains <- training_domains |> 
-  group_by(subfamily) |> 
-  slice_head(n=10) |> 
-  ungroup()
+## # subset to check code works
+## training_domains <- training_domains |> 
+##   group_by(subfamily) |> 
+##   slice_head(n=1000) |> 
+##   ungroup()
 
-do_alignment <- function(df, dest){
-  print(paste("Working on subfamily:",  df$subfam[1]))
-  outpath <- paste0(dest, df$subfam[1], '.aln')
-  aa_set <- Biostrings::AAStringSet(df |> pull(dom_seq))
-  names(aa_set) <- df$acc
-  aligned <- AlignSeqs(aa_set)
-  writeXStringSet(aligned, filepath = outpath)
-  return(aligned)
-}
+# apply alignment to each subfamily of domains
 aligns <- training_domains |> 
-  mutate(subfam = subfamily) |> 
+  mutate(subfam = paste0(subfamily, '.train')) |> 
   group_by(subfamily) |> 
   nest() |> 
-  mutate(aligned = future_map(data, ~do_alignment(.x, dest = './data/SMART/')))
+  mutate(aligned = future_map(data, ~do_alignment(.x, dest = './data/SMART/domain_align_training/')))
 
-aligns |> 
+aligns <- aligns |> 
   select(subfamily, aligned) |> 
   mutate(acc = map(aligned, names),
-         aln = map(aligned, paste)) |> 
+         dom_aln = map(aligned, paste)) |> 
   unnest(cols = c(acc, aln)) |> 
-  View()
+  glimpse()
+
+training_df <- full_join(training_domains, aligns, by = c("subfamily", "acc"))
+
+write_rds(training_df, './data/smart_train_aligned.rds')
 
 
-# # function to perform alignment and save a fasta file
-# do_alignment <- function(df, dest = './data/SMART/'){
-#   print(paste("Working on subfamily:",  df$subfam[1]))
-#   outpath <- paste0(dest, df$subfam[1], '.aln')
-#   aa_set <- Biostrings::AAStringSet(df |> pull(dom_seq))
-#   names(aa_set) <- df$acc  
-#   aligned <- AlignSeqs(aa_set)
-#   writeXStringSet(aligned, filepath = outpath)
-#   return(aligned)
-# }
-
-# function to perform alignment and save a fasta file
-do_alignment <- function(df, dest = './data/SMART/'){
-  print(paste("Working on subfamily:",  df$subfam[1]))
-  outpath <- paste0(dest, df$subfam[1], '.aln')
-  aa_set <- Biostrings::AAStringSet(df |> pull(dom_seq))
-  names(aa_set) <- df$acc  
-  aligned <- AlignSeqs(aa_set)
-  writeXStringSet(aligned, filepath = outpath)
-  return(aligned)
-}
-
-
-
-library(furrr)
-
-training_domains |> 
-  # need to duplicate group labels for filenames
-  mutate(subfam = subfamily) |> 
-  group_by(subfamily) |> 
-  group_walk(.f = ~do_alignment(.x, dest = './data/SMART/domain_align_training/'))
-
-# # create set fasta files of training domains for alignment
-# system('mkdir ./data/SMART/training_domain_fasta')
-# smart_train |> 
-#   mutate(label = subfamily) |> 
-#   group_by(subfamily) |> 
-#   group_walk(.f = ~make_fasta(.x))
-# 
-# 
-#   
-# # Create alignment of for each subfamily using decipher; 
-# # writes alignments as they finish
-# make_alignment <- function(name, path){
-#   message(paste("\n\nAligning subfamily:", name))
-#   aligned <- AlignSeqs(readAAStringSet(path))
-#   outpath <- paste0('./data/SMART/domain_alignments/', name, '.aln')
-#   writeXStringSet(aligned, filepath = outpath)
-#   return(aligned)
-# }
-# 
