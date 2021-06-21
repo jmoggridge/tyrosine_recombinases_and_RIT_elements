@@ -68,7 +68,8 @@ glimpse(other_non_integrases)
 # join all the data; match names with integrases dataframe
 non_integrases <- 
   bind_rows(refseq, other_non_integrases) |> 
-  transmute(group, 
+  transmute(subfamily = 'non_integrase',
+            group, 
             acc = prot_name, 
             prot_seq = seq |> str_to_upper(), 
             title, 
