@@ -3,6 +3,7 @@
 library(tidyverse)
 library(Biostrings)
 
+# Refseq dataset -----------------------------------------------------
 
 refseq <- 
   # open up refseq raw data
@@ -21,8 +22,9 @@ refseq <-
 
 glimpse(refseq)
 
+## Pfam and Proteomes --------------------------------------------------
 
-#### Eukaryotic proteomes from Uniprot (non-integrases) and Pfam families 
+# Eukaryotic proteomes from Uniprot (non-integrases) and Pfam families 
 
 # Human, yeast and arabidopsis reference proteomes will be used as representative eukaryote sequences to classify as non-integrases. Reference proteomes have one sequence per protein.
 
@@ -64,6 +66,9 @@ other_non_integrases <-
 
 other_non_integrases
 glimpse(other_non_integrases)
+rm(pfam, proteomes)
+
+## Join ------------------------------------------------------------
 
 # join all the data; match names with integrases dataframe
 non_integrases <- 
@@ -81,13 +86,28 @@ non_integrases <-
   sample_n(1) |> 
   ungroup()
 
+glimpse(non_integrases)
+rm(refseq, other_non_integrases)
+
+
+## Data checks ------------------------------------------------------------
+
+# verify id and sequences are unique
+non_integrases |> distinct() |> nrow()
+non_integrases |> pull(acc) |> unique() |> length()
+non_integrases |> pull(prot_seq) |> unique() |> length()
+
+# check group sizes
+non_integrases |> 
+  count(group, sort = T) |> 
+  print.data.frame()
+
 # plot seq lengths
 non_integrases |> 
   mutate(length = nchar(prot_seq)) |> 
   ggplot(aes(length, fct_rev(group))) +
   geom_jitter(alpha = 0.2, size = 0.2) +
-  labs(y = '', x = 'length (residues)', subtitle = 'Non-integrase protein sizes')
-
+  labs(y = '', x = 'length (residues)', subtitle = 'Non-integrase protein lengths')
 
 # what sequence is 6k residues long?
 non_integrases |> 
@@ -95,22 +115,22 @@ non_integrases |>
   filter(length == max(length)) |> 
   pull(title)
 
-
 # verify no duplicate sequences
 length(unique(non_integrases$prot_seq)) == nrow(non_integrases)
 
-# Write non-integrase df to file for later
-write_rds(non_integrases, './data/non_integrase_seqs/non_integrases_df.rds')
 
-# Write non-integrase seqs to fasta
-non_int_fa <- AAStringSet(toupper(non_integrases$prot_seq))
-names(non_int_fa) <- non_integrases$acc
-non_int_fa
-writeXStringSet(non_int_fa, './data/non_integrase_seqs/non_integrases.fa')
+## split non_integrases ---------------------------------------------
 
-##
-rm(refseq, pfam, proteomes, other_non_integrases)
+# Train/test split
+set.seed(123)
+nonint_split <- initial_split(non_integrases, prop = 0.75)
+nonint_train <- training(nonint_split)
+nonint_test <-  testing(nonint_split)
+rm(nonint_split)
 
+# Write non-integrase dfs to file for 3_join_datasets.R
+write_rds(nonint_train, './data/non_integrase_seqs/nonint_train_df.rds')
+write_rds(nonint_test, './data/non_integrase_seqs/nonint_test_df.rds')
 
 ## Non-integrase data ready proceed to 3_join_datasets.R
 

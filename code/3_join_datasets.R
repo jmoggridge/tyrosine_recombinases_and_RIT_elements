@@ -4,33 +4,17 @@ library(tidyverse)
 library(rsample)
 library(Biostrings)
 
+
+# # non_integrasess
+# non_integrases <- read_rds('./data/non_integrase_seqs/non_integrases_df.rds') 
+# glimpse(non_integrases)
+
+
 # smart data
 smart_train <- read_rds('./data/SMART/smart_train.rds')
 smart_test <- read_rds('./data/SMART/smart_test.rds')
-
-# non_integrasess
-non_integrases <- read_rds('./data/non_integrase_seqs/non_integrases_df.rds') 
-
 glimpse(smart_test)
 glimpse(smart_train)
-glimpse(non_integrases)
-
-# verify id and sequences are unique
-non_integrases |> distinct() |> nrow()
-non_integrases |> pull(acc) |> unique() |> length()
-non_integrases |> pull(prot_seq) |> unique() |> length()
-
-# check group sizes
-non_integrases |> 
-  count(group, sort = T) |> 
-  print.data.frame()
-
-## split non_integrases
-set.seed(123)
-nonint_split <- initial_split(non_integrases)
-nonint_train <- training(nonint_split)
-nonint_test <-  testing(nonint_split)
-rm(nonint_split)
 
 # join training datasets
 train_df <- 

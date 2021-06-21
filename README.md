@@ -1,14 +1,14 @@
-# tyrosine_recombinases_and_RIT_elements
-Master's thesis work on tyrosine recombinases and recombinase-in-trio elements
+# Tyrosine recombination classification for RIT element data-mining
 
+Master's thesis work on tyrosine recombinases and recombinase-in-trio elements.
 
-----
+------------------------------------------------------------------------
 
 ## Objective 1
 
 **Create a tool to classify 'phage integrase' proteins by their catalytic domains, in line with the 20 subfamilies described by Smyshlaev *et al.* (2021).**
 
----
+------------------------------------------------------------------------
 
 #### Datasets
 
@@ -16,29 +16,29 @@ Master's thesis work on tyrosine recombinases and recombinase-in-trio elements
 
 - **non-integrase**: various searches of Refseq, some Pfam families of transposases, Uniprot proteomes of yeast, arabidopsis, and human proteomes
 
----
+------------------------------------------------------------------------
 
 #### Workflow
 
-1.  Obtain SMART reference data & other non-integrase sequences as negative examples  2.  Create hold-out set for final testing
-3.  Align SMART domain sequences
-4.  Build HMMs from training data
-5.  Score 20 integrase HMM alignments for each sequence    
-6.  Generate k-mer features    
-7.  Tune & assess classifiers    
-8.  Attempt stacking classifiers   
+- [x]  Obtain SMART reference data & other non-integrase sequences as negative examples.
+- [x] Create hold-out set for final testing
+- [x] Align SMART domain sequences (for assessment and final models)
+- [ ] Build HMMs from training data
+- [ ] Score 20 integrase HMM alignments for each sequence    
+- [ ] Generate k-mer features    
+- [ ]  Tune & assess classifiers. Attempt stacking classifiers...
 
 *Then...*  Apply classifier to MGE proteins and proteomes from    
 assembled genomes (objective 2).
   
-  ---
+------------------------------------------------------------------------
   
 
 ### Scripts
 
-**Data obtain/tidy/join**
+**Data acquisition, tidying, joining**
 
-- `./code/1_tidy_smart_data.R`: 
+- `./code/1a_tidy_smart_data.R`: 
   - Reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and */full_protein_fasta/*.  
   - Joins domain and protein datasets into *./data/smart_df.rds*. 
   - Splits refences integrases into test and training datasets. 
@@ -47,25 +47,34 @@ assembled genomes (objective 2).
 
 - `./code/1b_get_refseq_non_integrases.R`: does downloads of various non-integrases from NCBI. Saves *./data/non_integrase_seqs/refseq_non_integrases_raw.rds*.  
 
-- `./code/1c_tidy_non_integrases.R`: combines all non-integrase sequences in *./data/non_integrase_seqs/*. Saves a fasta file for hmmsearches (*./data/non_integrases.fa*) and dataframe for the classifier (*./data/non_integrases_df.rds*).  
+- `./code/1c_tidy_non_integrases.R`: 
+  - Combines all non-integrase sequences in *./data/non_integrase_seqs/*.
+  - Tidies data up to match integrase dataset.
+  - Data sanity checks & filtering.
+  - Train/test split 
+  - Saves dfs to *./data/non_integrase_seqs/* as *nonint_train_df.rds* and *nonint_test_df.rds*
 
-----
+------------------------------------------------------------------------
 
 **Alignment, HMM building**
 
-`./code/2a_align_training_domains.R`: alignment of training domains for each of the subfamilies. Saves them to _./data/SMART/domain_align_training/*.train.aln_.
+- `./code/2a_align_training_domains.R`: alignment of training domains for each of the subfamilies. Saves them to _./data/SMART/domain_align_training/*.train.aln_.
 
-`./code/2b_align_all_domains.R`: Same as 2a but aligns all domain sequences to create the final HMMs. Saves them to *./data/SMART/domain_alignments/*.
+- `./code/2b_align_all_domains.R`: Same as 2a but aligns all domain sequences to create the final HMMs. Saves them to *./data/SMART/domain_alignments/*.
 
-`./code/2c_build_HMMs.R`: Builds the training and final HMMs from the alignments created in 2a and 2b. Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
+- `./code/2c_build_HMMs.R`: Builds the training and final HMMs from the alignments created in 2a and 2b. Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
 
------
+------------------------------------------------------------------------
 
 **Consolidate data, score sequences, join scores**
 
-- `./code/3_join_data.R`: 
+- `./code/3a_join_data.R`: 
+  - Splits test/train from non_integrase data.
   - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as *train_df.rds* and *test_df.rds*.
   - Consolidates fasta files for hmmsearch scores: *train_seq.fa* & *test_seq.fa*
+
+- `./code/3b_hmmsearch_sequences`
+
 
 
 <!-- - `./code/4_hmms_build_and_score_SMART.txt`: bash loop to create 20 HMMs with `hmmbuild`, saved to *./data/SMART/domain_hmm/* another to get scores for all SMART full proteins against each model with `hmmsearch.` and saves to *./data/SMART/hmmsearch_res/*.   -->
