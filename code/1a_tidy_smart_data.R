@@ -153,7 +153,7 @@ smart_train <- training(df_split)
 write_rds(smart_train, './data/SMART/smart_train.rds', compress = 'gz')
 
 smart_test <- testing(df_split)
-write_rds(smart_test, './data/SMART/smart_train.rds', compress = 'gz')
+write_rds(smart_test, './data/SMART/smart_test.rds', compress = 'gz')
 
 rm(df_split)
 
