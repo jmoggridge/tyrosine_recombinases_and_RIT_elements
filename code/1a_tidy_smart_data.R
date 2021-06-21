@@ -150,10 +150,10 @@ library(rsample)
 df_split <- initial_split(smart_df, 0.75, strata = subfamily)
 
 smart_train <- training(df_split)
-write_rds(train_df, './data/SMART/smart_train.rds', compress = 'gz')
+write_rds(smart_train, './data/SMART/smart_train.rds', compress = 'gz')
 
 smart_test <- testing(df_split)
-write_rds(test_df, './data/SMART/smart_train.rds', compress = 'gz')
+write_rds(smart_test, './data/SMART/smart_train.rds', compress = 'gz')
 
 rm(df_split)
 
@@ -173,4 +173,6 @@ smart_train |>
   group_by(subfamily) |> 
   group_walk(.f = ~make_fasta(.x))
          
-         
+
+#### proceed to alignment script.... ----
+
