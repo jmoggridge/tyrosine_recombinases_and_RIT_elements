@@ -1,14 +1,15 @@
 ### Script to retrieve non-integrases from RefSeq
 ### Get non-integrase proteins for 'other' class for classifier to serve as negative examples.
 
+## Libs ---------------------------------------------------------------
+
 library(furrr)
 library(Biostrings)
 library(tidyverse)
 library(rentrez)
 library(beepr)
 
-
-#### Functions for NCBI downloads ----
+## Functions for NCBI downloads ----------------------------------------------
 
 # `get_ncbi_ids` does a basic NCBI search, retrieves metadata and record ids. Sets up the fetching process in get_ESummary_df and get_Efasta functions.
 get_ncbi_ids <- function(searchexp, db){
@@ -69,7 +70,7 @@ get_Efasta <- function(searchexp, db, apikey, fetch_max = 1600,
 
 
 
-# list of proteins
+## list of proteins --------------------------------------------------------
 queries <- list(
   'Serine recombinase' = "serine recombinase",
   'Holliday junction resolvase' = 'Holliday junction resolvase',
@@ -108,6 +109,9 @@ queries <- list(
   # add search syntax
   map(~paste0('(', .x, '[Protein Name]) AND refseq[filter]'))
 
+
+## Downloads ---------------------------------------------------------------
+
 # send queries to entrez; max n seqs returned is set to 1k
 non_integrases <- 
   map(queries, 
@@ -117,4 +121,5 @@ non_integrases <-
   enframe(name = "name", value = "value") |> 
   unnest_wider(value)
 
+## Save --------------------------------------------------------------------
 write_rds(non_integrases, './data/non_integrase_seqs/refseq_non_integrases_raw.rds')

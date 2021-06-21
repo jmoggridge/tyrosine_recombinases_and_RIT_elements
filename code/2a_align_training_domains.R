@@ -11,11 +11,10 @@ library(DECIPHER)
 # pass a dataframe with subfamily, acc, dom_seq
 # return same df with alignment stringset column
 do_alignment <- function(df, dest){
-  print(paste("Working on subfamily:",  df$subfam[1]))
   outpath <- paste0(dest, df$subfam[1], '.aln')
   aa_set <- Biostrings::AAStringSet(df |> pull(dom_seq))
   names(aa_set) <- df$acc
-  aligned <- AlignSeqs(aa_set)
+  aligned <- AlignSeqs(aa_set, verbose = F, processors = 1)
   writeXStringSet(aligned, filepath = outpath)
   return(aligned)
 }
@@ -36,26 +35,36 @@ training_domains <- read_rds('./data/SMART/smart_train.rds') |>
 ##   slice_head(n=1000) |> 
 ##   ungroup()
 
+# setup parallelization of future_map()
+plan(multisession, workers = availableCores() - 1)
+
 # apply alignment to each subfamily of domains
-plan(multisession, workers = 8)
 aligns <- training_domains |> 
   mutate(subfam = paste0(subfamily, '.train')) |> 
   group_by(subfamily) |> 
   nest() |> 
+  mutate(nrow = map(data, nrow)) |> 
+  arrange(desc(nrow)) |> 
   ungroup() |> 
-  mutate(aligned = future_map(data, ~do_alignment(.x, dest = './data/SMART/domain_align_training/')))
+  select(-nrow) |> 
+  mutate(aligned = future_map(
+    .x = data, 
+    .f = ~do_alignment(.x, dest = './data/SMART/domain_align_training/')),
+    options = furrr_options(scheduling = Inf)
+  )
 
 aligns <- aligns |> 
   select(subfamily, aligned) |> 
+  arrange(subfamily) |> 
   mutate(acc = map(aligned, names),
          dom_aln = map(aligned, paste)) |> 
-  unnest(cols = c(acc, aln)) |> 
-  glimpse()
+  unnest(cols = c(acc, dom_aln))
+# 
+# training_df <- 
+#   full_join(training_domains, aligns, by = c("subfamily", "acc")) |> 
+#   relocate(subfamily, contains('acc'))
 
-training_df <- full_join(training_domains, aligns, by = c("subfamily", "acc")) |> 
-  full_join(read_rds('./data/SMART/smart_train.rds'))
-
-write_rds(training_df, './data/smart_train_aligned.rds')
+write_rds(aligns, './data/SMART/smart_train_aligned.rds')
 
 ## send alignments to build HMMs...
 

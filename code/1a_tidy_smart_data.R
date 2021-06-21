@@ -154,6 +154,8 @@ rm(proteins, filtered_domains, filtered_proteins, garbage_annotations)
 # Might as well split data now
 
 library(rsample)
+
+set.seed(54321)
 df_split <- initial_split(smart_df, 0.75, strata = subfamily)
 
 smart_train <- training(df_split)

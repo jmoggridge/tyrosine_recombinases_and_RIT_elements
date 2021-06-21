@@ -53,18 +53,24 @@ assembled genomes (objective 2).
 
 **Alignment, HMM building**
 
-`./code/2a_align_smart_domains.R`: alignment of training domains for each of the subfamilies. Saves them to _./data/SMART/domain_align_training/*.train.aln_.
+`./code/2a_align_training_domains.R`: alignment of training domains for each of the subfamilies. Saves them to _./data/SMART/domain_align_training/*.train.aln_.
 
-`./code/2b_align_smart_domains.R`: Same as 2a but aligns all domain sequences to create the final HMMs. Saves them to *./data/SMART/domain_alignments/*.
+`./code/2b_align_all_domains.R`: Same as 2a but aligns all domain sequences to create the final HMMs. Saves them to *./data/SMART/domain_alignments/*.
 
 `./code/2c_build_HMMs.R`: Builds the training and final HMMs from the alignments created in 2a and 2b. Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
 
 -----
 
-**Score sequences, classify, evaluate**
+**Consolidate data, score sequences, join scores**
 
 - `./code/3_join_data.R`: 
-  - Outputs aligned fasta for each family to *./data/training_aligns/*. -->
+  - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier.
+  - Consolidates fasta files for hmmsearch scores
+  
+- Score hmmsearches for training and test data...
+- Join hmmsearch scores...
+
+- Nested 
 
 <!-- - `./code/4_hmms_build_and_score_SMART.txt`: bash loop to create 20 HMMs with `hmmbuild`, saved to *./data/SMART/domain_hmm/* another to get scores for all SMART full proteins against each model with `hmmsearch.` and saves to *./data/SMART/hmmsearch_res/*.   -->
 

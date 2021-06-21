@@ -1,5 +1,4 @@
-
-## join integrase and non-integrase data
+### Join integrase and non-integrase data ####
 
 library(tidyverse)
 library(rsample)
@@ -22,11 +21,14 @@ glimpse(non_integrase)
 non_integrase |> 
   pull(prot_seq) |> 
   toupper() |> 
-  str_count('X') |> 
+  str_count('B|J|O|U|X|Z') |> 
   summary()
 
+## split non
+set.seed(123)
 nonint_split <- initial_split(non_integrase)
-nonint_train <- 
+nonint_train <- training(non_integrase)
+nonint_test <-  testing(non_integrase)
 
 
 ## create fasta file for HMM scoring
