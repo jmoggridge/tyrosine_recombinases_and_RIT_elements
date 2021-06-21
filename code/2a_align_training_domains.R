@@ -22,7 +22,6 @@ do_alignment <- function(df, dest){
 
 ### Make training domain alignments ----
 system('mkdir ./data/SMART/domain_align_training/')
-plan(multisession, workers = 8)
 
 # load training domains, remove any duplicated sequences
 training_domains <- read_rds('./data/SMART/smart_train.rds') |> 
@@ -38,10 +37,12 @@ training_domains <- read_rds('./data/SMART/smart_train.rds') |>
 ##   ungroup()
 
 # apply alignment to each subfamily of domains
+plan(multisession, workers = 8)
 aligns <- training_domains |> 
   mutate(subfam = paste0(subfamily, '.train')) |> 
   group_by(subfamily) |> 
   nest() |> 
+  ungroup() |> 
   mutate(aligned = future_map(data, ~do_alignment(.x, dest = './data/SMART/domain_align_training/')))
 
 aligns <- aligns |> 
@@ -51,7 +52,8 @@ aligns <- aligns |>
   unnest(cols = c(acc, aln)) |> 
   glimpse()
 
-training_df <- full_join(training_domains, aligns, by = c("subfamily", "acc"))
+training_df <- full_join(training_domains, aligns, by = c("subfamily", "acc")) |> 
+  full_join(read_rds('./data/SMART/smart_train.rds'))
 
 write_rds(training_df, './data/smart_train_aligned.rds')
 
