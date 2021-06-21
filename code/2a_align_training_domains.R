@@ -35,24 +35,30 @@ training_domains <- read_rds('./data/SMART/smart_train.rds') |>
 ##   slice_head(n=1000) |> 
 ##   ungroup()
 
-# setup parallelization of future_map()
-plan(multisession, workers = availableCores() - 1)
-
-# apply alignment to each subfamily of domains
+# arrange df for alignments
 aligns <- training_domains |> 
   mutate(subfam = paste0(subfamily, '.train')) |> 
   group_by(subfamily) |> 
   nest() |> 
-  mutate(nrow = map(data, nrow)) |> 
-  arrange(desc(nrow)) |> 
   ungroup() |> 
-  select(-nrow) |> 
+  mutate(nrow = map_int(data, nrow)) |> 
+  arrange(desc(nrow)) |> 
+  select(-nrow) 
+
+aligns
+
+# setup parallelization of future_map()
+plan(multisession, workers = availableCores() - 1)
+
+# apply alignment to each subfamily of domains
+aligns <- aligns |> 
   mutate(aligned = future_map(
     .x = data, 
     .f = ~do_alignment(.x, dest = './data/SMART/domain_align_training/')),
     options = furrr_options(scheduling = Inf)
   )
 
+# unnest aligned sequences
 aligns <- aligns |> 
   select(subfamily, aligned) |> 
   arrange(subfamily) |> 
