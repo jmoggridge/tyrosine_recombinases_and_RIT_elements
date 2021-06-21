@@ -32,12 +32,14 @@ glimpse(refseq)
 pfam <- 
   tibble(path = Sys.glob('./data/non_int*/pfam_non_int*/*.fa')) |> 
   mutate(group = str_remove_all(path, './.*/.*/|_full|.fa') |> str_squish())
+
 pfam
 
 # uniprot proteome fastas
 proteomes <- 
   tibble(path = Sys.glob('./data/non_int*/uniprot_*/*fasta')) |> 
   mutate(group = str_remove_all(path, './.*/.*/|_proteome|.fasta'))
+
 proteomes
 
 set.seed(1234)
@@ -63,7 +65,7 @@ other_non_integrases <-
 other_non_integrases
 glimpse(other_non_integrases)
 
-# join all the data; 
+# join all the data; match names with integrases dataframe
 non_integrases <- 
   bind_rows(refseq, other_non_integrases) |> 
   transmute(group, 
@@ -93,11 +95,8 @@ non_integrases |>
   pull(title)
 
 
-
 # verify no duplicate sequences
 length(unique(non_integrases$prot_seq)) == nrow(non_integrases)
-
-
 
 # Write non-integrase df to file for later
 write_rds(non_integrases, './data/non_integrase_seqs/non_integrases_df.rds')
