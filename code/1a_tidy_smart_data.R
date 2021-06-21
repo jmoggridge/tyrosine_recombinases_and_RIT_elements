@@ -10,7 +10,7 @@ library(Biostrings)
 library(tidyverse)
 library(janitor)
 
-# Domains data -----
+## Domains data -------------------------------------------------
 
 # Make dataframe of fastas for each subfamily of domains
 # Split fasta names and seqs
@@ -81,7 +81,7 @@ filtered_domains |>
 
 rm(domains)
 
-# Protein data -----
+## Protein data -------------------------------------------------
 
 # Read the full protein sequences for 20 subfamilies from SMART
 # Split fasta names and seqs
@@ -122,6 +122,10 @@ filtered_proteins <- proteins |>
             by = c("subfamily", "acc"))
 filtered_proteins
 
+
+
+## Join prot & domain ---------------------------------------------
+
 # join filtered domains with their parent protein...
 # but! some accessions don't match perfectly...
 smart_df <- filtered_proteins |>
@@ -144,6 +148,9 @@ write_rds(smart_df, './data/smart_df.rds', compress = 'gz')
 rm(proteins, filtered_domains, filtered_proteins, garbage_annotations)
 
 
+
+## Split data ------------------------------------------------
+
 # Might as well split data now
 
 library(rsample)
@@ -158,21 +165,34 @@ write_rds(smart_test, './data/SMART/smart_test.rds', compress = 'gz')
 rm(df_split)
 
 
-# function to write fasta 
-make_fasta <- function(df){
-  fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
-  names(fasta) <- df$acc
-  dest <- paste0('./data/SMART/training_domain_fasta/', df$label[1], '.fa')
-  writeXStringSet(fasta, filepath = dest)
-}
+## Write fasta files for each domain subfamily ----------------
+make_domain_fasta <- 
+  function(df){
+    fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
+    names(fasta) <- df$acc
+    dest <- paste0('./data/SMART/training_domain_fasta/', df$label[1], '.fa')
+    writeXStringSet(fasta, filepath = dest)
+  }
 
 # create set fasta files of training domains for alignment
 system('mkdir ./data/SMART/training_domain_fasta')
 smart_train |> 
   mutate(label = subfamily) |> 
   group_by(subfamily) |> 
-  group_walk(.f = ~make_fasta(.x))
+  group_walk(.f = ~make_domain_fasta(.x))
          
+
+## train and test proteins fasta --------------------------------
+make_protein_fasta <- 
+  function(df, outfile){
+    fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
+    names(fasta) <- df$acc
+    Biostrings::writeXStringSet(fasta, filepath = outfile)
+  }
+
+smart_train |> make_protein_fasta(outfile = './data/SMART/smart_train.fa')
+smart_test |> make_protein_fasta(outfile = './data/SMART/smart_test.fa')
+
 
 #### proceed to alignment script.... ----
 

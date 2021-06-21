@@ -42,6 +42,7 @@ aligns <- all_domains |>
   mutate(subfam = paste0(subfamily, '.train')) |> 
   group_by(subfamily) |> 
   nest() |> 
+  ungroup() |> 
   mutate(aligned = future_map(data, ~do_alignment(.x, dest = './data/SMART/domain_align_training/')))
 
 aligns <- aligns |> 

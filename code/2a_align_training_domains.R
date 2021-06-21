@@ -57,4 +57,7 @@ training_df <- full_join(training_domains, aligns, by = c("subfamily", "acc")) |
 
 write_rds(training_df, './data/smart_train_aligned.rds')
 
+## send alignments to build HMMs...
+
+
 

@@ -1,3 +1,12 @@
+# 
+# # **might not need this bit if not using hmmscan**
+# # compile the models into a single hmm database for hmmscan
+# # compress and index the hmm files
+# cat domain_hmm/* > subfamilies.hmm
+# hmmpress subfamilies.hmm
+
+
+
 
 #### Feature generation: k-mer profiles----
 # function generates sequence feature columns [(1-4)-mers] for classification
