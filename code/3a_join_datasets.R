@@ -7,8 +7,10 @@ library(Biostrings)
 
 # # non_integrasess
 # non_integrases <- read_rds('./data/non_integrase_seqs/non_integrases_df.rds') 
-# glimpse(non_integrases)
-
+nonint_train <- read_rds('./data/non_integrase_seqs/nonint_train_df.rds')
+nonint_test <- read_rds('./data/non_integrase_seqs/nonint_test_df.rds')
+glimpse(nonint_train)
+glimpse(nonint_test)
 
 # smart data
 smart_train <- read_rds('./data/SMART/smart_train.rds')
@@ -48,3 +50,4 @@ write_fasta(test_df, './data/test_seq.fa')
 
 
 ## Proceed to scoring seqs with hmmsearch: 
+
