@@ -20,6 +20,7 @@ for file in ./data/SMART/domain_align_training/*.aln
   hmmbuild $outfile $file
 done
 
+# TODO point to alignments in /domain_align_allseqs/ **
 # loop to build final HMM for each subfamily
 for file in ./data/SMART/domain_alignments/*.aln
   do
@@ -33,8 +34,9 @@ for hmm in ./data/SMART/domain_hmm_training/*;
   do
   outfile=`echo $hmm | sed 's|SMART/domain_hmm_training|hmmsearch_res|g;s|\\.train\\.hmm||g'`
   echo $hmm
-  hmmsearch --noali -o temp --tblout $outfile.train.tbl $hmm ./data/train_seq.fa
-  hmmsearch --noali -o temp --tblout $outfile.test.tbl $hmm ./data/test_seq.fa
+  hmmsearch --noali -o temp --tblout $outfile.test.tbl $hmm ./data/test_seq.fa  
+  hmmsearch --noali -o temp --tblout $outfile.train.tbl $hmm ./data/train_seq.fa  
 done
 
 rm temp
+
