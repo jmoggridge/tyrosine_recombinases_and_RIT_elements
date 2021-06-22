@@ -2,8 +2,6 @@
 # one set for training HMMs for classification assessment
 # one set for full data HMMs for final classifier
 
-## TODO refactor this script and run
-
 ## need to recheck code ~ filenames / paths may have been changed...
 library(tidyverse)
 library(furrr)
@@ -24,7 +22,7 @@ do_alignment <- function(df, dest){
 }
 
 
-### Organize data for alignment ----
+### Organize data by subfamily ----
 system('mkdir ./data/SMART/domain_align_allseqs/')
 
 set.seed(123)
@@ -48,7 +46,8 @@ all_domains <-
 
 all_domains
 
-## apply alignment to each subfamily of domains ---------
+
+## Alignment ---------
 
 # setup parallelization of future_map()
 plan(multisession, workers = availableCores() - 1)
