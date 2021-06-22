@@ -2,6 +2,8 @@
 # one set for training HMMs for classification assessment
 # one set for full data HMMs for final classifier
 
+# TODO run this script again to get the saved dataframe missing because of the error when first executing this code.
+
 library(tidyverse)
 library(furrr)
 library(Biostrings)
@@ -36,7 +38,7 @@ training_domains <- read_rds('./data/SMART/smart_train.rds') |>
 ##   ungroup()
 
 # arrange df for alignments
-aligns <- training_domains |> 
+training_domains <- training_domains |> 
   mutate(subfam = paste0(subfamily, '.train')) |> 
   group_by(subfamily) |> 
   nest() |> 
@@ -45,13 +47,13 @@ aligns <- training_domains |>
   arrange(desc(nrow)) |> 
   select(-nrow) 
 
-aligns
+training_domains
 
 # setup parallelization of future_map()
 plan(multisession, workers = availableCores() - 1)
 
 # apply alignment to each subfamily of domains
-aligns <- aligns |> 
+aligns <- training_domains |> 
   mutate(
     aligned = future_map(
       .x = data, 
@@ -60,22 +62,10 @@ aligns <- aligns |>
     )
   )
 
-
-# unnest aligned sequences
-aligns <- aligns |> 
-  select(subfamily, aligned) |> 
-  arrange(subfamily) |> 
-  mutate(acc = map(aligned, names),
-         dom_aln = map(aligned, paste)) |> 
-  unnest(cols = c(acc, dom_aln))
-# 
-# training_df <- 
-#   full_join(training_domains, aligns, by = c("subfamily", "acc")) |> 
-#   relocate(subfamily, contains('acc'))
-
 write_rds(aligns, './data/SMART/smart_train_aligned.rds')
 
-## send alignments to build HMMs...
+
+## next: send alignment fastas to build HMMs...
 
 
 

@@ -167,24 +167,26 @@ write_rds(smart_test, './data/SMART/smart_test.rds', compress = 'gz')
 rm(df_split)
 
 
-## Write fasta files for each domain subfamily ----------------
-make_domain_fasta <- 
-  function(df){
-    fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
-    names(fasta) <- df$acc
-    dest <- paste0('./data/SMART/training_domain_fasta/', df$label[1], '.fa')
-    writeXStringSet(fasta, filepath = dest)
-  }
-
-# create set fasta files of training domains for alignment
-system('mkdir ./data/SMART/training_domain_fasta')
-smart_train |> 
-  mutate(label = subfamily) |> 
-  group_by(subfamily) |> 
-  group_walk(.f = ~make_domain_fasta(.x))
-         
 
 ## TODO delete this unnecessary fasta creation?
+
+# 
+# ## Write fasta files for each domain subfamily ----------------
+# make_domain_fasta <- 
+#   function(df){
+#     fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
+#     names(fasta) <- df$acc
+#     dest <- paste0('./data/SMART/training_domain_fasta/', df$label[1], '.fa')
+#     writeXStringSet(fasta, filepath = dest)
+#   }
+# 
+# # create set fasta files of training domains for alignment
+# system('mkdir ./data/SMART/training_domain_fasta')
+# smart_train |> 
+#   mutate(label = subfamily) |> 
+#   group_by(subfamily) |> 
+#   group_walk(.f = ~make_domain_fasta(.x))
+#          
 
 # ## train and test proteins fasta --------------------------------
 # make_protein_fasta <- 
