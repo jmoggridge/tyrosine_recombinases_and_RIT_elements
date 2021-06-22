@@ -23,8 +23,8 @@ Master's thesis work on tyrosine recombinases and recombinase-in-trio elements.
 - [x]  Obtain SMART reference data & other non-integrase sequences as negative examples.
 - [x] Create hold-out set for final testing
 - [x] Align SMART domain sequences (for assessment and final models)
-- [ ] Build HMMs from training data
-- [ ] Score 20 integrase HMM alignments for each sequence    
+- [in prog] Build HMMs from training data
+- [in prog] Score 20 integrase HMM alignments for each sequence    
 - [ ] Generate k-mer features    
 - [ ]  Tune & assess classifiers. Attempt stacking classifiers...
 
