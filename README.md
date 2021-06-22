@@ -42,10 +42,11 @@ All scripts are in the project directory `./code/`
 
 - `1a_tidy_smart_data.R`
   - Reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and */full_protein_fasta/*.  
-  - Joins domain and protein datasets into *./data/smart_df.rds*. 
-  - Splits refences integrases into test and training datasets. 
+  - Joins domain and protein datasets into *./data/SMART/smart_df.rds*. 
+  - Removes sequences found in more than 1 subfamily.
+  - Splits ref integrases into test and training datasets. 
   - Creates a set of fasta files of training domains for alignment in *./data/SMART/training_domain_fasta*. 
-  - Creates a fasta file for each of the training and test sets for scoring against HMMs. [x]
+  - Creates a fasta file for each of the training and test sets for scoring against HMMs
 
 - `1b_get_refseq_non_integrases.R`
   - does downloads of various non-integrases from NCBI. Saves *./data/non_integrase_seqs/refseq_non_integrases_raw.rds*.  
@@ -65,37 +66,39 @@ All scripts are in the project directory `./code/`
   - Alignment of training domains for each of the subfamilies. 
   - Saves them to _./data/SMART/domain_align_training/*.train.aln_.
 
-- `2b_align_all_domains.R` (waiting ...)
+- `2b_align_all_domains.R`
   - Same as 2a but aligns all domain sequences to create the final HMMs.
   - Saves them to *./data/SMART/domain_alignments/*.
 
-- `2c_build_HMMs.sh` (waiting....)
-  - Bash script to run from the project directory.
-  - Builds the training and final HMMs from the alignments created in 2a and 2b.
-  - Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
 
 ------------------------------------------------------------------------
 
 **3. Consolidate data, score sequences, join scores, prepare for classifier**
 
-- `3a_join_data.R` (done)
+- `3a_join_data.R`
   - Splits test/train from non_integrase data.
   - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as *train_df.rds* and *test_df.rds*.
   - Consolidates fasta files for hmmsearch scores: *train_seq.fa* & *test_seq.fa*
 
-- `3b_hmmsearch.sh` (in prog)
+- `3b_hmmbuild_and_hmmsearch.sh` (in prog)
+  - Bash script to run from the project directory.
+  - Builds the training and final HMMs from the alignments in step 2.
+  - Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
   - Run hmmsearch for sequences against 20 HMMs made from training sequences.
-  - Save files to _./data/hmmsearch_res/_
+  - Save hmmsearch tables to _./data/hmmsearch_res/_
 
-- `3c_prep_for_classifier.R`
+- `3c_prep_for_classifier.R` (needs refactoring)
   - Processes hmmsearch output and joins to train and test data
   - Add kmer counts for each sequence
   
+<!-- - `./code/tidy_hmmsearch_res.R`: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to *./data/smart_refseqs_hmm_scores.rds* and *./data/non_integrases_hmm_scores.rds*.   -->
+<!-- -  `./code/add_kmer_features.R`: joins integrase and non-integrase datasets and computes kmer proportions, saves *./data/full_classifier_data.rds* for modelling. -->
+
 ------------------------------------------------------------------------
 
 **4. Check accuracy of classification by hmmsearch best score**
 
-- `4_classifier.R`
+- `4_classifier.R` (to do)
   - Check accuracy of classification by hmmsearch best score.
   - Nested cross-validation for assessment
   - Model tuning CV
@@ -103,12 +106,6 @@ All scripts are in the project directory `./code/`
   - Final model selection and training
   
   
-<!-- - `./code/4_hmms_build_and_score_SMART.txt`: bash loop to create 20 HMMs with `hmmbuild`, saved to *./data/SMART/domain_hmm/* another to get scores for all SMART full proteins against each model with `hmmsearch.` and saves to *./data/SMART/hmmsearch_res/*.   -->
-
-<!-- - `./code/score_non_integrases.txt`: bash loop to score all non-integrases against the 20 hmms. Saves results to *./data/non_integrase_seqs/hmmsearc_res/*.   -->
-
-<!-- - `./code/tidy_hmmsearch_res.R`: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to *./data/smart_refseqs_hmm_scores.rds* and *./data/non_integrases_hmm_scores.rds*.   -->
-<!-- -  `./code/add_kmer_features.R`: joins integrase and non-integrase datasets and computes kmer proportions, saves *./data/full_classifier_data.rds* for modelling. -->
 
 <!-- - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it.... -->
 
