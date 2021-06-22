@@ -184,16 +184,18 @@ smart_train |>
   group_walk(.f = ~make_domain_fasta(.x))
          
 
-## train and test proteins fasta --------------------------------
-make_protein_fasta <- 
-  function(df, outfile){
-    fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
-    names(fasta) <- df$acc
-    Biostrings::writeXStringSet(fasta, filepath = outfile)
-  }
+## TODO delete this unnecessary fasta creation?
 
-smart_train |> make_protein_fasta(outfile = './data/SMART/smart_train.fa')
-smart_test |> make_protein_fasta(outfile = './data/SMART/smart_test.fa')
+# ## train and test proteins fasta --------------------------------
+# make_protein_fasta <- 
+#   function(df, outfile){
+#     fasta <- Biostrings::AAStringSet(df |> pull(dom_seq))
+#     names(fasta) <- df$acc
+#     Biostrings::writeXStringSet(fasta, filepath = outfile)
+#   }
+# 
+# smart_train |> make_protein_fasta(outfile = './data/SMART/smart_train.fa')
+# smart_test |> make_protein_fasta(outfile = './data/SMART/smart_test.fa')
 
 
 #### proceed to alignment script.... ----
