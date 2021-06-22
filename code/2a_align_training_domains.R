@@ -52,11 +52,14 @@ plan(multisession, workers = availableCores() - 1)
 
 # apply alignment to each subfamily of domains
 aligns <- aligns |> 
-  mutate(aligned = future_map(
-    .x = data, 
-    .f = ~do_alignment(.x, dest = './data/SMART/domain_align_training/')),
-    options = furrr_options(scheduling = Inf)
+  mutate(
+    aligned = future_map(
+      .x = data, 
+      .f = ~do_alignment(.x, dest = './data/SMART/domain_align_training/'),
+      .options = furrr_options(scheduling = Inf)
+    )
   )
+
 
 # unnest aligned sequences
 aligns <- aligns |> 
