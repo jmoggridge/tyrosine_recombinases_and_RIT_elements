@@ -109,8 +109,10 @@ train <-
     parse_hmmsearches("./data/hmmsearch_res/*.train.tbl"), 
     by = 'acc'
     ) |> 
+  # replace any NAs with zeros
+  mutate(across(Arch1:Xer, ~replace_na(.x, 0))) |> 
   # join 2-mer proportions columns
-  add_2mers(seq = prot_seq)
+  add_2mers(seq = prot_seq) 
 
 write_rds(train, './data/train_df_scored.rds')
 rm(train)
@@ -123,6 +125,7 @@ test <-
     parse_hmmsearches("./data/hmmsearch_res/*.test.tbl"),
     by = 'acc'
     ) |>
+  mutate(across(Arch1:Xer, ~replace_na(.x, 0))) |> 
   add_2mers(seq = prot_seq)
 
 write_rds(test, './data/test_df_scored.rds')
