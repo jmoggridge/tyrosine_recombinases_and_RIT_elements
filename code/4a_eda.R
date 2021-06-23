@@ -1,26 +1,104 @@
 library(tidyverse)
 library(furrr)
+library(patchwork)
 
 # TODO EDA of prepped data
 
 test <- read_rds('./data/test_df_scored.rds')
 train <- read_rds('./data/train_df_scored.rds')
+
+## lowest hmm self-score from training subfamily seqs
+gathering_thresholds <- 
+  train |> 
+  select(subfamily, Arch1:Xer) |> 
+  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'threshold') |> 
+  filter(subfamily == hmm_name) |> 
+  group_by(subfamily) |> 
+  filter(threshold == min(threshold)) |> 
+  ungroup() |> 
+  select(-subfamily)
+gathering_thresholds
+
+# plot gathering thresholds on pointrange of self-scores
+raw_self_scores <- train |> 
+  select(subfamily, Arch1:Xer) |> 
+  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'hmm_score') |> 
+  filter(subfamily == hmm_name) |> 
+  ggplot(aes(x = fct_rev(hmm_name), y = hmm_score)) +
+  geom_boxplot(outlier.size = 0.2) +
+  stat_summary(fun = min, geom = 'crossbar', color ='red', size = 0.35) +
+  labs(x ='model', y = 'self-scores \n(raw bit scores)') +
+  theme_classic() +
+  coord_flip() 
+
+# normalized gathering thresholds and 
+normalize_self_scores <- train |> 
+  select(subfamily, Arch1:Xer) |>
+  mutate(across(Arch1:Xer, ~c(scale(.x, center = T, scale = T)), .names = '{col}')) |>
+  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'hmm_score') |> 
+  filter(subfamily == hmm_name) |> 
+  
+  ggplot(aes(x = fct_rev(hmm_name), y = hmm_score)) +
+  geom_boxplot(outlier.size = 0.2) +
+  stat_summary(fun = min, geom = 'crossbar', color ='red', size = 0.35) +
+  labs(y = 'self-scores \n(normalized vs all \nscores, for each model)') +
+  theme_classic() +
+  coord_flip() +
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+raw_self_scores + normalize_self_scores & 
+  plot_annotation(subtitle = 'HMM training sequences self-scoring and gathering thresholds')
+
+train_score <- train |> 
+  select(subfamily, Arch1:Xer) |> 
+  mutate(across(Arch1:Xer, ~replace_na(.x, 0))) |> 
+  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'hmm_score') |> 
+  mutate(hit = ifelse(subfamily == hmm_name, T, F),
+         hmm_name = fct_rev(hmm_name)) |> 
+  left_join(gathering_thresholds)
+
+# plot test scores distribution / gathering threshold / membership T/F
+ggplot() +
+  geom_errorbar(data = gathering_thresholds, 
+                aes(x = fct_rev(hmm_name), ymin = threshold, ymax = threshold), 
+                color = 'black', size = 1, width = 0.7) +
+  geom_boxplot(data = train_score,
+               aes(x = fct_rev(hmm_name), y = hmm_score, color = hit),
+               outlier.size = 0.7) + 
+  labs(x = '', y = 'raw HMM score', color = 'membership',
+       subtitle = 'Training sequences scores against gathering thresholds') +
+  coord_flip() +
+  theme_classic()
+
+
+test_score <- test |> 
+  select(subfamily, Arch1:Xer) |> 
+  mutate(across(Arch1:Xer, ~replace_na(.x, 0))) |> 
+  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'hmm_score') |> 
+  mutate(hit = ifelse(subfamily == hmm_name, T, F),
+         hmm_name = fct_rev(hmm_name)) |> 
+  left_join(gathering_thresholds)
+
+# plot test scores distribution / gathering threshold / membership T/F
+ggplot() +
+  geom_errorbar(data = gathering_thresholds, 
+                aes(x = fct_rev(hmm_name), ymin = threshold, ymax = threshold), 
+                color = 'black', size = 1, width = 0.7) +
+  geom_boxplot(data = test_score,
+               aes(x = fct_rev(hmm_name), y = hmm_score, color = hit),
+               outlier.size = 0.7) + 
+  labs(x = '', y = 'raw HMM score', color = 'membership',
+       subtitle = 'Test sequences scores against gathering thresholds') +
+  coord_flip() +
+  theme_classic()
+
+
+
+# combine dataframes
 both <- bind_rows(train |> mutate(data = 'train'),
                   test |> mutate(data  = 'test')) |> 
   select(subfamily, prot_seq, data)
-
-
-
-# check for any weird characters: XBZJ
-map(list(train, test), 
-    ~{.x |> 
-        select(subfamily, acc, prot_seq) |> 
-        mutate(n_nonAA = str_count(prot_seq, '[^ACDEFGHIKLMNPQRSTVWYX]'),
-               nonAA = str_extract_all(prot_seq, '[^ACDEFGHIKLMNPQRSTVWYX]')) |> 
-        unnest(cols = c(nonAA)) |> 
-        count(nonAA)
-    }
-)
 
 
 ## plot seq lengths in test + train data, by subfamily (or non_integrase)
@@ -93,34 +171,16 @@ bind_rows(
 
 
 
-# plot gathering thresholds on pointrange of self-scores
-raw_self_scores <- train |> 
-  select(subfamily, Arch1:Xer) |> 
-  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'hmm_score') |> 
-  filter(subfamily == hmm_name) |> 
-  ggplot(aes(x = fct_rev(hmm_name), y = hmm_score)) +
-  geom_boxplot(outlier.size = 0.2) +
-  stat_summary(fun = min, geom = 'crossbar', color ='red', size = 0.35) +
-  labs(x ='model', y = 'self-scores (raw bit scores)', 
-       subtitle = 'HMM training sequences self-scoring and gathering thresholds') +
-  theme_classic() +
-  coord_flip() 
 
 
-# normalized gathering thresholds and 
-normalize_self_scores <- train |> 
-  select(subfamily, Arch1:Xer) |>
-  mutate(across(Arch1:Xer, ~c(scale(.x, center = T, scale = T)), .names = '{col}')) |>
-  pivot_longer(cols = Arch1:Xer, names_to = 'hmm_name', values_to = 'hmm_score') |> 
-  filter(subfamily == hmm_name) |> 
-  
-  ggplot(aes(x = fct_rev(hmm_name), y = hmm_score)) +
-  geom_boxplot(outlier.size = 0.2) +
-  stat_summary(fun = min, geom = 'crossbar', color ='red', size = 0.35) +
-  labs(x ='model', y = 'self-scores (normalized vs all scores for each model)', 
-       subtitle = 'HMM training sequences self-scoring and gathering thresholds') +
-  theme_classic() +
-  coord_flip() 
 
-library(patchwork)
-raw_self_scores + normalize_self_scores
+# check for any weird characters: XBZJ
+map(list(train, test), 
+    ~{.x |> 
+        select(subfamily, acc, prot_seq) |> 
+        mutate(n_nonAA = str_count(prot_seq, '[^ACDEFGHIKLMNPQRSTVWYX]'),
+               nonAA = str_extract_all(prot_seq, '[^ACDEFGHIKLMNPQRSTVWYX]')) |> 
+        unnest(cols = c(nonAA)) |> 
+        count(nonAA)
+    }
+)
