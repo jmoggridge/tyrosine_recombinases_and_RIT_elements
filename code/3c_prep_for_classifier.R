@@ -19,8 +19,6 @@ library(kmer)
 
 ## ---- fx ----
 
-# BUG prot_name column is truncated - making some acc numbers not match + get duplicated...
-
 read_hmmersearch_tbl <- function(path){
   # read hmmsearch tblout result
   read_delim(

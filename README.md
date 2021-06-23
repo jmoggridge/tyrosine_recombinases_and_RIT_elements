@@ -88,9 +88,10 @@ All scripts are in the project directory `./code/`
   - Run hmmsearch for sequences against 20 HMMs made from training sequences.
   - Save hmmsearch tables to _./data/hmmsearch_res/_
 
-- [ ] `3c_prep_for_classifier.R` (needs refactoring)
-  - [ ] Processes hmmsearch output and joins to train and test data
-  - [ ] Add kmer counts for each sequence
+- [x] `3c_prep_for_classifier.R` (needs refactoring)
+  - Processes hmmsearch output and joins to train and test data
+  - Add kmer counts for each sequence
+  - Add longer Dayhoff alphabet kmers? (5mers = 7,700 cols)
   
   <!-- TODO Continue code documentation here. -->
   
