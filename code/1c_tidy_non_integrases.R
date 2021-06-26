@@ -118,8 +118,11 @@ non_integrases |>
 # verify no duplicate sequences
 length(unique(non_integrases$prot_seq)) == nrow(non_integrases)
 
+write_rds(non_integrases, './data/non_integrase_seqs/nonint_df.rds')
 
 ## split non_integrases ---------------------------------------------
+
+## TODO remove this splitting...
 
 # Train/test split
 set.seed(123)

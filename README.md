@@ -170,6 +170,15 @@ New questions:
 - what to do about ambiguous characters in sequences?? one sequence contains an XXXXX segment? **need to remove these seqs from kmer counting**? kmer::kcount doesn't work with them ...
 
 
+----- 
+
+## New workflow
+
+- combine data and split data for CV
+- setup pipeline to align, create hmms for training data
+- score train and test sequences for each fold
+- do training on scored train sequences & evaluation on scored test sequences
+
 
 
 

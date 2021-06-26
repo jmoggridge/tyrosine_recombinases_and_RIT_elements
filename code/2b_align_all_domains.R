@@ -1,5 +1,4 @@
 ## Alignments
-# one set for training HMMs for classification assessment
 # one set for full data HMMs for final classifier
 
 ## need to recheck code ~ filenames / paths may have been changed...
