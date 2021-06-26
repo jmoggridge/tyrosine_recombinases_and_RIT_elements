@@ -15,9 +15,10 @@ gathering_thresholds <-
   filter(subfamily == hmm_name) |> 
   group_by(subfamily) |> 
   filter(threshold == min(threshold)) |> 
+  distinct() |> 
   ungroup() |> 
   select(-subfamily)
-gathering_thresholds
+gathering_thresholds |> arrange(desc(threshold)) |>  kableExtra::kable()
 
 # plot gathering thresholds on pointrange of self-scores
 raw_self_scores <- train |> 

@@ -12,21 +12,34 @@ Master's thesis work on tyrosine recombinases and recombinase-in-trio elements.
 
 #### Datasets
 
-- **SMART**: domain sequences and protein sequences for 20 subfamilies. Total number of sequences is ~120k, but with large class imbalance, where Xer has ~34k members and Int_Des has only 62. Notably some sequences are annotated with >1 subfamily, for the same portion of sequence (ambiguous classifications); any sequence belonging to more than one subfamily was removed. After filtering, 114,848 sequences remain.
+- **SMART**: 
+  - Has domain sequences and protein sequences for 20 integrase subfamilies.
+  - Total number of sequences is ~120k, but with large class imbalance: Xer has ~34k members and Int_Des has only 62. 
+  - Problematically, some sequences are annotated with >1 subfamily, for the same portion of sequence (ambiguous classifications).
+  - Any sequence belonging to more than one subfamily was removed. 
+  - After filtering, 114,848 sequences remain.  
+\
 
-- **non-integrase**: various searches of Refseq, some Pfam families of transposases, Uniprot proteomes of yeast, arabidopsis, and human proteomes. Large groups downsampled to 2000 sequences. A total of 39,691 sequences were retained after downsampling.
+- **Non-integrase**:
+  - Combination of:
+    - various searches of Refseq for recombinases and nucleases, 
+    - some Pfam families of transposases (domain sequences)
+    - Uniprot proteomes of yeast, arabidopsis, and human proteomes. 
+  - Large groups downsampled to 2000 sequences. 
+  - A total of 39,691 sequences were retained after downsampling.
 
 ------------------------------------------------------------------------
 
 #### Workflow
 
 - [x]  Obtain SMART reference data & other non-integrase sequences as negative examples.
-- [x] Create hold-out set for final testing
-- [x] Align SMART domain sequences (for assessment and final models)
-- [x] Build HMMs from training data
-- [x] Score 20 integrase HMM alignments for each sequence    
-- [ ] Gather HMM scores (& generate k-mer features?)  
-- [ ] Tune & assess classifiers. Attempt stacking classifiers...
+- [x] Create hold-out set for final testing.
+- [x] Align SMART domain sequences (for assessment and final models).
+- [x] Build HMMs from training data.
+- [x] Score 20 integrase HMM alignments for each sequence.   
+- [x] Gather HMM scores (& generate k-mer features).
+- [ ] Get baseline accuracy from HMM scoring approach.
+- [ ] Tune & assess classifiers. Possibly: attempt stacking classifiers.
 
 *Then...*  Apply classifier to MGE proteins and proteomes from    
 assembled genomes (objective 2).
@@ -93,15 +106,16 @@ All scripts are in the project directory `./code/`
   - Add kmer counts for each sequence
   - Add longer Dayhoff alphabet kmers? (5mers = 7,700 cols)
   
-  <!-- TODO Continue code documentation here. -->
-  
-<!-- - `./code/tidy_hmmsearch_res.R`: cleans up classifier data from hmmsearch results for both integrases and non-integrases. Saves files to *./data/smart_refseqs_hmm_scores.rds* and *./data/non_integrases_hmm_scores.rds*.   -->
-<!-- -  `./code/add_kmer_features.R`: joins integrase and non-integrase datasets and computes kmer proportions, saves *./data/full_classifier_data.rds* for modelling. -->
 
 ------------------------------------------------------------------------
 
-**4. Check accuracy of classification by hmmsearch best score**
+**4. Classification: model selection and assessment**
 
+- `4a_eda.R` (to do)
+  - [x] plot sequence lengths
+  - [ ] plot sequence composition profiles
+  - [x] plot hmmsearch scores
+  
 - `4_classifier.R` (to do)
   - [ ] Check accuracy of classification by hmmsearch best score.
   - [ ] Nested cross-validation for assessment
@@ -109,6 +123,7 @@ All scripts are in the project directory `./code/`
   - [ ] Model stacking CV
   - [ ] Final model selection and training
   
+  <!-- TODO Continue code documentation here. -->
   
 
 <!-- - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it.... -->
@@ -116,9 +131,6 @@ All scripts are in the project directory `./code/`
 ------------------------------------------------------------------------
 
  
-
-
-
 ## Objective 2
 
 **Identify integrases in assembled genomes** and mobile element databases and **classify by subfamily**. For **RitA, RitB, and RitC** domains, map their genomic coordinates and check whether these constitute a **RIT element**.
