@@ -8,6 +8,7 @@ library(furrr)
 library(DECIPHER)
 library(glue)
 library(here)
+library(tictoc)
 
 # create directory structure for classifier files (alignments, hmms, results for each resample)
 dir <- 'classifier_01/'
@@ -52,13 +53,13 @@ df |> count(subfamily) |> print.AsIs()
 
 df_split <- initial_split(df, 0.75, strata = subfamily)
 
-
 train <- training(df_split)
 test <- testing(df_split)
 
 train |> count(subfamily) |> print.AsIs()
 test |> count(subfamily) |> print.AsIs()
-rm(df)
+
+rm(df, full_dataset)
 
 ## full data split
 # df_split <- initial_split(full_dataset, 0.75, strata = subfamily)
@@ -156,71 +157,32 @@ build_hmm_library <- function(fold){
     )
   }
 
-  # hmmsearch --noali -o temp --tblout $outfile.test.tbl $hmm ./data/test_seq.fa
-  # hmmsearch --noali -o temp --tblout $outfile.train.tbl $hmm ./data/train_seq.fa  
-hmmsearch_seqs <- function(df){}
+# score a dataframe of sequences against HMM library with hmmsearch
+hmmsearch_scores <- function(df, fold){
+  
+  # make temp fasta file of seqs to score against hmm library
+  temp <- tempfile()
+  fasta <- Biostrings::AAStringSet(df$prot_seq)
+  names(fasta) <- df$acc
+  writeXStringSet(fasta, temp)  
+  
+  # setup paths for hmms and table outputs; build hmmsearch calls
+  hmmsearches <- 
+    tibble(hmm_path = Sys.glob(glue('{out_path}hmm/', fold, '/*'))) |> 
+    mutate(
+      out_path = hmm_path |> 
+        str_replace('/hmm/', '/hmmsearch/') |> 
+        str_replace('\\.hmm', '.tbl'),
+      files = glue('{out_path} {hmm_path} {temp}'),
+      calls = glue('hmmsearch --noali -o temp --tblout {files}')
+    )
+  
+  plan(multisession, workers = availableCores())
+  hmmsearches <- hmmsearches |> 
+    mutate(hmmsearches = future_map_dbl(calls, ~ system(.x))) 
+  return(hmmsearches)
+}
 
-
-### MAIN / TRAIN & TEST -----
-
-inner_cv <- nest_cv$inner_resamples[[2]]
-inner_cv
-inner_fold <- inner_cv$inner_splits[[2]]
-inner_fold
-fold <- inner_cv$inner_id[[2]]
-fold
-
-system(glue('mkdir {out_path}/align/', fold))
-system(glue('mkdir {out_path}/hmm/', fold))
-system(glue('mkdir {out_path}/hmmsearch/', fold))
-
-training <- analysis(inner_fold)
-testing <- assessment(inner_fold)
-domains <- prep_domains_df(training = training)
-
-training |> count(subfamily) |> as.data.frame()
-testing |> count(subfamily) |> as.data.frame()
-
-library(tictoc)
-tic()
-aligns <- build_alignments_library(domains, fold)
-toc()
-
-hmm_check <- build_hmm_library(fold)
-all(hmm_check$hmmbuild == 0)
-
-## TODO finish hmmscoring & parsing
-
-df <- training
-
-# make temp fasta file of seqs to score against hmm library
-temp <- tempfile()
-fasta <- Biostrings::AAStringSet(df$prot_seq)
-names(fasta) <- df$acc
-writeXStringSet(fasta, temp)  
-
-# setup paths for hmms and table outputs; build hmmsearch calls
-hmmsearches <- 
-  tibble(hmm_path = Sys.glob(glue('{out_path}hmm/', fold, '/*'))) |> 
-  mutate(
-    out_path = hmm_path |> 
-      str_replace('/hmm/', '/hmmsearch/') |> 
-      str_replace('\\.hmm', '.tbl'),
-    files = glue('{out_path} {hmm_path} {temp}'),
-    calls = glue('hmmsearch --noali -o temp --tblout {files}')
-  )
-
-plan(multisession, workers = availableCores())
-hmmsearches <- hmmsearches |> 
-  mutate(hmmsearches = future_map_dbl(hmmsearch_call, ~ system(.x))) 
-
-hmmsearches |> 
-  mutate(hmmsearch_tbl = )
-
-
-
-
-##-----
 
 
 inner_fit <- function(fold){
@@ -229,23 +191,84 @@ inner_fit <- function(fold){
   system(glue('mkdir {out_path}/hmm/', fold))
   system(glue('mkdir {out_path}/hmmsearch/', fold))
   
+  # prep
   training <- analysis(inner_fold)
   testing <- assessment(inner_fold)
-  domains <- prep_domains_df(training = training)
+  domains <- 
+    analysis(inner_fold)
+    prep_domains_df()
   
-  library(tictoc)
+  # align
+  message('Aligning training domains...')
   tic()
   aligns <- build_alignments_library(domains, fold)
   toc()
+  
+  # train hmm
+  message('Building HMMs...')
   hmm_check <- build_hmm_library(fold)
+  message('hmmbuild calls all finished without error?')
+  all(hmm_check$hmmbuild == 0)
+  
+  # hmm scores test and train
+  message('Scoring sequences against HMM library...')
+  train_search <- hmmsearch_scores(training, fold)
+  message('hmmsearch calls all finished without error?')
+  all(train_search$hmmsearches == 0)
   
   
-  # align
-  # build hmms
-  # score seqs
   # train classifier
   # evaluate classifier
 }
+
+
+### MAIN / TRAIN & TEST -----
+rm(train, test, df_split)
+inner_cv <- nest_cv$inner_resamples[[2]]
+inner_cv
+inner_fold <- inner_cv$inner_splits[[2]]
+inner_fold
+fold <- inner_cv$inner_id[[2]]
+fold
+
+# make directories for this fold's alignment and hmm libraries
+system(glue('mkdir {out_path}/align/', fold))
+system(glue('mkdir {out_path}/hmm/', fold))
+system(glue('mkdir {out_path}/hmmsearch/', fold))
+
+training <- analysis(inner_fold)
+testing <- assessment(inner_fold)
+domains <- inner_fold |> analysis() |> prep_domains_df()
+
+# check stratification is adequate / no empty classes
+message("Train and test split contain > 10 obs per subfamily?")
+all(
+  analysis(inner_fold) |> count(subfamily) |> pull(n) %>% all(.data > 10), 
+  assessment(inner_fold) |> count(subfamily) |> pull(n) %>% all(.data > 10)
+)
+
+tic()
+aligns <- build_alignments_library(domains, fold)
+toc()
+
+hmm_check <- build_hmm_library(fold)
+all(hmm_check$hmmbuild == 0)
+
+train_search <- hmmsearch_scores(training, fold)
+all(train_search$hmmsearches == 0)
+
+# parse hmmscores
+
+## TODO finish hmmscoring & parsing
+
+# parse HMM search tables
+hmmsearches |> 
+  mutate(hmmsearch_tbl = )
+
+
+
+
+##-----
 
 
 
@@ -264,3 +287,30 @@ inner_fit <- function(fold){
 #   
 # glob |> mutate(hmmbuild = map_dbl(hmmbuild_call, ~ system(.x)))
 
+
+
+
+
+### HMMSEARCH SCORING 
+# df <- training
+# 
+# # make temp fasta file of seqs to score against hmm library
+# temp <- tempfile()
+# fasta <- Biostrings::AAStringSet(df$prot_seq)
+# names(fasta) <- df$acc
+# writeXStringSet(fasta, temp)  
+# 
+# # setup paths for hmms and table outputs; build hmmsearch calls
+# hmmsearches <- 
+#   tibble(hmm_path = Sys.glob(glue('{out_path}hmm/', fold, '/*'))) |> 
+#   mutate(
+#     out_path = hmm_path |> 
+#       str_replace('/hmm/', '/hmmsearch/') |> 
+#       str_replace('\\.hmm', '.tbl'),
+#     files = glue('{out_path} {hmm_path} {temp}'),
+#     calls = glue('hmmsearch --noali -o temp --tblout {files}')
+#   )
+# 
+# plan(multisession, workers = availableCores())
+# hmmsearches <- hmmsearches |> 
+#   mutate(hmmsearches = future_map_dbl(hmmsearch_call, ~ system(.x))) 
