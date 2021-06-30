@@ -1,5 +1,16 @@
 # 3_CV
 
+
+library(tidyverse)
+library(tidymodels)
+library(Biostrings)
+library(furrr)
+library(DECIPHER)
+library(glue)
+library(here)
+library(tictoc)
+library(crayon)
+
 dir <- 'classifier_02/'
 
 ## Combine datasets  ------
@@ -28,7 +39,7 @@ full_dataset <-
   # downsample to 10000
   group_by(subfamily) |> 
   # TODO make downsampling consistent with nested cv n=15k
-  slice_sample(n = 100, replace = F) |> 
+  slice_sample(n = 250, replace = F) |> 
   ungroup()
 
 rm(smart_df, non_integrases)

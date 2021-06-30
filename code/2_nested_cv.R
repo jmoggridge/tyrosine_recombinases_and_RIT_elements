@@ -164,6 +164,7 @@ beepr::beep()
 
 write_rds(nest_cv_results, glue('./results/nest_cv_results.rds'))
 
+nest_cv_results <- read_rds('./results/nest_cv_results.rds')
 # collect results and get means
 nest_cv_summary <- 
   nest_cv_results |> 
@@ -194,14 +195,14 @@ thresh_res <- nest_cv_results |>
 
 # combine model summary and rule-based classifier summary
 final_summary <- 
-  bind_rows(nest_cv_summary, thresh_res) |> 
-  filter(.metric %in% c('mcc')) 
+  bind_rows(nest_cv_summary, thresh_res) 
+write_rds(final_summary, glue('./results/nest_cv_result_summary.rds'))
 
-# compare models by MCC
 print(final_summary)
 
 library(gt)
 
+# compare models by metrics
 final_summary |>
   select(-values, -n_folds) |> 
   mutate(mean = str_extract(as.character(mean), '......'),
@@ -215,6 +216,7 @@ final_summary |>
   pivot_wider(id_cols = model, names_from = metric, values_from = mean_sd) |> 
   gt() |> 
   tab_header(title = "Nested 2x 2-fold cross-validation results") 
+
 
 
 
