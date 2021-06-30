@@ -72,6 +72,7 @@ build_hmm_library <- function(fold){
 }
 
 # score a dataframe of sequences against the HMM library with hmmsearch
+# takes protein seq column and makes temporary fasta file to send to hmmer
 hmmsearch_scores <- function(df, fold, tag){
   
   # make temp fasta file of seqs to score against hmm library
@@ -261,12 +262,13 @@ eval_model <- function(model, train, test){
     fit(data = train)
   # predict hold out set
   predictions <- fit_wf |> 
-    predict(test |> select(-subfamily)) %>% 
+    predict(object = test |> select(-subfamily)) %>% 
     bind_cols(test)
   # collect metrics
   predictions |> 
     class_metrics(subfamily, estimate = .pred_class)
 }
+
 
 
 ## Evaluate set of models - parallelizes evaluate_model()

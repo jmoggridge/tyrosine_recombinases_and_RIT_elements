@@ -1,4 +1,4 @@
-# 3_CV
+# CV to tune classifiers
 
 # future::plan(multisession, ...) issue
 # see issue 511 on future github.
@@ -7,6 +7,7 @@
 library(tidyverse)
 library(tidymodels)
 library(Biostrings)
+library(future)
 library(furrr)
 library(DECIPHER)
 library(glue)
