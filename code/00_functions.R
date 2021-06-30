@@ -47,7 +47,7 @@ align_domains <- function(df, dest){
 build_alignments_library <- function(domains, fold){
   path <- glue('{out_path}/align/', fold, '/')
   # do align_domains in parallel
-  plan(multisession, workers = availableCores() - 1)
+  plan(multisession, workers = availableCores())
   domains |> mutate(
     aligned = future_map(
       .x = data, 
@@ -268,7 +268,6 @@ eval_model <- function(model, train, test){
     class_metrics(subfamily, estimate = .pred_class)
 }
 
-## TODO in progress...
 
 ## Evaluate set of models - parallelizes evaluate_model()
 # 'models' needs to be tibble with column called spec with the parsnip object

@@ -18,6 +18,7 @@ library(glue)
 library(here)
 library(tictoc)
 library(crayon)
+library(beepr)
 
 # functions 
 source('./code/00_functions.R')
@@ -103,10 +104,10 @@ non_integrases <-
   select(subfamily, acc, description, prot_seq, dom_seq)
 
 set.seed(123)
-# combine datasets
-full_dataset <- 
+# combine datasets 
+# TODO don't call this full_Dataset when it's down-sampled! for clarity
+combined_dataset <- 
   bind_rows(smart_df, non_integrases) |> 
-  # TODO (remove downsampling)
   # downsample to 10000
   group_by(subfamily) |> 
   slice_sample(n = 15000, replace = F) |> 
@@ -118,12 +119,12 @@ rm(smart_df, non_integrases)
 
 set.seed(54321)
 
-df_split <- initial_split(full_dataset, 0.75, strata = subfamily)
+df_split <- initial_split(combined_dataset, 0.75, strata = subfamily)
 train <- training(df_split)
 
 train |> count(subfamily) |> print.AsIs()
 
-rm(full_dataset)
+rm(combined_dataset)
 
 
 ## Setup Nested CV --------------------------------------------------
