@@ -16,7 +16,8 @@ library(crayon)
 library(tictoc)
 library(beepr)
 
-source('./code/00_functions.R')
+source('./R/00_functions.R')
+source('./R/00_get_model_specs.R')
 
 ## Directories ----------------------------------------------------------------
 

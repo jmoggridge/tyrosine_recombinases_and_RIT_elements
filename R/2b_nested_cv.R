@@ -39,15 +39,15 @@ train <- read_rds('./data/classif_train_set.rds')
 ## Directories ----------------------------------------------------------------
 
 # name for directory in project folder to store nested CV files
-run_name <- 'test_classifer_run'
+run_name <- 'unit_test'
 
 # create directory structure for classifier files (alignments, hmms, results for each resample)
 out_path <- glue(here::here(), '/', run_name)
 system(glue('mkdir {out_path}'))
 
 list('align','hmm', 'hmmsearch', 'results') |> 
-  map(~glue(here::here(), '/', run_name, .x)) |>
-  map(~system(glue('mkdir {.x}')))
+  map(~glue(out_path, '/', .x)) |>
+  map(~system(glue('mkdir ', .x)))
 
 ## Setup Nested CV --------------------------------------------------
 
@@ -73,14 +73,13 @@ nest_cv <-
 
 nest_cv |> unnest(inner_resamples)
 
-rm(train, df_split)
-
+rm(train)
 
 # MAIN / TRAIN & TEST ----------------------------------------
 
-# **evaluate models with nested CV**
+# **evaluate models with nested CV** all functions are in 00_functions.R
 tic()
-nest_cv_results <- nest_cv |> fit_nested_cv()
+nest_cv_results <-  fit_nested_cv(nest_cv)
 toc()
 beepr::beep()
 
@@ -140,7 +139,7 @@ final_summary |>
                        'precision', 'recall','sens', 'spec')) |> 
   pivot_wider(id_cols = model, names_from = metric, values_from = mean_sd) |> 
   gt() |> 
-  tab_header(title = "Nested 2x 2-fold cross-validation results") 
+  tab_header(title = "Performance metrics from nested 3-fold cross-validation repeated 3 times") 
 
 
 

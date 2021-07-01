@@ -26,7 +26,8 @@ smart_downsampled <- smart_df |>
   # TODO decide on downsample...
   # 10k per subfamily
   group_by(subfamily) |> 
-  slice_sample(n = 10000, replace = F) |> 
+  # slice_sample(n = 10000, replace = F) |> 
+  slice_sample(n = 10000, replace = F) |>
   ungroup()
 
 smart_leftout <- anti_join(smart_df, smart_downsampled)

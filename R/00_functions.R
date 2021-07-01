@@ -10,10 +10,22 @@ library(glue)
 library(here)
 library(tictoc)
 library(crayon)
+options(parallelly.makeNodePSOCK.setup_strategy = "sequential")
 
+
+# out_path <-"/Users/jasonmoggridge/Documents/binf6999_thesis/tyrosine_recombinases_and_RIT_elements/unit_test"
+# # unit test object ##
+# nest_cv <- read_rds('./unit_test/nestcv.rds')
+# resamples <- nest_cv$inner_resamples[[9]]
+# 
+# split_obj <- resamples$inner_splits[[1]]
+# split_id <- resamples$inner_id[[1]]
+
+# prepared data
 ### Prep Functions ---------------------------------------
 
 ## Prepare domains for alignment/hmm 
+# creates nested tibbles for each subfamily
 prep_domains_df <- function(training){
   training |> 
     # subset domain subfamilies
@@ -30,6 +42,12 @@ prep_domains_df <- function(training){
     arrange(desc(nrow)) |> 
     select(-nrow) 
 }
+## Test ##
+# inner_split_train <- read_rds('./unit_test/inner_split_train.rds')
+# prep <- prep_domains_df(inner_split_train)
+# prep
+# prep |> unnest(data)
+
 
 ## Alignment
 # pass a dataframe with subfamily, acc, dom_seq
@@ -42,6 +60,9 @@ align_domains <- function(df, dest){
   Biostrings::writeXStringSet(aligned, filepath = outpath)
   return(aligned)
 }
+## Test ##
+# df <- prep$data[[20]]
+# align_domains(df, './unit_test/aligns/')
 
 # Wrapper to apply align_domains to each subfamily
 build_alignments_library <- function(domains, fold){
@@ -63,7 +84,7 @@ build_hmm_library <- function(fold){
   temp <- tempfile()
   plan(multisession, workers = availableCores())
   
-  tibble(msa_path = Sys.glob(glue('{out_path}align/', fold, '/*'))) |> 
+  tibble(msa_path = Sys.glob(glue('{out_path}/align/', fold, '/*'))) |> 
     mutate(
       hmm_path = str_replace_all(msa_path, 'align|aln', 'hmm'),
       hmmbuild_call = glue('hmmbuild -o {temp} {hmm_path} {msa_path}'),
@@ -84,7 +105,7 @@ hmmsearch_scores <- function(df, fold, tag){
   junk <- tempfile()
   # setup paths for hmms and table outputs; build hmmsearch calls
   hmmsearches <- 
-    tibble(hmm_path = Sys.glob(glue('{out_path}hmm/', fold, '/*'))) |> 
+    tibble(hmm_path = Sys.glob(glue('{out_path}/hmm/', fold, '/*'))) |> 
     mutate(
       out_path = hmm_path |> 
         str_replace('/hmm/', '/hmmsearch/') |> 
@@ -135,18 +156,18 @@ join_hmmsearches <- function(df, files){
 #' does one train / test split 
 #' calls prep_domains_df, build_alignments_library, build_hmm_library,
 #' hmmsearch_scores, and join_hmmsearches
-prep_data <- function(split, id){
+prep_data <- function(split_obj, split_id){
   
-  cat('\n', green$bold(glue("Preparing fold: {id}")))
+  cat('\n', green$bold(glue("Preparing fold: {split_id}")))
   # create directories
-  system(glue('mkdir {out_path}/align/', id))
-  system(glue('mkdir {out_path}/hmm/', id))
-  system(glue('mkdir {out_path}/hmmsearch/', id))
+  system(glue('mkdir {out_path}/align/{split_id}'))
+  system(glue('mkdir {out_path}/hmm/{split_id}'))
+  system(glue('mkdir {out_path}/hmmsearch/{split_id}'))
   
   # check stratification is adequate / no empty classes
   strat_test <- all(
-    analysis(split) |> count(subfamily) |> pull(n) %>% all(.data > 10), 
-    assessment(split) |> count(subfamily) |> pull(n) %>% all(.data > 10)
+    analysis(split_obj) |> count(subfamily) |> pull(n) %>% all(.data > 10), 
+    assessment(split_obj) |> count(subfamily) |> pull(n) %>% all(.data > 10)
   )
   cat('\n', white(glue("Train and test split contain > 10 obs per subfamily? {strat_test}")))
   
@@ -154,14 +175,14 @@ prep_data <- function(split, id){
   cat('\n', white('Aligning training domains...'))
   tic()
   aligns <- 
-    analysis(split) |> 
+    analysis(split_obj) |> 
     prep_domains_df() |> 
-    build_alignments_library(fold = id)
+    build_alignments_library(fold = split_id)
   toc()
   
   # train hmm
   cat(white(' Building HMMs...'))
-  hmm_check <- build_hmm_library(id)
+  hmm_check <- build_hmm_library(fold = split_id)
   hmmbuild_test <- all(hmm_check$hmmbuild == 0)
   cat('\n', white(glue('hmmbuild calls all finished without error? {hmmbuild_test}')))
   
@@ -169,11 +190,11 @@ prep_data <- function(split, id){
   cat('\n', white('Scoring sequences against HMM library...'))
   tic()
   train_search <- 
-    analysis(split) |> 
-    hmmsearch_scores(fold = id, tag = 'train')
+    analysis(split_obj) |> 
+    hmmsearch_scores(fold = split_id, tag = 'train')
   test_search <- 
-    assessment(split) |> 
-    hmmsearch_scores(fold = id, tag = 'test')
+    assessment(split_obj) |> 
+    hmmsearch_scores(fold = split_id, tag = 'test')
   toc()
   
   hmmsearch_test <- all(train_search$hmmsearches == 0)
@@ -181,16 +202,19 @@ prep_data <- function(split, id){
   
   # parse hmmscores and add to data frame
   train <-  
-    analysis(split) |> 
+    analysis(split_obj) |> 
     join_hmmsearches(files = train_search$out_path)
   test <-  
-    assessment(split) |> 
+    assessment(split_obj) |> 
     join_hmmsearches(files = test_search$out_path)
   
   # return tibble row with train and test data for classifiers
   cat(white(' Returning datasets'))
   tibble(train = list(train), test = list(test))
 }
+
+# inner_split <- nest_cv$inner_resamples[[1]]
+# check_prep <-  prep_data(inner_split)
 
 ### Threshold classifier --------------------------------------------------
 
@@ -248,58 +272,74 @@ eval_threshold_classififer <- function(train, test){
 eval_model <- function(model, train, test){
   # specify evaluation functions
   class_metrics <- 
-    metric_set(mcc, kap, sens, spec, precision, recall, 
+    metric_set(mcc, kap, sensitivity, specificity, precision, recall, 
                f_meas, ppv, npv, accuracy, bal_accuracy)
   
-  # specify formula and scaling
+  # specify formula and scaling recipe
   recip <- recipe(subfamily ~ ., data = train) |> 
-    update_role(c('acc','description', contains('seq')), new_role = "id") |> 
+    update_role(c('acc', contains('seq')), new_role = "id") |> 
     step_scale(all_predictors())
-  # fit model
+  
+  # create model workflow and fit to training data
   fit_wf <- workflow() |>
     add_model(model) |> 
     add_recipe(recip) |>
     fit(data = train)
+  
   # predict hold out set
   predictions <- fit_wf |> 
-    predict(object = test |> select(-subfamily)) %>% 
+    predict(test |> select(-subfamily)) %>% 
     bind_cols(test)
   # collect metrics
   predictions |> 
-    class_metrics(subfamily, estimate = .pred_class)
+    class_metrics(truth = subfamily, estimate = .pred_class)
 }
 
-
+# test
+# train |> count(subfamily) |> print(n=50)
+# test |> count(subfamily) |> print(n=50)
+# model <- models$spec[[35]]
+# eval_model(models$spec[[35]], train = prep$train[[1]], prep$test[[1]])
+# 
 
 ## Evaluate set of models - parallelizes evaluate_model()
 # 'models' needs to be tibble with column called spec with the parsnip object
 # train and test are prepared tibbles from prep_data
 
 eval_model_set <- function(models, train, test){
-  plan(multisession)
+  plan(multisession, workers = 8)
   # fit / eval all models
   models |>
-    mutate(metrics = future_map(
-      .x = spec, .f = eval_model, train, test, 
-      .options = furrr_options(packages = c("parsnip", "glmnet"), seed=NULL))
+    mutate(
+      metrics = future_map(
+        .x = spec, .f = eval_model, train, test, 
+        .options = furrr_options(packages = c("parsnip", "glmnet",
+                                              "rpart", "tidymodels"),
+                                 seed = NULL))
     ) |>
     unnest(metrics)
 }
 
 # wrapper for inner CV workflow
-do_inner_cv <- function(resamples, splits, id){
+
+## FIXIT changed 
+# do_inner_cv <- function(resamples, splits, id){
+# to do_inner_cv <- function(resamples){
+
+
+do_inner_cv <- function(resamples){
   
   cat("\n", blue$bold("Starting inner CV"), '\n')
   # prepare scored datasets for each fold
   prep <- resamples |> 
-    mutate(prep = map2({{splits}}, {{id}}, ~prep_data(.x, .y))) |> 
+    mutate(prep = map2(inner_splits, inner_id, ~ prep_data(.x, .y))) |>
     unnest(prep)
   
   cat('\n', blue$bold("Evaluating models"))
   tic()
   # evaluate model set on each fold
   fold_res <- prep |> 
-    mutate(rs = map2(train, test, ~eval_model_set(models, .x, .y))) |> 
+    mutate(rs = map2(train, test, ~ eval_model_set(models, .x, .y))) |> 
     unnest(rs)
   toc()
   
@@ -314,7 +354,7 @@ do_inner_cv <- function(resamples, splits, id){
       values = list(.estimate),
       .groups = 'drop'
     )
-  cv_res
+  return(cv_res)
 }
 
 # select best model hyperparameters based on metrics from inner cv
@@ -339,10 +379,7 @@ fit_nested_cv <- function(nestcv){
   cat(yellow$bold$underline('Beginning inner CVs'))
   # do inner cv for each outer fold
   results_df <- nest_cv |> 
-    mutate(
-      inner_cv = map(inner_resamples, 
-                     ~do_inner_cv(.x, .x$inner_splits, .x$inner_id)),
-    ) 
+    mutate(inner_cv = map(inner_resamples, ~do_inner_cv(.x))) 
   
   cat('\n', yellow$bold$underline('Selecting model tunings'))
   # select best model tunings for each outer fold
@@ -371,8 +408,10 @@ fit_nested_cv <- function(nestcv){
   cat('\n', yellow$bold('Finished'))
   return(results_df)
 }
-
-
+## test ##
+# split_obj <- nest_cv$outer_splits[[1]]
+# split_id <-  nest_cv$outer_id[[1]]
+# prep_data(split = split_obj, id = split_id)
 
 ###  Plot functions ------------------------------------------------------------
 

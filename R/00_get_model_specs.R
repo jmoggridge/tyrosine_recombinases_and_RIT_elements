@@ -1,6 +1,8 @@
 library(tidyverse)
 library(tidymodels)
 
+# TODO why are there only 50 models in df??
+
 ### Models  -------------------------------------------------------------------
 
 # update model specifications using parameters grid
@@ -37,7 +39,7 @@ knn_models <-
   nearest_neighbor(mode = 'classification') |> 
   set_engine('kknn') |> 
   make_models(name = 'nearest_neighbor',
-              grid = grid_regular(neighbors(), levels = 20)
+              grid = grid_regular(neighbors(range = c(2L, 40L)), levels = 20)
   )
 # combine all model specs
 models <- bind_rows(tree_models, log_reg_models, knn_models)
