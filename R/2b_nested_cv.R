@@ -39,7 +39,8 @@ train <- read_rds('./data/classif_train_set.rds')
 ## Directories ----------------------------------------------------------------
 
 # name for directory in project folder to store nested CV files
-run_name <- 'unit_test'
+run_name <- '3x3-fold_06-30'
+# TODO transfer files to nestcv_06-30 folder
 
 # create directory structure for classifier files (alignments, hmms, results for each resample)
 out_path <- glue(here::here(), '/', run_name)
@@ -140,6 +141,19 @@ final_summary |>
   pivot_wider(id_cols = model, names_from = metric, values_from = mean_sd) |> 
   gt() |> 
   tab_header(title = "Performance metrics from nested 3-fold cross-validation repeated 3 times") 
+
+
+# check out predictions and see which classes are misclassified most often
+
+
+# sample of HMM scores
+inner_cv_mcc <- 
+  nest_cv_results |> 
+  select(outer_id, inner_cv) |> 
+  unnest(inner_cv) |>
+  filter(.metric == 'mcc') |> 
+  left_join(models, by = c("model_type", "model_id"))
+
 
 
 
