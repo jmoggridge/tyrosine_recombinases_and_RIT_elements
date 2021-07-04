@@ -84,7 +84,7 @@ nest_cv_results <-  fit_nested_cv(nest_cv)
 toc()
 beepr::beep()
 
-write_rds(nest_cv_results, glue('./results/{run_name}_results.rds'), compress = 'gz')
+write_rds(nest_cv_results, glue('./results/{run_name}_nest_cv_results.rds'), compress = 'gz')
 
 # collect results and get means
 nest_cv_summary <- 
@@ -117,7 +117,7 @@ thresh_res <- nest_cv_results |>
 # combine model summary and rule-based classifier summary
 final_summary <- bind_rows(nest_cv_summary, thresh_res) 
 
-write_rds(final_summary, glue('./results/{run_name}_result_summary.rds'))
+write_rds(final_summary, glue('./results/{run_name}_nest_cv_summary.rds'))
 
 final_summary |>
   filter(.metric %in% c('mcc', 'bal_accuracy', 'f_meas', 'kap',
@@ -127,11 +127,12 @@ final_summary |>
 
 library(gt)
 
+
 # compare models by metrics
 final_summary |>
   select(-values, -n_folds) |> 
-  mutate(mean = str_extract(as.character(mean), '......'),
-         err = str_extract(as.character(err), '......')) |> 
+  mutate(across(.cols = c(mean, err), .fns = ~round(x = .x, digits = 5))) |> 
+  filter()
   transmute(
     model = str_replace_all(model_type, '_', ' '),
     metric = str_replace_all(.metric, '_', ' '),
@@ -259,21 +260,27 @@ glment_pooled_scores |>
 df <- 
   final_summary |> 
   mutate(
-    model = str_replace_all(model_type, '_', ' ') |> str_remove('rpart| glmnet') 
-  ) |> 
+    model = case_when(
+      model_type == 'decision_tree_rpart' ~ 'Decision tree',
+      model_type == 'multinom_reg_glmnet' ~ 'Elastic net',
+      model_type == 'nearest_neighbor' ~ 'k-Nearest neighbor',
+      TRUE ~ 'Score + threshold rules',
+    )) |> 
   filter(!.metric %in% c('npv', 'ppv')) |> 
   mutate(min = map_dbl(values, min),
          max = map_dbl(values, max))
 
+# performance metrics across outer folds with models tuned by the inner cv
 df  |> 
-  ggplot(aes(y = model, x = mean, xmax = mean + err, xmin = mean - err)) +
+  ggplot(aes(y = fct_rev(model), x = mean, xmax = mean + err, xmin = mean - err)) +
   geom_jitter(data = df |> unnest(values),
-              aes(x = values), shape = 1, alpha = 0.2) +
-  geom_point() +
-  geom_errorbarh(color = 'blue', ) +
+              aes(x = values), shape = 1, alpha = 0.7) +
+  # geom_pointrange(fatten = 0.5) +
+  geom_errorbarh() +
   facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
   labs(y = NULL, x = NULL) +
-  theme_bw()
+  theme_gray()
+
 
 
 

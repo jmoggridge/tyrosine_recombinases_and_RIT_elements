@@ -13,6 +13,7 @@ library(crayon)
 options(parallelly.makeNodePSOCK.setup_strategy = "sequential")
 
 
+## TESTING
 # out_path <-"/Users/jasonmoggridge/Documents/binf6999_thesis/tyrosine_recombinases_and_RIT_elements/unit_test"
 # # unit test object ##
 # nest_cv <- read_rds('./unit_test/nestcv.rds')
@@ -22,6 +23,21 @@ options(parallelly.makeNodePSOCK.setup_strategy = "sequential")
 # split_id <- resamples$inner_id[[1]]
 
 # prepared data
+
+## Directiories -----
+
+# create directory structure for classifier files (alignments, hmms, results for each resample)
+make_dirs <- function(run_name) {
+  run_name <- glue(here::here(), '/', run_name)
+  system(glue('mkdir {run_name}'))
+  status <- list('align','hmm', 'hmmsearch', 'results') |> 
+    map(~glue(run_name, '/', .x)) |>
+    map(~system(glue('mkdir ', .x)))
+  if (any(status == 1)) 
+    cat(red('Directory already exists for given run_name'))
+}  
+
+
 ### Prep Functions ---------------------------------------
 
 ## Prepare domains for alignment/hmm 
@@ -156,7 +172,8 @@ join_hmmsearches <- function(df, files){
 #' does one train / test split 
 #' calls prep_domains_df, build_alignments_library, build_hmm_library,
 #' hmmsearch_scores, and join_hmmsearches
-prep_data <- function(split_obj, split_id){
+#' TODO outpath as argument - change nestcv scipt**
+prep_data <- function(split_obj, split_id, out_path){
   
   cat('\n', green$bold(glue("Preparing fold: {split_id}")))
   # create directories
