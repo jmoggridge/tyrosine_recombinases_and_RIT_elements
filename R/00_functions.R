@@ -357,7 +357,7 @@ do_inner_cv <- function(resamples){
   return(cv_res)
 }
 
-# select best model hyperparameters based on metrics from inner cv
+# select best model hyperparameters based on mean MCC from inner cv folds
 select_best_models <- function(res_summary, metric){
   cat('\n', blue('selecting best models by {metric}'), '\n')
   res_summary |> 
