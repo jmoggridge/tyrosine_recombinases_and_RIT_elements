@@ -107,19 +107,21 @@ tic()
 train_prep <-
   hmmsearch_scores2(train, hmm_path = glue('./results/{folder}/hmm/'), tag = 'train')
 test_prep <-
-  hmmsearch_scores(test, hmm_path = glue('./results/{folder}/hmm/'), tag = 'test')
+  hmmsearch_scores2(test, hmm_path = glue('./results/{folder}/hmm/'), tag = 'test')
 toc()
 
+# parse hmmscores and add to data frame
+train <- train |> join_hmmsearches(files = train_prep$out_path)
+test <- test |> join_hmmsearches(files = test_prep$out_path)
 
 ## prepared data
-write_rds(train_prep, './train_prep.rds')
-write_rds(test_prep, './test_prep.rds')
+prep <- tibble(train = list(train), test = list(test))
+write_rds(prep, './final_prep.rds')
+
+prep
+
+## Fit/evaluate models
+res <- prep |> 
+  mutate(rs = map2(train, test, ~ eval_model_set(models, .x, .y)))
 
 
-
-
-## Fit models
-
-
-
-## Evaluate
