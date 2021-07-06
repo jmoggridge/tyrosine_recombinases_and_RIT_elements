@@ -199,27 +199,61 @@ fitted_models <-
     # get predictions from each model for final test set
     preds = future_map(fitted_wkfl, ~get_predictions(.x, test_prep)),
     # evaluate prediction performance
-    metrics = future_map(preds, ~collect_pref_metrics(preds = .x, truth = test_prep$subfamily))
+    final_metrics = future_map(preds, ~collect_pref_metrics(preds = .x, truth = test_prep$subfamily))
     ) |> 
   select(-spec)
 
 beepr::beep()
 
-fitted_models
 
+write_rds(fitted_models, glue('./results/{folder}/fitted_models.rds'))
 
+best_models |> 
+  left_join(fitted_models |> select(model_type, model_id, final_metrics))
+
+# best_models |> 
+#   unnest(reg_cv_res)
+# models |>
+#   filter(model_type == 'multinom_reg_glmnet') |>
+#   unnest(params) |>
+#   ggplot(aes(penalty, mixture)) +
+#   geom_text(aes(label = model_id)) +
+#   scale_x_log10()
+
+fitted_models |> 
+  select(model_type, model_id, final_metrics) |> 
+  unnest(final_metrics) |> 
+  filter(.metric == 'mcc') |> 
+  ggplot(aes(x = .estimate, y = fct_rev(factor(model_id)), fill = model_type)) +
+  facet_wrap(~model_type) +
+  geom_col()
+  
+
+# wtf, now model 7 is terrible?
+fitted_models |> 
+  filter(model_type == 'multinom_reg_glmnet' & model_id == 7) |> 
+  select(preds) |> unnest(cols = c(preds)) |> 
+  bind_cols(truth = test_prep$subfamily) |> 
+  my_metrics(truth = truth, estimate = .pred_class, na_rm = T)
+  
 ## Fit/evaluate rule-based classifier
 
 prepped_data <- read_rds(glue('./results/{folder}/final_prep.rds'))
+
 
 thresh_res <- prepped_data |>
   mutate(threshold_res = map2(train_prep, test_prep, ~eval_threshold_classififer(.x, .y))) |>
   select(threshold_res) |>
   unnest(threshold_res) |>
-  mutate(model_type = 'score & threshold rule',
-         model_id = NA)
+  mutate(model_type = 'score & threshold rule', model_id = NA)
 
+thresh_res
 
-# 
-# best_in_cv <- 
-#   read_rds('./results/3x3_regular_CV_07-02/best_models.rds')
+final_validation_test_results <- 
+  fitted_models |> 
+  select(model_type, model_id, final_metrics) |> 
+  bind_rows(thresh_res |> nest(final_metrics = c('.metric', '.estimator', '.estimate')))
+
+write_rds(final_validation_test_results,
+          './results/final_validation_results_07-05.rds')
+
