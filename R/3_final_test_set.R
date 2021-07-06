@@ -104,7 +104,9 @@ collect_pref_metrics <- function(preds, truth, met_set){
 }
 
 
-## Main: Prep ----
+# Main ----
+
+### Prep ----
 
 
 # do alignments
@@ -144,12 +146,11 @@ prepped_data <- tibble(train_prep = list(train_prep),
 prepped_data
 
 write_rds(prepped_data, glue('./results/{folder}/final_prep.rds'))
-# write_rds(aligns, './results/final_train_aligns.rds')
 
 rm(train, test, train_scores, test_scores, hmm_check)
 
 
-## -----
+### Modelling --------------------------------------------------------
 
 prepped_data <- read_rds(glue('./results/{folder}/final_prep.rds'))
 
@@ -181,7 +182,7 @@ best_models <-
   left_join(models, by = c("model_type", "model_id"))
 
 
-## Fit, predict, collect metrics ------
+#### Fit, predict, evaluate -----
 
 cat('\n', white('Fitting, predicting, and evaluating performance'))
 plan(multisession, workers = 8)
@@ -236,10 +237,11 @@ fitted_models |>
   bind_cols(truth = test_prep$subfamily) |> 
   my_metrics(truth = truth, estimate = .pred_class, na_rm = T)
   
-## Fit/evaluate rule-based classifier
+
+
+### Eval rule-based classifier ----
 
 prepped_data <- read_rds(glue('./results/{folder}/final_prep.rds'))
-
 
 thresh_res <- prepped_data |>
   mutate(threshold_res = map2(train_prep, test_prep, ~eval_threshold_classififer(.x, .y))) |>

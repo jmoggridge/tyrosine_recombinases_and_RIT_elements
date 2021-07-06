@@ -148,24 +148,5 @@ write_rds(smart_df, './data/SMART/smart_df.rds', compress = 'gz')
 rm(proteins, filtered_domains, filtered_proteins, garbage_annotations)
 
 
-
-## Split data ------------------------------------------------
-
-# Might as well split data now
-
-library(rsample)
-
-set.seed(54321)
-df_split <- initial_split(smart_df, 0.75, strata = subfamily)
-
-smart_train <- training(df_split)
-write_rds(smart_train, './data/SMART/smart_train.rds', compress = 'gz')
-
-smart_test <- testing(df_split)
-write_rds(smart_test, './data/SMART/smart_test.rds', compress = 'gz')
-
-rm(df_split)
-
-
 #### proceed to alignment script.... ----
 
