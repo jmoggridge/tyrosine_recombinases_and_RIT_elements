@@ -120,21 +120,3 @@ length(unique(non_integrases$prot_seq)) == nrow(non_integrases)
 
 write_rds(non_integrases, './data/non_integrase_seqs/nonint_df.rds')
 
-## split non_integrases ---------------------------------------------
-
-## TODO remove this splitting...
-
-# Train/test split
-set.seed(123)
-nonint_split <- initial_split(non_integrases, prop = 0.75)
-nonint_train <- training(nonint_split)
-nonint_test <-  testing(nonint_split)
-rm(nonint_split)
-
-# Write non-integrase dfs to file for 3_join_datasets.R
-write_rds(nonint_train, './data/non_integrase_seqs/nonint_train_df.rds')
-write_rds(nonint_test, './data/non_integrase_seqs/nonint_test_df.rds')
-
-## Non-integrase data ready proceed to 3_join_datasets.R
-
-
