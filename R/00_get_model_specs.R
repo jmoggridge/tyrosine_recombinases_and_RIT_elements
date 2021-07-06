@@ -35,6 +35,7 @@ log_reg_models <-
   set_engine('glmnet') |> 
   make_models(name = 'multinom_reg_glmnet',
               grid = grid_max_entropy(mixture(), penalty(), size = 20))
+
 knn_models <- 
   nearest_neighbor(mode = 'classification') |> 
   set_engine('kknn') |> 

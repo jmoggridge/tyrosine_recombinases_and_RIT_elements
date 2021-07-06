@@ -97,31 +97,136 @@ hmm_check <- build_hmm_library2(msa_path =  glue('./results/{folder}/align/'),
                                 hmm_path = glue('./results/{folder}/hmm/'))
 
 hmmbuild_test <- all(hmm_check$hmmbuild == 0)
-
 cat('\n', white(glue('hmmbuild calls all finished without error?\n {hmmbuild_test}')))
 
 
-# hmm scores test and train
+# generate hmm scores for test and train (saves to outfiles)
 cat('\n', white(' Scoring sequences against HMM library...'))
 tic()
-train_prep <-
+train_scores <-
   hmmsearch_scores2(train, hmm_path = glue('./results/{folder}/hmm/'), tag = 'train')
-test_prep <-
+test_scores <-
   hmmsearch_scores2(test, hmm_path = glue('./results/{folder}/hmm/'), tag = 'test')
 toc()
 
 # parse hmmscores and add to data frame
-train <- train |> join_hmmsearches(files = train_prep$out_path)
-test <- test |> join_hmmsearches(files = test_prep$out_path)
+train_prep <- train |> join_hmmsearches(files = train_scores$out_path)
+test_prep <- test |> join_hmmsearches(files = test_scores$out_path)
 
 ## prepared data
-prep <- tibble(train = list(train), test = list(test))
-write_rds(prep, './final_prep.rds')
+prep <- tibble(train_prep = list(train_prep), 
+                test_prep = list(test_prep))
 
-prep
+write_rds(prep, './results/final_prep.rds')
+write_rds(aligns, './results/final_train_aligns.rds')
 
-## Fit/evaluate models
-res <- prep |> 
-  mutate(rs = map2(train, test, ~ eval_model_set(models, .x, .y)))
+rm(train, test, train_scores, test_scores, hmm_check)
 
 
+prep <- read_rds('./results/final_prep.rds')
+
+train_prep <- prep$train[[1]]
+test_prep <- prep$test[[1]]
+
+
+# specify modelling workflow with scaling and ignore seqs and id
+recip <- recipe(subfamily ~ ., data = train_prep) |> 
+  update_role(c('acc', contains('seq')), new_role = "id") |> 
+  step_scale(all_predictors())
+
+# see scaled data
+recip |> prep() |> juice()
+
+wkfl <- workflow() |> 
+  add_recipe(recip)
+wkfl
+
+
+# create a workflow for model spec with recipe, then fit to training set
+fit_workflow <- function(spec, wkfl, train_prep) {
+ return(wkfl |>  add_model(spec) |>  fit(data = train_prep))
+}
+
+# apply fitting to all models
+plan(multisession, workers = 8)
+
+fitted_models <- models |> 
+  mutate(fitted_wkfl = future_map(
+    .x = spec, 
+    .f = ~fit_workflow(.x, wkfl, train_prep),
+    .options = furrr_options(
+      packages = c("parsnip","tidymodels", "glmnet","rpart", "kknn"),
+      seed = NULL)
+    ))
+beepr::beep()
+
+fitted_models
+fitted_models$fitted_wkfl[[1]]
+fitted_models$fitted_wkfl[[21]]
+fitted_models$fitted_wkfl[[41]]
+fitted_models$fitted_wkfl[[43]]
+
+
+# predict test data
+get_predictions <- function(fitted_wkfl, test){
+  predictions <- 
+    fitted_wkfl |>
+    predict(test |> select(-subfamily)) %>%
+    bind_cols(test |> select(subfamily))
+}
+
+# apply get_predictions to each fitted workflow
+plan(multisession, workers = 8)
+
+fitted_models_w_preds <-  fitted_models |> 
+  mutate(preds = future_map(
+    .x = fitted_wkfl, 
+    .f = ~get_predictions(.x, test_prep),
+    .options = furrr_options(
+      packages = c("parsnip","tidymodels", "glmnet","rpart", "kknn"),
+      seed = NULL)
+    ))
+
+beepr::beep()
+
+# specify evaluation functions
+class_metrics <- 
+  metric_set(mcc, kap, sensitivity, specificity, precision, recall, 
+             f_meas, ppv, npv, accuracy, bal_accuracy)
+
+
+
+
+## Evaluate prediction performance
+
+
+
+## Fit/evaluate rule-based classifier
+thresh_res <- prep |>
+  mutate(threshold_res = map2(train, test, ~eval_threshold_classififer(.x, .y))) |>
+  select(threshold_res) |>
+  unnest(threshold_res) |>
+  mutate(model_type = 'score & threshold rule',
+         model_id = NA)
+
+# final_test_res <- 
+#   bind_rows(thresh_res, metrics) |> 
+#   mutate(model_id = model_id)
+# rm(thresh_res)
+# 
+# final_test_res |> View()
+# 
+# 
+# 
+# 
+# 
+# best_in_cv <- 
+#   read_rds('./results/3x3_regular_CV_07-02/best_models.rds')
+# 
+# best_in_cv |> 
+#   left_join(final_test_res)
+#   
+# 
+# 
+# final_test_res |> 
+#   ggplot(aes(x = estimate, y = fct_rev(model_type)))

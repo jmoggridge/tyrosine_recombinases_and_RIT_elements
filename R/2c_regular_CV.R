@@ -102,15 +102,17 @@ write_rds(cv_res, glue('./results/{out_path}/cv_res.rds'), compress = 'gz')
 ## select which model is best... check plots first too
 
 
-top_dogs <- cv_res |> 
+best_mods <- cv_res |> 
   group_by(model_type) |> 
   filter(.metric == 'mcc') |> 
   filter(mean - err == max(mean - err, na.rm = T)) 
   
 write_rds(top_dogs, './results/3x3_regular_CV_07-02/best_models.rds')
 
+
+## t-test for best models?
 t_test_df <- 
-  top_dogs |> 
+  best_mods |> 
   ungroup() |> 
   select(model_type, model_id, values) |> 
   transmute(model = paste0(model_type, model_id),
