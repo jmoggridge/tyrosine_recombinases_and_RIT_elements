@@ -17,7 +17,8 @@ write_csv(test_df |> janitor::clean_names(),
 df <- test_df |> select(-subfamily, -acc) |> as.data.frame()
 rownames(df) <- test_df$acc
 
-clusters <- kmeans(df, centers = 21, nstart = 100)
+set.seed(123)
+clusters <- kmeans(df, centers = 21, nstart = 40)
 str(clusters)
 
 library(gt)
@@ -58,18 +59,6 @@ fviz_cluster(
   ggtheme = theme_bw(),
 )
 
-fviz_cluster(
-  clusters, 
-  data = df,
-  geom = c("point", 'text'),
-  ellipse.alpha = 0.01,
-  shape = 1,
-  pointsize = 0, 
-  labelsize = 0, 
-  outlier.pointsize = 2,
-  outlier.labelsize = 4,
-  ggtheme = theme_bw(),
-)
 
 
 ## JUST PCA -----
@@ -137,4 +126,10 @@ umap_df |>
   labs(title = 'UMAP embedding of HMM scores for test sequences')
   
   
+
+
+
+
+
+
 
