@@ -1,7 +1,8 @@
 library(tidyverse)
 library(tidymodels)
 
-# TODO why are there only 50 models in df??
+# TODO need to make it so that the models don't change if rerun!
+# set.seed(123)
 
 ### Models  -------------------------------------------------------------------
 
@@ -19,6 +20,7 @@ make_models <- function(model, grid, name){
     nest(params = names(grid))
 }
 
+# TODO grid regular
 # decision tree models
 tree_models <- 
   decision_tree(mode = 'classification') |> 
@@ -29,6 +31,7 @@ tree_models <-
       size = 20, tree_depth(), cost_complexity(), min_n(range = c(2L, 40L))
     ))
 
+# TODO grid regular
 # logistic reg models
 log_reg_models <- 
   multinom_reg(mode = 'classification') |> 
