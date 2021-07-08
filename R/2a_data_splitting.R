@@ -1,6 +1,9 @@
 ## Data splitting for classfier
 
-# Performs a nested CV where the training data are used to create domain subfamily alignments and train HMMs. Then the HMMs aer used to score train and test sequences. The scores are used to predict the class of the test data, and performance metrics for the different models are compared in the inner CV (model tuning) and outer CV (model selection).
+# First, smart data is downsampled to a maximum of 10k per subfamily.
+# The non-integrase data is already downsampled to 2k per group (by proteome, name, or domain family).
+# Modelling data are joined from Smart and Non-integrase datasets.
+# Splits data 75/25 to training and final validation sets for modelling.
 
 
 ## Libraries -----------------------------------------------------------------
