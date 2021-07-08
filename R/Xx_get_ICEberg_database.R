@@ -49,7 +49,7 @@ MGEs |>
 #   1      246    14825
 
 # save raw nested dataset to file
-write_rds(MGEs, "./data/ICEberg_experimental_intact_database_raw.rds")
+write_rds(MGEs, "./data/iceberg/ICEberg_experimental_intact_database_raw.rds")
 
 
 # Extract ICE seqs and header labels from fasta (ea. row is an element)
@@ -118,7 +118,7 @@ MGE_db <- full_join(dna_df, prot_df, by = c('type', 'id'))
 
 glimpse(MGE_db)
 
-write_delim(MGE_db, "./data/ICE_db.tsv")
+write_tsv(MGE_db, "./data/iceberg/ICE_db.tsv")
 
 rm(dna_df, prot_df)
 
@@ -128,8 +128,8 @@ length(dna_fasta_db)
 aa_fasta_db <- purrr::reduce(MGEs$aa_fasta, ~c(.x,.y))
 length(aa_fasta_db)
 
-writeXStringSet(dna_fasta_db, filepath = './data/iceberg_dna.fa')
-writeXStringSet(aa_fasta_db, filepath = './data/iceberg_aa.fa')
+writeXStringSet(dna_fasta_db, filepath = './data/iceberg/iceberg_dna.fa')
+writeXStringSet(aa_fasta_db, filepath = './data/iceberg/iceberg_aa.fa')
 
 
 
