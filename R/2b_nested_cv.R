@@ -22,10 +22,12 @@ library(crayon)
 library(beepr)
 # option to get `future::plan()` to work on my macbook
 options(parallelly.makeNodePSOCK.setup_strategy = "sequential")
+
 # functions 
 source('./R/00_functions.R')
-# models
-source('./R/00_get_model_specs.R')
+
+# unfitted model specifications
+models <- read_rds('./data/unfitted_parsnip_model_set.rds')
 
 set.seed(123)
 
@@ -36,11 +38,11 @@ train <- read_rds('./data/classif_train_set.rds')
 
 
 
-## Directories ----------------------------------------------------------------
+## Directories --------------------------------------------------------
 
 # name for directory in project folder to store nested CV files
-run_name <- '3x3-fold_06-30'
-# TODO transfer files to nestcv_06-30 folder
+run_name <- '3x3-fold_07-08'
+
 
 # create directory structure for classifier files (alignments, hmms, results for each resample)
 out_path <- glue(here::here(), '/', run_name)
@@ -80,7 +82,7 @@ rm(train)
 
 # **evaluate models with nested CV** all functions are in 00_functions.R
 tic()
-nest_cv_results <-  fit_nested_cv(nest_cv)
+nest_cv_results <-  fit_nested_cv(nestcv = nest_cv, out_path = out_path)
 toc()
 beepr::beep()
 
@@ -222,7 +224,6 @@ plot_mcc_by_k <- function(pooled, folds) {
 }
 
 plot_mcc_by_k(knn_pooled_scores, knn_folds_scores)
-
 
 
 

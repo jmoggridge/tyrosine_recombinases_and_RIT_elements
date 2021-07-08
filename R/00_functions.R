@@ -81,7 +81,7 @@ align_domains <- function(df, dest){
 # align_domains(df, './unit_test/aligns/')
 
 # Wrapper to apply align_domains to each subfamily
-build_alignments_library <- function(domains, fold){
+build_alignments_library <- function(domains, fold, out_path){
   path <- glue('{out_path}/align/', fold, '/')
   # do align_domains in parallel
   plan(multisession, workers = availableCores())
@@ -95,7 +95,7 @@ build_alignments_library <- function(domains, fold){
 }
 
 # create paths, build call, do calls to hmmbuild for each subfamily
-build_hmm_library <- function(fold){
+build_hmm_library <- function(fold, out_path){
   
   temp <- tempfile()
   plan(multisession, workers = availableCores())
@@ -110,7 +110,7 @@ build_hmm_library <- function(fold){
 
 # score a dataframe of sequences against the HMM library with hmmsearch
 # takes protein seq column and makes temporary fasta file to send to hmmer
-hmmsearch_scores <- function(df, fold, tag){
+hmmsearch_scores <- function(df, fold, tag, out_path){
   
   # make temp fasta file of seqs to score against hmm library
   fasta_path <- tempfile()
@@ -194,12 +194,12 @@ prep_data <- function(split_obj, split_id, out_path){
   aligns <- 
     analysis(split_obj) |> 
     prep_domains_df() |> 
-    build_alignments_library(fold = split_id)
+    build_alignments_library(fold = split_id, out_path = out_path)
   toc()
   
   # train hmm
   cat(white(' Building HMMs...'))
-  hmm_check <- build_hmm_library(fold = split_id)
+  hmm_check <- build_hmm_library(fold = split_id, out_path = out_path)
   hmmbuild_test <- all(hmm_check$hmmbuild == 0)
   cat('\n', white(glue('hmmbuild calls all finished without error? {hmmbuild_test}')))
   
@@ -208,10 +208,10 @@ prep_data <- function(split_obj, split_id, out_path){
   tic()
   train_search <- 
     analysis(split_obj) |> 
-    hmmsearch_scores(fold = split_id, tag = 'train')
+    hmmsearch_scores(fold = split_id, tag = 'train', out_path = out_path)
   test_search <- 
     assessment(split_obj) |> 
-    hmmsearch_scores(fold = split_id, tag = 'test')
+    hmmsearch_scores(fold = split_id, tag = 'test', out_path = out_path)
   toc()
   
   hmmsearch_test <- all(train_search$hmmsearches == 0)
@@ -263,7 +263,9 @@ hmm_threshold_class <- function(test, thresholds){
     filter(hmm_score == max(hmm_score)) |> 
     ungroup() |> 
     left_join(thresholds, by = "hmm_name") |> 
-    mutate(hmm_name = ifelse(hmm_score < threshold, 'non_integrase', hmm_name)) |>     select(-threshold) |> 
+    mutate(hmm_name = ifelse(hmm_score < threshold,
+                             'non_integrase', hmm_name)) |>     
+    select(-threshold) |> 
     distinct() |> 
     ungroup() |> 
     transmute(acc, .pred_class = factor(hmm_name, levels = levs)) |> 
@@ -344,12 +346,13 @@ eval_model_set <- function(models, train, test){
 # to do_inner_cv <- function(resamples){
 
 
-do_inner_cv <- function(resamples){
+do_inner_cv <- function(resamples, out_path){
   
   cat("\n", blue$bold("Starting inner CV"), '\n')
   # prepare scored datasets for each fold
   prep <- resamples |> 
-    mutate(prep = map2(inner_splits, inner_id, ~ prep_data(.x, .y))) |>
+    mutate(prep = map2(inner_splits, inner_id, 
+                       ~ prep_data(.x, .y, out_path = out_path))) |>
     unnest(prep)
   
   cat('\n', blue$bold("Evaluating models"))
@@ -391,12 +394,14 @@ select_best_models <- function(res_summary, metric){
 
 
 # wrapper for outer cv
-fit_nested_cv <- function(nestcv){
+fit_nested_cv <- function(nestcv, out_path){
   
   cat(yellow$bold$underline('Beginning inner CVs'))
   # do inner cv for each outer fold
   results_df <- nest_cv |> 
-    mutate(inner_cv = map(inner_resamples, ~do_inner_cv(.x))) 
+    mutate(inner_cv = map(inner_resamples, 
+                          ~do_inner_cv(resamples = .x, 
+                                       out_path = out_path))) 
   
   cat('\n', yellow$bold$underline('Selecting model tunings'))
   # select best model tunings for each outer fold
@@ -410,7 +415,8 @@ fit_nested_cv <- function(nestcv){
   cat('\n', yellow$bold('Preparing outer split data'))
   # prepare outer splits
   results_df <- results_df |> 
-    mutate(prep = map2(outer_splits, outer_id, ~prep_data(.x, .y))) |> 
+    mutate(prep = map2(outer_splits, outer_id, 
+                       ~prep_data(.x, .y, out_path = out_path))) |> 
     unnest(prep)  
   
   cat('\n', yellow$bold('Evaluating tuned models'))
