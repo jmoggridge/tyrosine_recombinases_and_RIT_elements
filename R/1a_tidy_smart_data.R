@@ -1,10 +1,18 @@
-# Clean up smart data from two fasta files for each subfamily of integrase, one 
+## 1a_tidy_smart_data.R
+
+## Briefing -----
+
+# Cleans up smart data from two fasta files for each subfamily of integrase, one 
 # with the full protein sequences and the other just their integrase domains.
 
 # Notes: 
-# 1. Some domains are assigned to multiple classes. Thus, to ensure that no overlap between classes was present, I removed all the proteins having multiple subfamily labels for simplicity.
-# 2. Not all domain sequences are unique; all protein sequences are unique
+
+# 1. Some domains (5704) come from objects (acc ids 2844) are assigned to multiple subfamilies in SMART. Thus, to ensure that no overlap between classes was present, I removed all the proteins having multiple subfamily labels for simplicity. There are 114,848  observations with unique ids and single subfamily labels after filtering.
+
+# 2. Not all domain sequences are unique; there are 114,032 unique sequences from the total of 114848. However, all protein sequences are unique but some domain seqs are found in as many 8 different proteins.
+
 # 3. The information in the two fasta files doesn't match beyond the accession identifier (acc). Besides the domain names having the position of the domain within the protein, some of the description text following this doesn't match between the domain and the parent protein. Note this can cause joining to fail unless the keys are stipulated as acc
+
 
 library(Biostrings)
 library(tidyverse)
@@ -13,7 +21,7 @@ library(janitor)
 ## Domains data -------------------------------------------------
 
 # Make dataframe of fastas for each subfamily of domains
-# Split fasta names and seqs
+# Split fasta names and seqs into separate columns
 domains <- 
   tibble(path = Sys.glob('./data/SMART/domain_fasta/*.fasta')) |>
   mutate(
@@ -45,22 +53,24 @@ domains <- domains |>
 # domains |> View()
 
 ## # Check uniqueness: multiple class assignment per protein was found
-## nrow(domains)
-## length(unique(domains$dom_seq)) 
-## length(unique(domains$acc))
-## length(unique(domains$acc_alt))
+nrow(domains)                     # 120552
+length(unique(domains$dom_seq))   # 119694, some shared domain seqs
+length(unique(domains$acc))       # 117692, even fewer unique ids
+length(unique(domains$acc_alt))   # same # of ids
 
 # list of accessions with > 1 annotation to discard
 garbage_annotations <- domains |> 
   group_by(acc) |> 
   filter(n() > 1) |> 
   ungroup()
+garbage_annotations |> nrow()                 # 5704 entries from ...
+garbage_annotations |> count(acc) |> nrow()   # 2844 ids w multiple labels
 
-# remove those proteins with multiple annotations
+# remove those proteins with multiple annotations; 114,848 obs w unique ids
 filtered_domains <- domains |> 
   anti_join(garbage_annotations)
 filtered_domains
-
+filtered_domains$acc |> unique() |> length()
 nrow(filtered_domains)
 length(unique(filtered_domains$acc))
 length(unique(filtered_domains$dom_seq))
@@ -137,16 +147,13 @@ write_rds(smart_df, './data/SMART/smart_df.rds', compress = 'gz')
 
 
 ## # All protein accessions and sequences are unique!
-## smart_df |> pull(acc) |> unique() |> length()
-## smart_df |> pull(prot_seq) |> unique() |> length()
-## # Rows matched up correctly and no missing values created
-## nrow(smart_df) == nrow(filtered_domains)
-## nrow(smart_df) ==  nrow(filtered_proteins) 
-## sum(is.na(smart_df))
-## 
-
-rm(proteins, filtered_domains, filtered_proteins, garbage_annotations)
+smart_df |> pull(acc) |> unique() |> length()
+smart_df |> pull(prot_seq) |> unique() |> length()
+# Rows matched up correctly and no missing values created
+nrow(smart_df) == nrow(filtered_domains)
+nrow(smart_df) ==  nrow(filtered_proteins)
+sum(is.na(smart_df))
 
 
-#### proceed to alignment script.... ----
+## End. Proceed to alignment script.... ----
 
