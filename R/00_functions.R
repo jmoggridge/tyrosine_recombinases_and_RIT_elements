@@ -46,7 +46,7 @@ make_dirs <- function(run_name) {
 prep_domains_df <- function(training){
   training |> 
     # subset domain subfamilies
-    filter(subfamily !=  'non_integrase') |> 
+    filter(!str_detect(subfamily, 'other')) |> 
     select(subfamily, acc, dom_seq) |> 
     # remove any duplicated domain sequences
     group_by(dom_seq) |> sample_n(1) |> ungroup() |> 
@@ -82,26 +82,26 @@ align_domains <- function(df, dest){
 # align_domains(df, './unit_test/aligns/')
 
 # Wrapper to apply align_domains to each subfamily
-build_alignments_library <- function(domains, fold, out_path){
-  path <- glue('{out_path}/align/', fold, '/')
+build_alignments_library <- function(domains, split_id, out_path){
+  aligns_dir <- glue('{out_path}/align/{split_id}/')
   # do align_domains in parallel
   plan(multisession, workers = availableCores())
   domains |> mutate(
     aligned = future_map(
       .x = data, 
-      .f = ~ align_domains(.x, dest = path),
+      .f = ~ align_domains(df = .x, dest = aligns_dir),
       .options = furrr_options(scheduling = Inf)
     )
   )
 }
 
 # create paths, build call, do calls to hmmbuild for each subfamily
-build_hmm_library <- function(fold, out_path){
+build_hmm_library <- function(split_id, out_path){
   
   temp <- tempfile()
   plan(multisession, workers = availableCores())
   
-  tibble(msa_path = Sys.glob(glue('{out_path}/align/', fold, '/*'))) |> 
+  tibble(msa_path = Sys.glob(glue('{out_path}/align/{split_id}/*'))) |> 
     mutate(
       hmm_path = str_replace_all(msa_path, 'align|aln', 'hmm'),
       hmmbuild_call = glue('hmmbuild -o {temp} {hmm_path} {msa_path}'),
@@ -111,7 +111,7 @@ build_hmm_library <- function(fold, out_path){
 
 # score a dataframe of sequences against the HMM library with hmmsearch
 # takes protein seq column and makes temporary fasta file to send to hmmer
-hmmsearch_scores <- function(df, fold, tag, out_path){
+hmmsearch_scores <- function(df, split_id, tag, out_path){
   
   # make temp fasta file of seqs to score against hmm library
   fasta_path <- tempfile()
@@ -122,7 +122,7 @@ hmmsearch_scores <- function(df, fold, tag, out_path){
   junk <- tempfile()
   # setup paths for hmms and table outputs; build hmmsearch calls
   hmmsearches <- 
-    tibble(hmm_path = Sys.glob(glue('{out_path}/hmm/', fold, '/*'))) |> 
+    tibble(hmm_path = Sys.glob(glue('{out_path}/hmm/{split_id}/*'))) |> 
     mutate(
       out_path = hmm_path |> 
         str_replace('/hmm/', '/hmmsearch/') |> 
@@ -140,8 +140,13 @@ read_hmmsearch <- function(path){
   # read hmmsearch tblout result for one dataset vs one HMM; 
   # return df of (acc, <hmm_name>)
   read_delim(
-    file = path, na = '-', delim = ' ', comment = '#',  trim_ws = T,
-    col_types = cols(), col_names = FALSE
+    file = path, 
+    na = '-', 
+    delim = ' ', 
+    comment = '#',  
+    trim_ws = T,
+    col_types = cols(), 
+    col_names = FALSE
   ) |> 
     transmute(acc = X1, hmm_name = X3, best_dom_score = X9) |> 
     # keep only the best hmm score for each protein
@@ -176,7 +181,7 @@ join_hmmsearches <- function(df, files){
 #' TODO outpath as argument - change nestcv scipt**
 prep_data <- function(split_obj, split_id, out_path){
   
-  cat('\n', green$bold(glue("Preparing fold: {split_id}")))
+  cat('\n', green$bold(glue("Preparing split_id: {split_id}")))
   # create directories
   system(glue('mkdir {out_path}/align/{split_id}'))
   system(glue('mkdir {out_path}/hmm/{split_id}'))
@@ -195,12 +200,12 @@ prep_data <- function(split_obj, split_id, out_path){
   aligns <- 
     analysis(split_obj) |> 
     prep_domains_df() |> 
-    build_alignments_library(fold = split_id, out_path = out_path)
+    build_alignments_library(split_id = split_id, out_path = out_path)
   toc()
   
   # train hmm
   cat(white(' Building HMMs...'))
-  hmm_check <- build_hmm_library(fold = split_id, out_path = out_path)
+  hmm_check <- build_hmm_library(split_id = split_id, out_path = out_path)
   hmmbuild_test <- all(hmm_check$hmmbuild == 0)
   cat('\n', white(glue('hmmbuild calls all finished without error? {hmmbuild_test}')))
   
@@ -209,10 +214,10 @@ prep_data <- function(split_obj, split_id, out_path){
   tic()
   train_search <- 
     analysis(split_obj) |> 
-    hmmsearch_scores(fold = split_id, tag = 'train', out_path = out_path)
+    hmmsearch_scores(split_id = split_id, tag = 'train', out_path = out_path)
   test_search <- 
     assessment(split_obj) |> 
-    hmmsearch_scores(fold = split_id, tag = 'test', out_path = out_path)
+    hmmsearch_scores(split_id = split_id, tag = 'test', out_path = out_path)
   toc()
   
   hmmsearch_test <- all(train_search$hmmsearches == 0)
