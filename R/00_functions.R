@@ -3,6 +3,7 @@
 ### Libraries ---------------------------------------------------------------
 library(tidyverse)
 library(tidymodels)
+library(themis)
 library(Biostrings)
 library(furrr)
 library(DECIPHER)
@@ -295,12 +296,16 @@ eval_model <- function(model, train, test){
                f_meas, ppv, npv, accuracy, bal_accuracy)
   
   # specify formula and scaling recipe
-  recip <- recipe(subfamily ~ ., data = train) |> 
+  recip <- 
+    recipe(subfamily ~ ., data = train) |> 
     update_role(c('acc', contains('seq')), new_role = "id") |> 
-    step_scale(all_predictors())
-  
+    step_nearmiss(subfamily, under_ratio = 70) |> 
+    step_smote(subfamily, over_ratio = 1) |> 
+    step_normalize(all_predictors())
+
   # create model workflow and fit to training data
-  fit_wf <- workflow() |>
+  fit_wf <- 
+    workflow() |>
     add_model(model) |> 
     add_recipe(recip) |>
     fit(data = train)
@@ -426,8 +431,7 @@ fit_nested_cv <- function(nestcv, out_path){
       .l = list(best_tune, train, test),
       .f = function(best_tune, train, test)
         eval_model_set(models = best_tune,  train = train, test = test)
-    )
-    )
+    ))
   cat('\n', yellow$bold('Finished'))
   return(results_df)
 }

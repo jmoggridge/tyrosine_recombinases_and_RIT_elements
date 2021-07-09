@@ -27,12 +27,12 @@ tree_models <-
   decision_tree(mode = 'classification') |> 
   set_engine('rpart') |> 
   make_models(
-    name = 'decision_tree_rpart',
+    name = 'decision tree',
     grid = grid_regular(
-      levels = 5, 
-      tree_depth(range = c(10,30)), 
-      cost_complexity(), 
-      min_n(range = c(2L, 40L))
+      levels = 3, 
+      tree_depth(), 
+      cost_complexity(range = c(15,30)), 
+      min_n()
     ))
 tree_models |> unnest(params) |> 
   ggplot(aes(tree_depth, cost_complexity))  +
@@ -40,17 +40,26 @@ tree_models |> unnest(params) |>
   scale_y_log10() +
   facet_grid(~min_n)
 
+random_forest <- 
+  rand_forest(mode = 'classification') |> 
+  set_engine('ranger') |> 
+  make_models(
+    name = 'random forest',
+    grid = grid_regular(mtry(range = c(1,21)), levels = 5)
+  )
+
 # logistic reg models
 glmnet_models <- 
   multinom_reg(mode = 'classification') |> 
   set_engine('glmnet') |> 
   make_models(
-    name = 'multinom_reg_glmnet',
+    name = 'multinomial regression',
     grid = grid_regular(
       mixture(), 
       penalty(), 
-      levels = 12
+      levels = 9
     ))
+
 glmnet_models |> unnest(params) |> 
   ggplot(aes(penalty, mixture)) + 
   geom_tile(fill = NA, color = 'black') +
@@ -60,10 +69,10 @@ knn_models <-
   nearest_neighbor(mode = 'classification') |> 
   set_engine('kknn') |> 
   make_models(
-    name = 'nearest_neighbor',
+    name = 'nearest neighbor',
     grid = grid_regular(
       neighbors(range = c(2L, 30L)), 
-      levels = 29
+      levels = 20
     ))
 knn_models |> unnest(params) |> ggplot(aes(neighbors, 1)) + geom_point()
 
@@ -71,4 +80,4 @@ knn_models |> unnest(params) |> ggplot(aes(neighbors, 1)) + geom_point()
 models <- bind_rows(tree_models, glmnet_models, knn_models)
 write_rds(models, './data/unfitted_parsnip_model_set.rds')
 
-rm(list = ls())
+
