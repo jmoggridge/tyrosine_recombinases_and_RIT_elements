@@ -13,6 +13,7 @@ library(tictoc)
 library(crayon)
 options(parallelly.makeNodePSOCK.setup_strategy = "sequential")
 
+## TODO figure out issues with *downsample*
 
 ## TESTING
 # out_path <-"/Users/jasonmoggridge/Documents/binf6999_thesis/tyrosine_recombinases_and_RIT_elements/unit_test"
@@ -46,7 +47,7 @@ make_dirs <- function(run_name) {
 prep_domains_df <- function(training){
   training |> 
     # subset domain subfamilies
-    filter(!str_detect(subfamily, 'other')) |> 
+    filter(!subfamily == 'Other') |> 
     select(subfamily, acc, dom_seq) |> 
     # remove any duplicated domain sequences
     group_by(dom_seq) |> sample_n(1) |> ungroup() |> 
@@ -155,8 +156,8 @@ read_hmmsearch <- function(path){
     ungroup() |>  
     distinct() |> 
     # name the values column after the subfamily hmm
-    pivot_wider(names_from = hmm_name, values_from = best_dom_score) |> 
-    unnest(cols = c())
+    pivot_wider(names_from = hmm_name, values_from = best_dom_score) 
+  ## TODO make sure unnest wasnt doing anything here
 }
 
 # reads all hmmsearch tables in glob and joins data
@@ -206,8 +207,8 @@ prep_data <- function(split_obj, split_id, out_path){
   # train hmm
   cat(white(' Building HMMs...'))
   hmm_check <- build_hmm_library(split_id = split_id, out_path = out_path)
-  hmmbuild_test <- all(hmm_check$hmmbuild == 0)
-  cat('\n', white(glue('hmmbuild calls all finished without error? {hmmbuild_test}')))
+  hmmbuild_check <- all(hmm_check$hmmbuild == 0)
+  cat('\n', white(glue('hmmbuild calls all finished without error? {hmmbuild_check}')))
   
   # hmm scores test and train
   cat('\n', white('Scoring sequences against HMM library...'))
@@ -220,8 +221,8 @@ prep_data <- function(split_obj, split_id, out_path){
     hmmsearch_scores(split_id = split_id, tag = 'test', out_path = out_path)
   toc()
   
-  hmmsearch_test <- all(train_search$hmmsearches == 0)
-  cat(white(glue(' HMM searches all finished without error? {hmmsearch_test}')))
+  hmmsearch_check <- all(train_search$hmmsearches == 0)
+  cat(white(glue(' HMM searches all finished without error? {hmmsearch_check}')))
   
   # parse hmmscores and add to data frame
   train <-  
@@ -259,7 +260,7 @@ hmm_threshold_class <- function(test, thresholds){
   levs <- c("Arch1",  "Arch2", "Candidate", "Cyan", "IntKX", "Int_BPP-1",
             "Int_Brujita", "Int_CTnDOT", "Int_Des", "Int_P2", "Int_SXT", 
             "Int_Tn916" ,"Integron", "Myc", "RitA", "RitB", "RitC", "TnpA", 
-            "TnpR", "Xer", "non_integrase")
+            "TnpR", "Xer", "Other")
   test |> 
     select(acc, Arch1:Xer) |> 
     pivot_longer(cols = Arch1:Xer, 
@@ -270,7 +271,7 @@ hmm_threshold_class <- function(test, thresholds){
     ungroup() |> 
     left_join(thresholds, by = "hmm_name") |> 
     mutate(hmm_name = ifelse(hmm_score < threshold,
-                             'non_integrase', hmm_name)) |>     
+                             'Other', hmm_name)) |>     
     select(-threshold) |> 
     distinct() |> 
     ungroup() |> 
@@ -291,10 +292,13 @@ eval_threshold_classififer <- function(train, test){
     class_metrics(subfamily, estimate = .pred_class) 
 }
 
-### CV /  Fit / Evaluate functions --------------------------------------------
+### CV /  Fit / Evaluate functions -----------------------------------
 
 ## Fit + evaluate model on single fold
 eval_model <- function(model, train, test){
+
+  train <- train |> select(-contains('seq'))
+  test <- test |> select(-contains('seq'))
   # specify evaluation functions
   class_metrics <- 
     metric_set(mcc, kap, sensitivity, specificity, precision, recall, 
@@ -303,9 +307,8 @@ eval_model <- function(model, train, test){
   # specify formula and scaling recipe
   recip <- 
     recipe(subfamily ~ ., data = train) |> 
-    update_role(c('acc', contains('seq')), new_role = "id") |> 
-    step_nearmiss(subfamily, under_ratio = 70) |> 
-    step_smote(subfamily, over_ratio = 1) |> 
+    update_role(acc, new_role = "id") |> 
+    step_smote(subfamily, over_ratio = 0.25) |> 
     step_normalize(all_predictors())
 
   # create model workflow and fit to training data
@@ -341,10 +344,13 @@ eval_model_set <- function(models, train, test){
   models |>
     mutate(
       metrics = future_map(
-        .x = spec, .f = eval_model, train, test, 
-        .options = furrr_options(packages = c("parsnip", "glmnet",
-                                              "rpart", "tidymodels"),
-                                 seed = NULL))
+        .x = spec, .f = eval_model, train = train, test = test, 
+        .options = furrr_options(
+          packages = c('parsnip', 'glmnet', 'rpart', 
+                       'ranger', 'tidymodels'),
+          seed = NULL
+          )
+        )
     ) |>
     unnest(metrics)
 }
@@ -356,7 +362,7 @@ eval_model_set <- function(models, train, test){
 # to do_inner_cv <- function(resamples){
 
 
-do_inner_cv <- function(resamples, out_path){
+do_inner_cv <- function(resamples, models, out_path){
   
   cat("\n", blue$bold("Starting inner CV"), '\n')
   # prepare scored datasets for each fold
@@ -404,13 +410,14 @@ select_best_models <- function(res_summary, metric){
 
 
 # wrapper for outer cv
-fit_nested_cv <- function(nestcv, out_path){
+fit_nested_cv <- function(nestcv, models, out_path){
   
   cat(yellow$bold$underline('Beginning inner CVs'))
   # do inner cv for each outer fold
   results_df <- nest_cv |> 
     mutate(inner_cv = map(inner_resamples, 
                           ~do_inner_cv(resamples = .x, 
+                                       models = models,
                                        out_path = out_path))) 
   
   cat('\n', yellow$bold$underline('Selecting model tunings'))

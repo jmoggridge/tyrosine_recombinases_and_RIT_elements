@@ -69,6 +69,7 @@ garbage_annotations |> count(acc) |> nrow()   # 2844 ids w multiple labels
 # remove those proteins with multiple annotations; 114,848 obs w unique ids
 filtered_domains <- domains |> 
   anti_join(garbage_annotations)
+
 filtered_domains
 filtered_domains$acc |> unique() |> length()
 nrow(filtered_domains)

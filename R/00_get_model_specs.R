@@ -23,7 +23,7 @@ make_models <- function(model, grid, name){
 }
 
 # decision tree models
-tree_models <- 
+rpart_models <- 
   decision_tree(mode = 'classification') |> 
   set_engine('rpart') |> 
   make_models(
@@ -34,13 +34,13 @@ tree_models <-
       cost_complexity(range = c(15,30)), 
       min_n()
     ))
-tree_models |> unnest(params) |> 
+rpart_models |> unnest(params) |> 
   ggplot(aes(tree_depth, cost_complexity))  +
   geom_point() +
   scale_y_log10() +
   facet_grid(~min_n)
 
-random_forest <- 
+ranger_models <- 
   rand_forest(mode = 'classification') |> 
   set_engine('ranger') |> 
   make_models(
@@ -77,7 +77,7 @@ knn_models <-
 knn_models |> unnest(params) |> ggplot(aes(neighbors, 1)) + geom_point()
 
 # combine all model specs
-models <- bind_rows(tree_models, glmnet_models, knn_models)
+models <- bind_rows(rpart_models, ranger_models, glmnet_models, knn_models)
 write_rds(models, './data/unfitted_parsnip_model_set.rds')
 
 

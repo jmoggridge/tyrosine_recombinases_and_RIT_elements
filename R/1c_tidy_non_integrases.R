@@ -82,7 +82,7 @@ rm(pfam, proteomes)
 # join all the data; match names with integrases dataframe
 non_integrases <- 
   bind_rows(refseq, other_non_integrases) |> 
-  transmute(subfamily,
+  transmute(subfamily = 'Other',
             group, 
             acc = prot_name, 
             prot_seq = seq |> str_to_upper(), 
@@ -96,6 +96,8 @@ non_integrases <-
   group_by(prot_seq) |> 
   sample_n(1) |> 
   ungroup()
+
+write_rds(non_integrases, './data/non_integrase_seqs/nonint_df.rds')
 
 glimpse(non_integrases)
 rm(refseq, other_non_integrases)
@@ -144,5 +146,4 @@ non_integrases |>
 # verify no duplicate sequences
 length(unique(non_integrases$prot_seq)) == nrow(non_integrases)
 
-write_rds(non_integrases, './data/non_integrase_seqs/nonint_df.rds')
 

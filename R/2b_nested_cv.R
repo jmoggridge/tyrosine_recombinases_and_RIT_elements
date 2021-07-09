@@ -7,7 +7,7 @@
 ## done: TODO fix splits labels
 ## done: TODO selection of k and rep for outer and inner CV: 3x3
 
-## Libraries -----------------------------------------------------------------
+## Libraries -------------------------------------------------------------
 
 library(tidyverse)
 library(tidymodels)
@@ -33,13 +33,20 @@ models <- read_rds('./data/unfitted_parsnip_model_set.rds')
 set.seed(123)
 
 ## Training data
-# do data splitting first
-# source('./R/2a_data_splitting.R')
+# do data splitting first './R/2a_data_splitting.R'
 train <- read_rds('./data/classif_train_set.rds')
 
-train |> ggplot(aes(fct_rev(subfamily))) + geom_bar() + coord_flip()
+# train |> ggplot(aes(fct_rev(subfamily))) + geom_bar() + coord_flip()
 
-
+# # TODO remove downsampling
+# train <- train |> 
+#   group_by(subfamily) |> 
+#   slice_sample(n = 300, replace = F) |> 
+#   ungroup()
+#   
+#   
+  
+  
 ## Directories --------------------------------------------------------
 
 # name for directory in project folder to store nested CV files
@@ -76,7 +83,10 @@ nest_cv <-
   ) |> 
   nest(inner_resamples = c(inner_id, inner_splits))
 
-nest_cv |> unnest(inner_resamples)
+nest_cv |> unnest(inner_resamples) |> pull(inner_splits) |> pluck(1) |> analysis() |> 
+  count(subfamily) |> pull(n) |> maxmin(
+  )
+maxmin <- function(x)  max(x)/min(x)
 
 rm(train)
 
@@ -84,7 +94,10 @@ rm(train)
 
 # **evaluate models with nested CV** all functions are in 00_functions.R
 tic()
-nest_cv_results <-  fit_nested_cv(nestcv = nest_cv, out_path = out_path)
+nest_cv_results <-  fit_nested_cv(
+  nestcv = nest_cv, 
+  models = models,
+  out_path = out_path)
 toc()
 beepr::beep()
 
