@@ -68,11 +68,14 @@ df_split <- initial_split(combined_dataset, 0.75, strata = subfamily)
 
 train <- training(df_split)
 train |> count(subfamily) |> print.AsIs()
+train |> ggplot(aes(subfamily)) + geom_bar() + coord_flip() + labs(title = 'training data')
 
 test <- testing(df_split)
 test |> count(subfamily) |> print.AsIs()
+test |> ggplot(aes(subfamily)) + geom_bar() + coord_flip()  + labs(title = 'testing data')
+
 
 write_rds(train, './data/classif_train_set.rds')
 write_rds(test, './data/classif_test_set.rds')
 
-rm(smart_df, non_integrases, non_int_leftout, non_int_downsampled, smart_leftout, smart_downsampled, combined_dataset, leftout_dataset, df_split, train, test)
+
