@@ -4,6 +4,8 @@ library(tidymodels)
 library(furrr)
 library(tictoc)
 
+source('./R/00_functions.R')
+
 # TODO FINAL CLASSIFIER FITTING STEP
 
 
@@ -50,35 +52,40 @@ hmmsearch_scores2 <- function(df, hmm_path, out_folder, tag){
 hmm_scores <- 
   hmmsearch_scores2(
     df = combined_dataset, 
-    hmm_path = './data/SMART/domain_hmm_final/',
+    hmm_path = './data/SMART/domain_hmm_final/'
     )
 
   
 
+combined_prepped <- 
+  join_hmmsearches(combined_dataset, hmm_scores$out_path) |> 
+  select(acc, subfamily, Arch1:Xer)
 
-# TODO FIT IT
+rm(combined_dataset)
+
+
+# FIT MODEL -----
 
 # fit final model: 10-NN trained on combined dataset
 # specify modelling workflow with scaling and ignore seqs and id
 recip <- 
-  recipe(subfamily ~ ., data = combined_dataset) |> 
-  update_role(c('acc', contains('seq')), new_role = "id") |> 
+  recipe(subfamily ~ ., data = combined_prepped) |> 
+  update_role(acc, new_role = "id") |> 
   step_scale(all_predictors())
+recip
+
 knn_spec <- 
   nearest_neighbor(mode = 'classification', neighbors = 10) |> 
   set_engine('kknn') 
-knn_wkfl <- workflow() |> 
+knn_spec
+
+knn_wkfl <- 
+  workflow() |> 
   add_recipe(recip) |> 
   add_model(knn_spec) |> 
-  fit(data = combined_dataset)
+  fit(data = combined_prepped)
   
-  
+write_rds(knn_wkfl, './results/knn_model_wkfl.rds')
 
-# given df with columns acc & prot_seq, and path to 20 subfamily HMMs
-# score seqs against hmms -save to temp folder,
-# parse hmmer files and return df with HMM scores
-score_seqs <- function(df, acc, prot_seq, hmm_folder){
-  
-}
-  
-  
+
+##-----
