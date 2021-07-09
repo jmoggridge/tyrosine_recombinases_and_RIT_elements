@@ -11,6 +11,7 @@
 
 library(tidyverse)
 library(tidymodels)
+library(themis)
 library(Biostrings)
 library(future)
 library(furrr)
@@ -36,6 +37,7 @@ set.seed(123)
 # source('./R/2a_data_splitting.R')
 train <- read_rds('./data/classif_train_set.rds')
 
+train |> ggplot(aes(fct_rev(subfamily))) + geom_bar() + coord_flip()
 
 
 ## Directories --------------------------------------------------------
@@ -86,7 +88,9 @@ nest_cv_results <-  fit_nested_cv(nestcv = nest_cv, out_path = out_path)
 toc()
 beepr::beep()
 
-write_rds(nest_cv_results, glue('./results/{run_name}_nest_cv_results.rds'), compress = 'gz')
+write_rds(nest_cv_results, 
+          glue('./results/{run_name}_nest_cv_results.rds'), 
+          compress = 'gz')
 
 # collect results and get means
 nest_cv_summary <- 
@@ -104,7 +108,8 @@ nest_cv_summary <-
 
 # evaluate maxscore/threshold classifications for outer folds and summarize
 thresh_res <- nest_cv_results |> 
-  mutate(thresh_res = map2(train, test, ~eval_threshold_classififer(.x, .y))) |> 
+  mutate(thresh_res = map2(train, test,
+                           ~eval_threshold_classififer(.x, .y))) |> 
   select(outer_id, thresh_res) |> 
   unnest(cols = c(thresh_res)) |> 
   group_by(.metric) |> 
@@ -229,7 +234,7 @@ plot_mcc_by_k(knn_pooled_scores, knn_folds_scores)
 
 ## glmnet scores
 
-glment_pooled_scores <- inner_cv_mcc |> 
+glmnet_pooled_scores <- inner_cv_mcc |> 
   filter(str_detect(model_type, 'glmnet')) |> 
   unnest(params) |> 
   unnest(values) |> 
@@ -237,7 +242,7 @@ glment_pooled_scores <- inner_cv_mcc |>
   mutate(fold = as_factor(row_number())) |> 
   ungroup()
 
-glment_pooled_scores |> 
+glmnet_pooled_scores |> 
   group_by(mixture, penalty) |> 
   summarize(mean = mean(values, na.rm=T), .groups = 'drop') |> 
   filter(!is.nan(mean)) |> 
@@ -250,7 +255,7 @@ glment_pooled_scores |>
        color = 'mean MCC', size = 'mean MCC')
 
 
-glment_pooled_scores |> 
+glmnet_pooled_scores |> 
   select(model_id, values, fold) |> 
   ggplot(aes(x = as_factor(model_id), y = values)) +
   geom_boxplot()
@@ -273,7 +278,12 @@ df <-
 
 # performance metrics across outer folds with models tuned by the inner cv
 df  |> 
-  ggplot(aes(y = fct_rev(model), x = mean, xmax = mean + err, xmin = mean - err)) +
+  ggplot(aes(
+    y = fct_rev(model), 
+    x = mean, 
+    xmax = mean + err, 
+    xmin = mean - err
+    )) +
   geom_jitter(data = df |> unnest(values),
               aes(x = values), shape = 1, alpha = 0.7) +
   # geom_pointrange(fatten = 0.5) +
