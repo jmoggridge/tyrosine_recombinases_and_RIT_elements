@@ -17,8 +17,11 @@ refseq <-
   slice_max(1) |> 
   ungroup() |> 
   # tidy up protein names for joining with hmmer results
-  mutate(prot_name = str_extract(title, '^.*? ') |> str_squish(),
-         prot_description = str_remove(title, '^.*? '))
+  mutate(
+    prot_name = str_extract(title, '^.*? ') |> str_squish(),
+    prot_description = str_remove(title, '^.*? '),
+    subfamily = 'other - refseq'
+         )
 
 glimpse(refseq)
 
@@ -33,14 +36,20 @@ glimpse(refseq)
 # pfam fastas
 pfam <- 
   tibble(path = Sys.glob('./data/non_int*/pfam_non_int*/*.fa')) |> 
-  mutate(group = str_remove_all(path, './.*/.*/|_full|.fa') |> str_squish())
+  mutate(
+    group = str_remove_all(path, './.*/.*/|_full|.fa') |> str_squish(),
+    subfamily = 'other - pfam: transposes, etc' 
+    )
 
 pfam
 
 # uniprot proteome fastas
 proteomes <- 
   tibble(path = Sys.glob('./data/non_int*/uniprot_*/*fasta')) |> 
-  mutate(group = str_remove_all(path, './.*/.*/|_proteome|.fasta'))
+  mutate(
+    group = str_remove_all(path, './.*/.*/|_proteome|.fasta'),
+    subfamily = 'other - eukaryote proteomes'
+    )
 
 proteomes
 
@@ -73,7 +82,7 @@ rm(pfam, proteomes)
 # join all the data; match names with integrases dataframe
 non_integrases <- 
   bind_rows(refseq, other_non_integrases) |> 
-  transmute(subfamily = 'non_integrase',
+  transmute(subfamily,
             group, 
             acc = prot_name, 
             prot_seq = seq |> str_to_upper(), 
@@ -81,6 +90,8 @@ non_integrases <-
             description = prot_description) |> 
   # remove any with ambiguous bases
   filter(!str_detect(prot_seq, 'B|J|O|U|X|Z')) |> 
+  # remove any that are very short
+  filter(!nchar(prot_seq) < 30) |> 
   # keep only unique sequences; 
   group_by(prot_seq) |> 
   sample_n(1) |> 
@@ -102,11 +113,26 @@ non_integrases |>
   count(group, sort = T) |> 
   print.data.frame()
 
+# check subfamily sizes
+non_integrases |> 
+  count(subfamily, sort = T) |> 
+  print.data.frame()
+
 # plot seq lengths
 non_integrases |> 
   mutate(length = nchar(prot_seq)) |> 
   ggplot(aes(length, fct_rev(group))) +
   geom_jitter(alpha = 0.2, size = 0.2) +
+  scale_x_log10() +
+  theme_bw() +
+  labs(y = '', x = 'length (residues)', subtitle = 'Non-integrase protein lengths')
+
+non_integrases |> 
+  mutate(length = nchar(prot_seq)) |> 
+  ggplot(aes(length, fct_rev(subfamily))) +
+  geom_jitter(alpha = 0.2, size = 0.2) +
+  scale_x_log10() +
+  theme_bw() +
   labs(y = '', x = 'length (residues)', subtitle = 'Non-integrase protein lengths')
 
 # what sequence is 6k residues long?
