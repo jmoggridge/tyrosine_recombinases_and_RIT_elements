@@ -138,6 +138,8 @@ Needed to change:
 Running `3_final_test_set.R`
  - had to change recipe to include smote and normalize 
  - changed file paths and names to make more sense
+ - Issue: system runs out of memory... 
+    - I think this was before when trying to save unnested workflows/preds/data
 
 <!--
 **1. Data acquisition, tidying, joining**

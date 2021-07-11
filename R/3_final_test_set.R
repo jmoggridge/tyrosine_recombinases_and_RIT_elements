@@ -8,12 +8,17 @@ library(glue)
 library(here)
 library(tictoc)
 library(crayon)
-
-source('./R/00_functions.R')
-models <- read_rds('data/unfitted_parsnip_model_set.rds')
+library(themis)
 options(tibble.print_max = 50)
 
-set.seed(12345)
+# data prep and modelling functions
+source('./R/00_functions.R')
+
+# unfitted model specifications
+models <- 
+  read_rds('data/unfitted_parsnip_model_set.rds') |> 
+  filter(model_type != 'decision tree')
+
 
 folder <- 'final_model_07-11'
 system(glue('mkdir ./results/{folder}/'))
@@ -160,6 +165,7 @@ rm(train, test, train_scores, test_scores, hmm_check)
 
 
 ### Modelling --------------------------------------------------------
+set.seed(12345)
 
 prepped_data <- read_rds(glue('./results/{folder}/prepped_data.rds'))
 
@@ -182,7 +188,7 @@ test_prep |> count(subfamily)
 
 # specify modelling workflow with scaling and ignore seqs and id
 recip <- 
-  recipe(subfamily ~ ., data = train) |> 
+  recipe(subfamily ~ ., data = train_prep) |> 
   update_role(acc, new_role = "id") |> 
   step_smote(subfamily, over_ratio = 0.25) |> 
   step_normalize(all_predictors())
@@ -196,7 +202,7 @@ wkfl
 
 # selected models from 2c_regular_CV.R; joining specifications
 prev_best_models <- 
-  bestbest_cv_models |> 
+  best_cv_models |> 
   filter(!is.na(model_id))  |>
   nest(reg_cv_res = c(.metric, mean, err, n_folds, values)) |> 
   left_join(models, by = c("model_type", "model_id"))
@@ -212,22 +218,32 @@ fitted_models <-
     # fit each model to the prepared training data
     fitted_wkfl = future_map(
       .x = spec, 
-      .f = ~fit_workflow(.x, wkfl, train_prep),
+      .f = ~fit_workflow(
+        spec = .x, 
+        wkfl = wkfl, 
+        train_prep = train_prep
+        ),
       .options = furrr_options(
-        packages = c("parsnip","tidymodels", "glmnet","rpart", "kknn"),
+        packages = c('parsnip','tidymodels','glmnet','rpart','kknn',
+                     'ranger', 'themis'),
         seed = NULL)
     ),
     # get predictions from each model for final test set
     preds = future_map(fitted_wkfl, ~get_predictions(.x, test_prep)),
     # evaluate prediction performance
-    final_metrics = future_map(preds, ~collect_perf_metrics(preds = .x, truth = test_prep$subfamily))
+    final_metrics = future_map(
+      .x = preds, 
+      .f = ~collect_perf_metrics(preds = .x, 
+                                 truth = test_prep$subfamily))
     ) |> 
   select(-spec)
 
 beepr::beep()
 
 
-write_rds(fitted_models, glue('./results/{folder}/fitted_models.rds'))
+write_rds(x = fitted_models,
+          file = glue('./results/{folder}/fitted_models.rds'), 
+          compress = 'gz')
 
 prev_best_models |> 
   left_join(fitted_models |> select(model_type, model_id, final_metrics))
@@ -250,13 +266,13 @@ fitted_models |>
   geom_col()
   
 
-# wtf, now model 7 is terrible?
 fitted_models |> 
   filter(model_type == 'multinom_reg_glmnet' & model_id == 7) |> 
   select(preds) |> unnest(cols = c(preds)) |> 
   bind_cols(truth = test_prep$subfamily) |> 
   my_metrics(truth = truth, estimate = .pred_class, na_rm = T)
   
+# wtf, now model 7 is terrible? This is where I found issue arising from max_entropy grid creating models randomly each time -> ids did not match up when `models` created multiple times
 
 
 ### Eval rule-based classifier ----
