@@ -136,7 +136,8 @@ Needed to change:
 #### July 11th
 
 Running `3_final_test_set.R`
-
+ - had to change recipe to include smote and normalize 
+ - changed file paths and names to make more sense
 
 <!--
 **1. Data acquisition, tidying, joining**

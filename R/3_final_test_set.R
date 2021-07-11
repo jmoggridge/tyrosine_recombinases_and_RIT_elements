@@ -88,19 +88,16 @@ hmmsearch_scores2 <- function(df, hmm_path, tag){
 
 # create a workflow for model spec with recipe, then fit to training set
 fit_workflow <- function(spec, wkfl, train_prep) {
-  wkfl |>  
-    add_model(spec) |>  
-    fit(data = train_prep)
+  wkfl |> add_model(spec) |> fit(data = train_prep)
 }
 
 # predict test data
 get_predictions <- function(fitted_wkfl, test){
-  fitted_wkfl |>
-    predict(test |> select(-subfamily))
+  fitted_wkfl |> predict(test |> select(-subfamily))
 }
 
 # specify evaluation functions
-collect_pref_metrics <- function(preds, truth, met_set){
+collect_perf_metrics <- function(preds, truth, met_set){
   preds <- preds$.pred_class
   my_metrics <- metric_set(mcc, kap, sensitivity, 
                            specificity, precision, recall, 
@@ -193,11 +190,11 @@ recip <-
 # see scaled data
 recip |> prep() |> juice() |> skimr::skim()
 
-wkfl <- workflow() |> 
-  add_recipe(recip)
+# create workflow for modelling
+wkfl <- workflow() |> add_recipe(recip)
 wkfl
 
-# selected models from 2c_regular_CV.R
+# selected models from 2c_regular_CV.R; joining specifications
 prev_best_models <- 
   bestbest_cv_models |> 
   filter(!is.na(model_id))  |>
@@ -223,7 +220,7 @@ fitted_models <-
     # get predictions from each model for final test set
     preds = future_map(fitted_wkfl, ~get_predictions(.x, test_prep)),
     # evaluate prediction performance
-    final_metrics = future_map(preds, ~collect_pref_metrics(preds = .x, truth = test_prep$subfamily))
+    final_metrics = future_map(preds, ~collect_perf_metrics(preds = .x, truth = test_prep$subfamily))
     ) |> 
   select(-spec)
 
@@ -232,10 +229,10 @@ beepr::beep()
 
 write_rds(fitted_models, glue('./results/{folder}/fitted_models.rds'))
 
-best_models |> 
+prev_best_models |> 
   left_join(fitted_models |> select(model_type, model_id, final_metrics))
 
-# best_models |> 
+# prev_best_models |> 
 #   unnest(reg_cv_res)
 # models |>
 #   filter(model_type == 'multinom_reg_glmnet') |>
@@ -264,7 +261,7 @@ fitted_models |>
 
 ### Eval rule-based classifier ----
 
-prepped_data <- read_rds(glue('./results/{folder}/final_prep.rds'))
+prepped_data <- read_rds(glue('./results/{folder}/prepped_data.rds'))
 
 thresh_res <- prepped_data |>
   mutate(threshold_res = map2(train_prep, test_prep, ~eval_threshold_classififer(.x, .y))) |>
@@ -281,4 +278,6 @@ final_validation_test_results <-
 
 write_rds(final_validation_test_results,
           './results/{folder}/final_validation_results.rds')
+
+## Finished
 
