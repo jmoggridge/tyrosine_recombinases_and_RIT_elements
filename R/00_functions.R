@@ -13,30 +13,16 @@ library(tictoc)
 library(crayon)
 options(parallelly.makeNodePSOCK.setup_strategy = "sequential")
 
-## TODO figure out issues with *downsample*
-
-## TESTING
-# out_path <-"/Users/jasonmoggridge/Documents/binf6999_thesis/tyrosine_recombinases_and_RIT_elements/unit_test"
-# # unit test object ##
-# nest_cv <- read_rds('./unit_test/nestcv.rds')
-# resamples <- nest_cv$inner_resamples[[9]]
-# 
-# split_obj <- resamples$inner_splits[[1]]
-# split_id <- resamples$inner_id[[1]]
-
-# prepared data
 
 ## Directiories -----
 
 # create directory structure for classifier files (alignments, hmms, results for each resample)
-make_dirs <- function(run_name) {
-  run_name <- glue(here::here(), '/', run_name)
-  system(glue('mkdir {run_name}'))
+make_dirs <- function(out_path) {
   status <- list('align','hmm', 'hmmsearch', 'results') |> 
-    map(~glue(run_name, '/', .x)) |>
+    map(~glue(out_path, '/', .x)) |>
     map(~system(glue('mkdir ', .x)))
   if (any(status == 1)) 
-    cat(red('Directory already exists for given run_name'))
+    cat(red('Directory already exists for given run_name or directory couldnt be created because the path is not working\n'))
 }  
 
 
@@ -472,3 +458,19 @@ plt_hmmscores_boxplots <- function(df, title){
 # plt_hmmscores_boxplots(testing, 'Testing fold')  
 
 
+
+
+
+
+
+
+## TESTING ----
+# out_path <-"/Users/jasonmoggridge/Documents/binf6999_thesis/tyrosine_recombinases_and_RIT_elements/unit_test"
+# # unit test object ##
+# nest_cv <- read_rds('./unit_test/nestcv.rds')
+# resamples <- nest_cv$inner_resamples[[9]]
+# 
+# split_obj <- resamples$inner_splits[[1]]
+# split_id <- resamples$inner_id[[1]]
+
+# prepared data

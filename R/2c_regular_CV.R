@@ -1,3 +1,8 @@
+## 2c Regular cross-validation:  3-fold CV, repeated 3 times.
+
+
+## Setup ----
+
 library(tidyverse)
 library(tidymodels)
 library(Biostrings)
@@ -12,22 +17,25 @@ library(beepr)
 
 # data prep and modelling functions
 source('./R/00_functions.R')
-# set of models with grid search
-source('./R/00_get_model_specs.R')
 
 # make directories for prep files
-out_path <- '3x3_regular_CV_07-02'
+run_name <- 'testing_regular_cv'
+out_path <- glue('{here::here()}/results/{run_name}')
+out_path
+system(glue('mkdir {out_path}'))
 make_dirs(out_path)
-system(glue('mkdir ./results/{out_path}/'))
 
-# same object forom 2b_nested_cv.R
-nest_cv <- read_rds('./results/nest_cv_06-30/3x3-fold_06-30_nest_cv_results.rds')
+# set of models with grid search
+models <- read_rds('./data/unfitted_parsnip_model_set.rds')
+models
 
-outer_cv <- nest_cv |> 
+## Data -----
+
+# Outer CV of the same object with splits that was used for nested cv in 2b_nested_cv.R
+outer_cv <- 
+  read_rds('./results/nested_cv_splits.rds') |> 
   select(outer_id, outer_splits)
 outer_cv
-rm(nest_cv)
-
 
 ## Do CV -----
 
@@ -100,7 +108,6 @@ cv_res <- bind_rows(cv_res, thresh_res)
 write_rds(cv_res, glue('./results/{out_path}/cv_res.rds'), compress = 'gz')
 
 ## select which model is best... check plots first too
-
 
 best_mods <- cv_res |> 
   group_by(model_type) |> 
