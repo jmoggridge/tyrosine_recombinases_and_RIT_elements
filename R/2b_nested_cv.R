@@ -30,22 +30,12 @@ source('./R/00_functions.R')
 # unfitted model specifications
 models <- read_rds('./data/unfitted_parsnip_model_set.rds')
 
-set.seed(123)
-
 ## Training data
 # do data splitting first './R/2a_data_splitting.R'
 train <- read_rds('./data/classif_train_set.rds')
 
 # train |> ggplot(aes(fct_rev(subfamily))) + geom_bar() + coord_flip()
 
-# # TODO remove downsampling
-# train <- train |> 
-#   group_by(subfamily) |> 
-#   slice_sample(n = 300, replace = F) |> 
-#   ungroup()
-#   
-#   
-  
   
 ## Directories --------------------------------------------------------
 
@@ -63,6 +53,7 @@ list('align','hmm', 'hmmsearch', 'results') |>
 
 ## Setup Nested CV --------------------------------------------------
 
+set.seed(123)
 nest_cv <- 
   nested_cv(
     train, 
@@ -83,11 +74,8 @@ nest_cv <-
   ) |> 
   nest(inner_resamples = c(inner_id, inner_splits))
 
-nest_cv |> unnest(inner_resamples) |> pull(inner_splits) |> pluck(1) |> analysis() |> 
-  count(subfamily) |> pull(n) |> maxmin(
-  )
-maxmin <- function(x)  max(x)/min(x)
-
+print(nest_cv)
+write_rds(nest_cv, './results/nested_cv_splits.rds')
 rm(train)
 
 # MAIN / TRAIN & TEST ----------------------------------------
