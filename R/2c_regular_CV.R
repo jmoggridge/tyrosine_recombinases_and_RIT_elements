@@ -19,7 +19,7 @@ library(beepr)
 source('./R/00_functions.R')
 
 # make directories for prep files
-run_name <- 'testing_regular_cv'
+run_name <- 'regular_cv_07-10'
 out_path <- glue('{here::here()}/results/{run_name}')
 out_path
 system(glue('mkdir {out_path}'))
@@ -117,6 +117,8 @@ best_mods <- cv_res |>
 best_mods
 write_rds(best_mods, glue('{out_path}/best_models.rds'))
 
+
+## TODO t-test
 # 
 # ## t-test for best models?
 # t_test_df <- 
