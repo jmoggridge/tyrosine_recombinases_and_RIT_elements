@@ -52,6 +52,7 @@ toc()
 write_rds(cv_prep, glue('./results/{out_path}/cv_prep.rds'), compress = 'gz')
 
 cv_prep <- read_rds(glue('./results/{out_path}/cv_prep.rds'))
+
 # unnest train and test columns
 cv_prep <- cv_prep |> 
   unnest(prep) |> 

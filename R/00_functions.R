@@ -1,4 +1,4 @@
-### Functions for nested_cv
+### Functions for nested_cv, regular_cv, and final_validation scripts
 
 ### Libraries ---------------------------------------------------------------
 library(tidyverse)
@@ -143,7 +143,6 @@ read_hmmsearch <- function(path){
     distinct() |> 
     # name the values column after the subfamily hmm
     pivot_wider(names_from = hmm_name, values_from = best_dom_score) 
-  ## TODO make sure unnest wasnt doing anything here
 }
 
 # reads all hmmsearch tables in glob and joins data
@@ -160,12 +159,12 @@ join_hmmsearches <- function(df, files){
 }
 
 
-#' prep_data:
+#' prep_data prior for modelling:
 #' wrapper function to do alignments, hmmbuilds, hmmsearches, & parse searches
 #' does one train / test split 
 #' calls prep_domains_df, build_alignments_library, build_hmm_library,
 #' hmmsearch_scores, and join_hmmsearches
-#' TODO outpath as argument - change nestcv scipt**
+
 prep_data <- function(split_obj, split_id, out_path){
   
   cat('\n', green$bold(glue("Preparing split_id: {split_id}")))
