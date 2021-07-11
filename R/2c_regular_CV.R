@@ -110,25 +110,37 @@ write_rds(cv_res, glue('{out_path}/cv_res.rds'), compress = 'gz')
 ## select which model is best... check plots first too
 
 best_mods <- cv_res |> 
+  filter(!str_detect(model_type, 'decision')) |> 
   group_by(model_type) |> 
   filter(.metric == 'mcc') |> 
-  filter(mean - err == max(mean - err, na.rm = T)) 
-  
-write_rds(top_dogs, '{out_path}/best_models.rds')
+  filter(mean - err == max(mean - err, na.rm = T))
+best_mods
+write_rds(best_mods, glue('{out_path}/best_models.rds'))
 
-
-## t-test for best models?
-t_test_df <- 
-  best_mods |> 
-  ungroup() |> 
-  select(model_type, model_id, values) |> 
-  transmute(model = paste0(model_type, model_id),
-            values)
-
-t_test_df |>
-  set_names(c('model_1', 'values_1')) |> 
-  crossing(t_test_df |> set_names(c('model_2', 'values_2')), 
-           .name_repair = 'universal') |>  
-  filter(model_1 != model_2) |> 
-  mutate(comparision = paste0(sort(c(model_1, model_2))))
-
+# 
+# ## t-test for best models?
+# t_test_df <- 
+#   best_mods |> 
+#   ungroup() |> 
+#   select(model_type, model_id, values) |> 
+#   transmute(model = glue('{model_type} {model_id}'),
+#             values)
+# 
+#  ttests <- t_test_df |>
+#   crossing(t_test_df |> 
+#              set_names(c('model_2', 'values_2')),
+#            .name_repair = 'minimal') |> 
+#   filter(model != model_2)
+# 
+#  ttests |> unnest(c(values, values_2)) |> print(n=500)
+#  
+# ttests |> 
+#   mutate(
+#     test = map2(.x = values, .y = values_2, .f = ~t.test(.x, .y, paired = T)),
+#     pval = map_dbl(test, 'p.value')
+#     ) |> 
+#   arrange(pval)
+# 
+# 
+# t.test(rep(1, 10), rep(1, 10), paired=T)  
+# 
