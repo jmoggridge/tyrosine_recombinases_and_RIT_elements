@@ -105,7 +105,7 @@ Various scripts for obtaining & tidying mobile genetic element data to search: I
 Restarted nested CV - runs ~40 hrs.
  - Created a new set of model specifications, including larger search grid for glmnet and rpart models, added random forest models with 5 mtry parameters.
  - Implemented new recipe with SMOTE and normalization (within CV)
- - Executed nested 3-fold CV, 3-repeats. Results look awesome again (too awesome).
+ - Executed nested 3-fold CV, 3-repeats. 
  - Had to fix many bugs in functions arising from adding SMOTE and different recipes...
 
 #### June 10th
@@ -116,9 +116,12 @@ Downloading the sequences is more tricky. Keep getting HTTP errors. Probably sen
 
 #### June 11th
 
-Nested CV finished - -saved ./results/07-08
+Nested CV finished - -saved ./results/07-08. Results look awesome again (too awesome).
 
 Still trying to rewrite script to retrieve NCBI data linked to cdd specific proteins...
+ - try to use webhistories
+ - try to chunk requests into smaller than 50 for protein,
+ - try to chunk into smaller than 10 for nucleotides...
 
 Restarting regular CV with new model set. 
 Needed to change:
