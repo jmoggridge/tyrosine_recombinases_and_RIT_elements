@@ -12,45 +12,121 @@ Master's thesis work on tyrosine recombinases and recombinase-in-trio elements.
 
 #### Datasets
 
-- **SMART**: 
-  - Has domain sequences and protein sequences for 20 integrase subfamilies.
-  - Total number of sequences is ~120k, but with large class imbalance: Xer has ~34k members and Int_Des has only 62. 
-  - Problematically, some sequences are annotated with >1 subfamily, for the same portion of sequence (ambiguous classifications).
-  - Any sequence belonging to more than one subfamily was removed. 
-  - After filtering, 114,848 sequences remain.  
-\
+-   **SMART**:
 
-- **Non-integrase**:
-  - Combination of:
-    - various searches of Refseq for recombinases and nucleases, 
-    - some Pfam families of transposases (domain sequences)
-    - Uniprot proteomes of yeast, arabidopsis, and human proteomes. 
-  - Large groups downsampled to 2000 sequences. 
-  - A total of 39,691 sequences were retained after downsampling.
+  -   Has domain sequences and protein sequences for 20 integrase subfamilies.
+
+  -   Total number of sequences is \~120k, but with large class imbalance, like Xer has \~34k members and Int_Des has only 62.
+
+  -   Problematically, some sequences are annotated with \>1 subfamily, for the same portion of sequence (ambiguous classifications). I removed these double-labelled sequences, entirely.
+
+  -   After filtering, 114,848 sequences remain.  
+
+  -   The dataset for modelling was downsampled by subfamily to a max of 10k, with the removed sequences retained for classifier validation.
+
+*show bar chart here*
+
+-   **Non-integrase**:
+
+  -   Combination of:
+
+      -   From various searches of Refseq for recombinases and nucleases,
+      -   Several Pfam families of transposases (domain sequences only)
+      -   Uniprot proteomes of yeast, Arabidopsis, and human proteomes.
+
+  -   Large groups down-sampled to 2000 sequences.
+
+  -   A total of 39,691 sequences were retained after downsampling.
 
 ------------------------------------------------------------------------
 
 #### Workflow
 
-- [x]  Obtain SMART reference data & other non-integrase sequences as negative examples.
-- [x] Create hold-out set for final testing.
-- [x] Align SMART domain sequences (for assessment and final models).
-- [x] Build HMMs from training data.
-- [x] Score 20 integrase HMM alignments for each sequence.   
-- [x] Gather HMM scores (& generate k-mer features).
-- [ ] Get baseline accuracy from HMM scoring approach.
-- [ ] Tune & assess classifiers. Possibly: attempt stacking classifiers.
+-   [x] Obtain SMART reference data & other non-integrase sequences as negative examples.
+-   [x] Create hold-out set for final testing.
+-   [x] Align SMART domain sequences (for assessment and final models).
+-   [x] Build HMMs from training data.
+-   [x] Score 20 integrase HMM alignments for each sequence.
+-   [x] Gather HMM scores (& generate k-mer features).
+-   [ ] Get baseline accuracy from HMM scoring approach.
+-   [ ] Tune & assess classifiers. Possibly: attempt stacking classifiers.
 
-*Then...*  Apply classifier to MGE proteins and proteomes from    
+*Then...* Apply classifier to MGE proteins and proteomes from  
 assembled genomes (objective 2).
-  
+
 ------------------------------------------------------------------------
-  
 
 ### Scripts
 
 All scripts are in the project directory `./code/`
 
+------------------------------------------------------------------------
+
+## Objective 2
+
+**Identify integrases in assembled genomes** and mobile element databases and **classify by subfamily**. For **RitA, RitB, and RitC** domains, map their genomic coordinates and check whether these constitute a **RIT element**.
+
+#### Search MGE databases
+
+#### Search assembled genomes
+
+#### Search for flanking repeats
+
+-   Extract flanking genomic sequence
+
+-   Algorithm for identifying inverted repeat:
+
+    -   subsequence's reverse complement is the same as the reverse of the subsequence, for perfect base-pairing
+
+------------------------------------------------------------------------
+
+### Other work done so far
+
+Various scripts for obtaining & tidying mobile genetic element data to search: Iceberg, Aclame, pVOG,
+
+<!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
+
+
+
+
+------------------------------------------------------------------------
+
+## New workflow
+
+-   combine data and split data for CV
+-   setup pipeline to align, create hmms for training data
+-   score train and test sequences for each fold
+-   do training on scored train sequences & evaluation on scored test sequences
+
+\*\*
+
+#### June 9th
+
+Restarted nested CV - runs ~40 hrs.
+ - Created a new set of model specifications, including larger search grid for glmnet and rpart models, added random forest models with 5 mtry parameters.
+ - Implemented new recipe with SMOTE and normalization (within CV)
+ - Executed nested 3-fold CV, 3-repeats. Results look awesome again (too awesome).
+
+#### June 10th
+
+Created script that gets all ids for CDD families Rit- A, B, C. Gets cdd ids, gets protein ids linked to each cdd id. Then gets nuccore ids linked to each protein id. Then gets taxonomy id linked to each nuccore id.
+
+Downloading the sequences is more tricky. Keep getting HTTP errors. Probably sending too many requests - \> maybe use post request then set get request using the webhistory token. Alternately add sleep between blocks of x ids sent in batches.
+
+#### June 11th
+
+Nested CV finished - -saved ./results/07-08
+
+Still trying to rewrite script to retrieve NCBI data linked to cdd specific proteins...
+
+Restarting regular CV with new model set. 
+Needed to change:
+ - models
+ - {out_path} issues: needs to be complete path to output dirs for aligns, hmms....
+ 
+
+
+<!--
 **1. Data acquisition, tidying, joining**
 
 - [x] `1a_tidy_smart_data.R`
@@ -88,7 +164,6 @@ All scripts are in the project directory `./code/`
 ------------------------------------------------------------------------
 
 **3. Consolidate data, score sequences, join scores, prepare for classifier**
-
 - [x] `3a_join_data.R`
   - Splits test/train from non_integrase data.
   - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as *train_df.rds* and *test_df.rds*.
@@ -106,11 +181,10 @@ All scripts are in the project directory `./code/`
   - Add kmer counts for each sequence
   - Add longer Dayhoff alphabet kmers? (5mers = 7,700 cols)
   
-
+  
 ------------------------------------------------------------------------
 
 **4. Classification: model selection and assessment**
-
 - `4a_eda.R` (to do)
   - [x] plot sequence lengths
   - [ ] plot sequence composition profiles
@@ -122,63 +196,9 @@ All scripts are in the project directory `./code/`
   - [ ] Model tuning CV
   - [ ] Model stacking CV
   - [ ] Final model selection and training
-  
-  <!-- TODO Continue code documentation here. -->
-  
+ 
+  -->
+
+<!-- TODO Continue code documentation here. -->
 
 <!-- - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it.... -->
-
-------------------------------------------------------------------------
-
- 
-## Objective 2
-
-**Identify integrases in assembled genomes** and mobile element databases and **classify by subfamily**. For **RitA, RitB, and RitC** domains, map their genomic coordinates and check whether these constitute a **RIT element**.
-
-#### Search MGE databases
-
-#### Search assembled genomes
-
-#### Search for flanking repeats
-
-- Extract flanking genomic sequence
-- Algorithm for identifying inverted repeat:
-    - subsequence's reverse complement is the same as the reverse of the subsequence, for perfect base-pairing
-
-
-
----
-
-
-### Other work done so far
-
-Various scripts for obtaining & tidying mobile genetic element data to search: Iceberg, Aclame, pVOG, 
-
-<!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
-
-
-
-\ 
-    
-    
-    
-----
-
-
-New questions:
-
-- what to do about ambiguous characters in sequences?? one sequence contains an XXXXX segment? **need to remove these seqs from kmer counting**? kmer::kcount doesn't work with them ...
-
-
------ 
-
-## New workflow
-
-- combine data and split data for CV
-- setup pipeline to align, create hmms for training data
-- score train and test sequences for each fold
-- do training on scored train sequences & evaluation on scored test sequences
-
-
-
-

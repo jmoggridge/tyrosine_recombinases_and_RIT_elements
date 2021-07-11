@@ -103,8 +103,9 @@ plot_mcc_by_k <- function(pooled, folds) {
   p
 }
 
-plot_mcc_by_k(knn_pooled_scores, knn_folds_scores)
 
+knn_plot <- plot_mcc_by_k(knn_pooled_scores, knn_folds_scores)
+knn_plot
 
 
 ## glmnet scores
@@ -119,7 +120,8 @@ glmnet_pooled_scores <-
   mutate(fold = as_factor(row_number())) |> 
   ungroup()
 
-glmnet_pooled_scores |> 
+glmnet_plot <- 
+  glmnet_pooled_scores |> 
   group_by(mixture, penalty) |> 
   summarize(
     mean = mean(values, na.rm=T), 
@@ -134,9 +136,11 @@ glmnet_pooled_scores |>
   scale_fill_viridis_c() +
   scale_x_log10() +
   theme_bw() +
-  labs(title = 'Elastic net classifier, maximum entropy grid search',
-       subtitle = '',
-       fill = 'mean MCC')
+  labs(title = 'MCC as a function of penalty and mixture parameters for elastic net',
+       subtitle = 'colors represent means, points represent sd',
+       fill = 'MCC mean', size = 'MCC sd')
+
+glmnet_plot
 
 # final_summary |> pull(model_type) |> unique()
 
@@ -149,7 +153,7 @@ df <-
          max = map_dbl(values, max))
 
 # performance metrics across outer folds with models tuned by the inner cv
-df  |> 
+all_metrics_plot <- df  |> 
   ggplot(aes(
     y = fct_rev(model_type), 
     x = mean, 
@@ -171,11 +175,49 @@ df  |>
        subtitle = 'Performance estimates for the hyperparameter tuning process') +
   theme_bw()
 
+all_metrics_plot
 
 
+rf_scores <- 
+  inner_cv_mcc |> 
+  filter(str_detect(model_type, 'forest')) |> 
+  unnest(params) |> 
+  select(-mean, -err, -n_folds) |> 
+  unnest(values) |> 
+  group_by(outer_id, mtry) |> 
+  mutate(inner_fold = as_factor(paste0(outer_id, '_', row_number()))) |> 
+  ungroup() 
+rf_scores |> print(n=100)
+
+rf_summary <- rf_scores |> 
+  group_by(mtry) |> 
+  summarize(
+    mean = mean(values, na.rm=T), 
+    error = sd(values, na.rm = T),
+    .groups = 'drop'
+  ) 
 
 
+rf_plot <- rf_scores |> 
+  ggplot(aes(x = mtry, y = values)) +
+  geom_path(aes(group = inner_fold), stat = 'smooth',
+            size = 0.5, alpha = 0.25, color = 'black') +
+  geom_jitter(height = 15e-6,  width = 0,
+              size = 0.7, alpha = 0.5, shape = 1) +
+  geom_path(data = rf_summary, 
+            aes(x = mtry, y = mean), stat = 'smooth',
+            color = 'blue1',
+            se = F, size = 1.5, alpha  = 0.7,
+            ) +
+  theme_bw() +
+  labs(x = 'mtry', y = 'MCC', 
+       title = "MCC as a function of random forest hyperparameter *mtry*",
+       subtitle = 'Gray traces and points represent the results for 81 individual inner CV folds;\nthe blue trace shows the average across all inner folds.') +
+  theme(plot.title = element_markdown())
+  
 
+
+save(knn_plot, rf_plot, glmnet_plot, all_metrics_plot, file = './results/3x3-fold-07-08-nested_cv_plots.rda')
 
 
 
