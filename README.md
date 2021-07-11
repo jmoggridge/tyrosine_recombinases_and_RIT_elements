@@ -100,7 +100,7 @@ Various scripts for obtaining & tidying mobile genetic element data to search: I
 
 \*\*
 
-#### June 9th
+#### July 8th
 
 Restarted nested CV - runs ~40 hrs.
  - Created a new set of model specifications, including larger search grid for glmnet and rpart models, added random forest models with 5 mtry parameters.
@@ -108,15 +108,17 @@ Restarted nested CV - runs ~40 hrs.
  - Executed nested 3-fold CV, 3-repeats. 
  - Had to fix many bugs in functions arising from adding SMOTE and different recipes...
 
-#### June 10th
+#### July 9th
 
 Created script that gets all ids for CDD families Rit- A, B, C. Gets cdd ids, gets protein ids linked to each cdd id. Then gets nuccore ids linked to each protein id. Then gets taxonomy id linked to each nuccore id.
 
 Downloading the sequences is more tricky. Keep getting HTTP errors. Probably sending too many requests - \> maybe use post request then set get request using the webhistory token. Alternately add sleep between blocks of x ids sent in batches.
 
-#### June 11th
+#### July 10th
 
-Nested CV finished - -saved ./results/07-08. Results look awesome again (too awesome).
+Nested CV finished today.
+ - saved `./results/07-08-3x3_nested....`. 
+ - Results look awesome again (too awesome).
 
 Still trying to rewrite script to retrieve NCBI data linked to cdd specific proteins...
  - try to use webhistories
@@ -127,7 +129,13 @@ Restarting regular CV with new model set.
 Needed to change:
  - models
  - {out_path} issues: needs to be complete path to output dirs for aligns, hmms....
+ - otherwise everything worked.
+ - Saved to `results/regular_cv_07-10/` 
+ - could do stupid t-tests. to check for significance....
  
+#### July 11th
+
+Running `3_final_test_set.R`
 
 
 <!--

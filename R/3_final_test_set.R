@@ -10,20 +10,24 @@ library(tictoc)
 library(crayon)
 
 source('./R/00_functions.R')
-source('./R/00_get_model_specs.R')
+models <- read_rds('data/unfitted_parsnip_model_set.rds')
 options(tibble.print_max = 50)
 
 set.seed(12345)
 
-folder <- 'final_model_07-05'
+folder <- 'final_model_07-11'
 system(glue('mkdir ./results/{folder}/'))
 system(glue('mkdir ./results/{folder}/align/'))
 system(glue('mkdir ./results/{folder}/hmm/'))
 system(glue('mkdir ./results/{folder}/hmmsearch/'))
+outpath <- glue('./results/{folder}')
+# split_id <- 'full_training'
 
 train <- read_rds('./data/classif_train_set.rds')
 test <- read_rds('./data/classif_test_set.rds')
 
+best_cv_models <- 
+  read_rds('./results/regular_cv_07-10/best_models.rds')
 
 ## Functions ----
 
@@ -94,10 +98,12 @@ get_predictions <- function(fitted_wkfl, test){
   fitted_wkfl |>
     predict(test |> select(-subfamily))
 }
+
 # specify evaluation functions
 collect_pref_metrics <- function(preds, truth, met_set){
   preds <- preds$.pred_class
-  my_metrics <- metric_set(mcc, kap, sensitivity, specificity, precision, recall, 
+  my_metrics <- metric_set(mcc, kap, sensitivity, 
+                           specificity, precision, recall, 
                            f_meas, ppv, npv, accuracy, bal_accuracy)
   tibble(t=truth, p=preds) |> 
     my_metrics(estimate = p, truth = t)
@@ -116,25 +122,32 @@ aligns <-
   prep_domains_df(train) |> 
   build_alignments_library2(save_path = glue('./results/{folder}/align/'))
 toc()
+beepr::beep()
 
 # train hmms
 cat(white(' Building HMMs ...\n\n'))
-hmm_check <- build_hmm_library2(msa_path =  glue('./results/{folder}/align/'),
-                                hmm_path = glue('./results/{folder}/hmm/'))
+hmm_check <- build_hmm_library2(
+  msa_path =  glue('./results/{folder}/align/'),
+  hmm_path = glue('./results/{folder}/hmm/')
+  )
 hmm_check
 hmmbuild_test <- all(hmm_check$hmmbuild == 0)
 cat('\n', white(glue('hmmbuild calls all finished without error?\n {hmmbuild_test}')))
-
+beepr::beep()
 
 # generate hmm scores for test and train (saves to outfiles)
 cat('\n', white(' Scoring sequences against HMM library...'))
 tic()
 train_scores <-
-  hmmsearch_scores2(train, hmm_path = glue('./results/{folder}/hmm/'), tag = 'train')
+  hmmsearch_scores2(train, 
+                    hmm_path = glue('./results/{folder}/hmm/'),
+                    tag = 'train')
 test_scores <-
-  hmmsearch_scores2(test, hmm_path = glue('./results/{folder}/hmm/'), tag = 'test')
+  hmmsearch_scores2(test, 
+                    hmm_path = glue('./results/{folder}/hmm/'),
+                    tag = 'test')
 toc()
-
+beepr::beep()
 
 # parse hmmscores and add to data frame
 train_prep <- train |> join_hmmsearches(files = train_scores$out_path)
@@ -145,27 +158,37 @@ prepped_data <- tibble(train_prep = list(train_prep),
                        test_prep = list(test_prep))
 prepped_data
 
-write_rds(prepped_data, glue('./results/{folder}/final_prep.rds'))
-
+write_rds(prepped_data, glue('./results/{folder}/prepped_data.rds'))
 rm(train, test, train_scores, test_scores, hmm_check)
 
 
 ### Modelling --------------------------------------------------------
 
-prepped_data <- read_rds(glue('./results/{folder}/final_prep.rds'))
+prepped_data <- read_rds(glue('./results/{folder}/prepped_data.rds'))
 
-train_prep <- prepped_data$train_prep[[1]]
-test_prep <- prepped_data$test_prep[[1]]
+train_prep <- prepped_data$train_prep[[1]] |> 
+  select(-contains('seq'))
+
+test_prep <- prepped_data$test_prep[[1]] |> 
+  select(-contains('seq'))
+
 rm(prepped_data)
 
 train_prep |> count(subfamily)
 test_prep |> count(subfamily)
 
+# TODO change recipe
+# recip <- 
+#   recipe(subfamily ~ ., data = train_prep) |> 
+#   update_role(c('acc', contains('seq')), new_role = "id") |> 
+#   step_(all_predictors())
+
 # specify modelling workflow with scaling and ignore seqs and id
 recip <- 
-  recipe(subfamily ~ ., data = train_prep) |> 
-  update_role(c('acc', contains('seq')), new_role = "id") |> 
-  step_scale(all_predictors())
+  recipe(subfamily ~ ., data = train) |> 
+  update_role(acc, new_role = "id") |> 
+  step_smote(subfamily, over_ratio = 0.25) |> 
+  step_normalize(all_predictors())
 
 # see scaled data
 recip |> prep() |> juice() |> skimr::skim()
@@ -175,8 +198,8 @@ wkfl <- workflow() |>
 wkfl
 
 # selected models from 2c_regular_CV.R
-best_models <- 
-  read_rds('./results/3x3_regular_CV_07-02/best_models.rds') |> 
+prev_best_models <- 
+  bestbest_cv_models |> 
   filter(!is.na(model_id))  |>
   nest(reg_cv_res = c(.metric, mean, err, n_folds, values)) |> 
   left_join(models, by = c("model_type", "model_id"))
@@ -257,5 +280,5 @@ final_validation_test_results <-
   bind_rows(thresh_res |> nest(final_metrics = c('.metric', '.estimator', '.estimate')))
 
 write_rds(final_validation_test_results,
-          './results/final_validation_results_07-05.rds')
+          './results/{folder}/final_validation_results.rds')
 
