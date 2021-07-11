@@ -46,18 +46,17 @@ cv_prep <- outer_cv |>
   mutate(prep = map2(.x = outer_splits, 
                      .y = outer_id, 
                      .f = ~prep_data(.x, .y, out_path = out_path))
-         )
-beepr::beep()
-toc()
-write_rds(cv_prep, glue('./results/{out_path}/cv_prep.rds'), compress = 'gz')
-
-cv_prep <- read_rds(glue('./results/{out_path}/cv_prep.rds'))
-
-# unnest train and test columns
-cv_prep <- cv_prep |> 
+         ) |> 
   unnest(prep) |> 
   select(-outer_splits)
 
+# unnest train and test columns
+beepr::beep()
+toc()
+
+write_rds(cv_prep, glue('{out_path}/cv_prep.rds'), compress = 'gz')
+
+cv_prep <- read_rds(glue('{out_path}/cv_prep.rds'))
 cv_prep
 
 # evaluate model set on each fold
@@ -70,7 +69,7 @@ beepr::beep()
 
 fold_res
 rm(cv_prep)
-write_rds(fold_res, glue('./results/{out_path}/fold_res.rds'), compress = 'gz')
+write_rds(fold_res, glue('{out_path}/fold_res.rds'), compress = 'gz')
 
 
 # summarize metrics across folds for ML models
@@ -106,7 +105,7 @@ thresh_res <- fold_res |>
 
 cv_res <- bind_rows(cv_res, thresh_res)
 
-write_rds(cv_res, glue('./results/{out_path}/cv_res.rds'), compress = 'gz')
+write_rds(cv_res, glue('{out_path}/cv_res.rds'), compress = 'gz')
 
 ## select which model is best... check plots first too
 
@@ -115,7 +114,7 @@ best_mods <- cv_res |>
   filter(.metric == 'mcc') |> 
   filter(mean - err == max(mean - err, na.rm = T)) 
   
-write_rds(top_dogs, './results/3x3_regular_CV_07-02/best_models.rds')
+write_rds(top_dogs, '{out_path}/best_models.rds')
 
 
 ## t-test for best models?
@@ -132,3 +131,4 @@ t_test_df |>
            .name_repair = 'universal') |>  
   filter(model_1 != model_2) |> 
   mutate(comparision = paste0(sort(c(model_1, model_2))))
+
