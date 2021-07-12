@@ -448,89 +448,113 @@ rm(id_data)
 
 dir.create('./data/CDD/nuc_data')
 
-## for 16 individual sets....
-nuc_data1 <- nuc_ids |> slice(1:1000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data1, './data/CDD/nuc_data/1.rds', compress = 'gz')
-beep()
-rm(nuc_data1)
 
-nuc_data2 <- nuc_ids |> slice(1001:2000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data2, './data/CDD/nuc_data/2.rds')
-beep()
-rm(nuc_data2)
+### better way to create files
+fetch_nuc_datasets <- function(data, set_number) {
+  message(glue('set number: {set_number}'))
+  data |> 
+    fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+    parse_nuc_data() |> 
+    write_rds(nuc_data12, glue('./data/CDD/nuc_data/{set_number}.rds'))
+  return('./data/CDD/nuc_data/{set_number}.rds')
+}
 
-nuc_data3 <- nuc_ids |> slice(2001:3000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data3, './data/CDD/nuc_data/3.rds')
-beep()
-rm(nuc_data3)
-
-nuc_data4 <- nuc_ids |> slice(3001:4000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100)  |> 
-  parse_nuc_data()
-write_rds(nuc_data4, './data/CDD/nuc_data/4.rds')
-beep()
-rm(nuc_data4)
-
-nuc_data5 <- nuc_ids |> slice(4001:5000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data5, './data/CDD/nuc_data/5.rds')
-beep()
-rm(nuc_data5)
-
-nuc_data6 <- nuc_ids |> slice(5001:6000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data6, './data/CDD/nuc_data/6.rds')
-beep()
-rm(nuc_data6)
-
-nuc_data7 <- nuc_ids |> slice(6001:7000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data7, './data/CDD/nuc_data/7.rds')
-rm(nuc_data7)
-beep()
-
-nuc_data8 <- nuc_ids |> slice(7001:8000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data8, './data/CDD/nuc_data/8.rds')
-beep()
-rm(nuc_data8)
-
-nuc_data9 <- nuc_ids |> slice(8001:9000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data9, './data/CDD/nuc_data/9.rds')
-rm(nuc_data9)
-beep()
-
-nuc_data10 <- nuc_ids |> slice(9001:10000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data10, './data/CDD/nuc_data/10.rds')
-rm(nuc_data10)
-beep()
-
-nuc_data11 <- nuc_ids |> slice(10001:11000) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-write_rds(nuc_data11, './data/CDD/nuc_data/11.rds')
-rm(nuc_data11)
-beep()
-
-nuc_data12 <- nuc_ids |> slice(11001:nrow(nuc_ids)) |> 
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
-  parse_nuc_data()
-beep()
-write_rds(nuc_data12, './data/CDD/nuc_data/12.rds')
-rm(nuc_data12)
+n <- nrow(nuc_ids)
+nuc_sets <- 
+  tibble(
+    id_set = map(seq(1, n, 1000), ~nuc_ids[.x: min(.x + 1000, n),])
+    ) |> 
+  mutate(set_number = row_number(),
+         filepath = map2(
+           .x = id_set, 
+           .y = set_number,
+           .f = ~fetch_nuc_datasets(data = .x, set_number = .y)
+           )
+         )
 
 
+# 
+# ## for 16 individual sets....
+# nuc_data1 <- nuc_ids |> slice(1:1000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data1, './data/CDD/nuc_data/1.rds', compress = 'gz')
+# beep()
+# rm(nuc_data1)
+# 
+# nuc_data2 <- nuc_ids |> slice(1001:2000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data2, './data/CDD/nuc_data/2.rds')
+# beep()
+# rm(nuc_data2)
+# 
+# nuc_data3 <- nuc_ids |> slice(2001:3000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data3, './data/CDD/nuc_data/3.rds')
+# beep()
+# rm(nuc_data3)
+# 
+# nuc_data4 <- nuc_ids |> slice(3001:4000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100)  |> 
+#   parse_nuc_data()
+# write_rds(nuc_data4, './data/CDD/nuc_data/4.rds')
+# beep()
+# rm(nuc_data4)
+# 
+# nuc_data5 <- nuc_ids |> slice(4001:5000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data5, './data/CDD/nuc_data/5.rds')
+# beep()
+# rm(nuc_data5)
+# 
+# nuc_data6 <- nuc_ids |> slice(5001:6000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data6, './data/CDD/nuc_data/6.rds')
+# beep()
+# rm(nuc_data6)
+# 
+# nuc_data7 <- nuc_ids |> slice(6001:7000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data7, './data/CDD/nuc_data/7.rds')
+# rm(nuc_data7)
+# beep()
+# 
+# nuc_data8 <- nuc_ids |> slice(7001:8000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data8, './data/CDD/nuc_data/8.rds')
+# beep()
+# rm(nuc_data8)
+# 
+# nuc_data9 <- nuc_ids |> slice(8001:9000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data9, './data/CDD/nuc_data/9.rds')
+# rm(nuc_data9)
+# beep()
+# 
+# nuc_data10 <- nuc_ids |> slice(9001:10000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data10, './data/CDD/nuc_data/10.rds')
+# rm(nuc_data10)
+# beep()
+# 
+# nuc_data11 <- nuc_ids |> slice(10001:11000) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# write_rds(nuc_data11, './data/CDD/nuc_data/11.rds')
+# rm(nuc_data11)
+# beep()
+# 
+# nuc_data12 <- nuc_ids |> slice(11001:nrow(nuc_ids)) |> 
+#   fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+#   parse_nuc_data()
+# beep()
+# write_rds(nuc_data12, './data/CDD/nuc_data/12.rds')
+# rm(nuc_data12)
