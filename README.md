@@ -131,7 +131,7 @@ Needed to change:
  - {out_path} issues: needs to be complete path to output dirs for aligns, hmms....
  - otherwise everything worked.
  - Saved to `results/regular_cv_07-10/` 
- - could do stupid t-tests. to check for significance....
+ - *could* do stupid t-tests. to check for significance....
  
 #### July 11th
 
@@ -140,6 +140,8 @@ Running `3_final_test_set.R`
  - changed file paths and names to make more sense
  - Issue: system runs out of memory... 
     - I think this was before when trying to save unnested workflows/preds/data
+
+
 
 <!--
 **1. Data acquisition, tidying, joining**
