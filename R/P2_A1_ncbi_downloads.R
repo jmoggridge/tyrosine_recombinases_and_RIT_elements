@@ -1,7 +1,9 @@
 library(tidyverse)
 library(rentrez)
+library(glue)
 library(progress)
 library(tictoc)
+library(beepr)
 
 set_entrez_key('889fdb9786a14019a0a1257196a09ba4ba08')
 Sys.getenv('ENTREZ_KEY')
@@ -22,6 +24,16 @@ fasta_to_AAss <- function(x){
   temp <- tempfile()
   write_file(x, temp)
   Biostrings::readAAStringSet(temp)
+}
+
+parse_nuc_data <- function(nuc_data){
+  nuc_data |> 
+    mutate(
+      nuc_ss = map(get, fasta_to_DNAss),
+      nuc_name = map(nuc_ss, names),
+      nuc_seq = map(nuc_ss, paste)
+    ) |> 
+    select(id, nuc_name, nuc_seq)
 }
 
 ## Link IDS across database ----------------------------------
@@ -46,7 +58,7 @@ cdd_search <- function(data, term){
 }
 
 # for a set of CDD ids, returns the linked protein ids.
-cdd_link_protein <- function(data, id) {
+link_cdd_protein <- function(data, id) {
   data |>
     mutate(link = map(
       .x = {{id}},
@@ -62,39 +74,75 @@ cdd_link_protein <- function(data, id) {
 }
 
 # linking protein to nucleotide data
-protein_link_nuccore <- function(data, id){
-  data |>
-    unnest({{id}}) |>
+link_protein_nuccore <- function(data, id){
+  df <- data |>
     # can get db elinks from proteins to  nuccore records
     mutate(link = map(
       .x = {{id}},
-      .f = ~ entrez_link(
-        id = .x,
-        dbfrom = "protein",
-        db = "nuccore"
-      )
+      .f = ~ {
+        entrez_link(
+          id = .x,
+          dbfrom = "protein",
+          db = "nuccore"
+        )
+      }
     ),
-    nuc_id = map(link, ~.x$links$protein_nuccore)) |>
+    nuc_id = map(link, ~.x$links$protein_nuccore)
+    ) |>
     # drop any protein records without a linked nucleotide
     mutate(drop = map_lgl(nuc_id, ~{!is.null(.x)})) |> 
     filter(drop == T) |> 
     select(-c(drop, link))
+  return(df)
 }
+
+link_protein_nuccore_large <- function(data, id, chunk_size=100){
+  prot_ids <- data |>
+    select({{prot_id}}) |>
+    distinct()
+  
+  n <- nrow(prot_ids)
+  pb <- progress_bar$new(
+    format = "  downloading [:bar] :percent eta: :eta",
+    total = n/100, clear = FALSE, width= 60
+  )
+  
+  # split prot ids into in chunks
+  prot_nuc_ids <-
+    tibble(
+      df = map(
+        .x = seq(1, n, chunk_size),
+        .f = ~prot_ids |> slice(.x:min(.x + chunk_size, n))
+        )
+    ) |> 
+    # get nuc ids
+    mutate(
+      nuc_id = map(df, ~{
+        pb$tick()
+        link_protein_nuccore(.x, id = prot_id)
+      }))
+  return(prot_nuc_ids)
+}
+
 
 # get linked taxonomy records for each nucleotide
 # input tibble with a column of ids
-nuccore_link_taxonomy <- function(data, id){
-  taxonomy_ids <- data |>
+link_nuccore_taxonomy <- function(data, id){
+  df <- data |>
     select({{id}}) |>
-    distinct() |>
+    distinct() 
+  pb <- progress_bar$new(total = nrow(df))
+  df |>
     mutate(
       tax_link = map(
         .x = {{id}},
-        .f = ~entrez_link(
-          id = .x,
-          dbfrom = 'nuccore',
-          db = 'taxonomy',
-        )
+        .f = ~{
+          pb$tick()
+          entrez_link(
+            id = .x,
+            dbfrom = 'nuccore',
+            db = 'taxonomy',
+          )}
       ),
       tax_id = map(tax_link, ~{.x$links$nuccore_taxonomy})
     ) |>
@@ -147,12 +195,13 @@ fetch_data <- function(data, id, db = 'nuccore', chunk_size = 50){
   
   message('Cleaning up')
   if (db == 'nuccore'){
-    dfs <- dfs |>
-      mutate(
-        nuc_ss = map(get, fasta_to_DNAss),
-        nuc_name = map(nuc_ss, names),
-        nuc_seq = map(nuc_ss, paste)
-      )
+    return(dfs)
+    # dfs <- dfs |>
+    #   mutate(
+    #     nuc_ss = map(get, fasta_to_DNAss),
+    #     nuc_name = map(nuc_ss, names),
+    #     nuc_seq = map(nuc_ss, paste)
+    # )
   } else if (db == 'protein'){
     dfs <- dfs |>
       mutate(
@@ -244,11 +293,11 @@ fetch_taxonomy <- function(data, id, chunk_size = 50){
       xml = map(token, ~{
         Sys.sleep(0.2)
         pb$tick()
-        entrez_fetch(db = 'taxonomy', web_history = .x)  |> 
-          enframe() |> 
-          unnest_wider(value)})
+        entrez_fetch(db = 'taxonomy', web_history = .x)
+        })
     )
   toc()
+  return(dfs)
 }
 
 
@@ -308,126 +357,180 @@ parse_taxonomy <- function(data, xml){
 
 # MAIN ------------------------------------------------------
 
-## CDD search for list of RIT terms
-terms <- tibble(term = map_chr(c('A', 'B', 'C'), ~glue('INT_Rit{.x}_C_like')))
-cdd_searches <- terms |> cdd_search(term = term)
-cdd_summary <- cdd_searches |> unnest_wider(cdd_summary)
-write_rds(cdd_summary, './data/CDD/cdd_summary.rds')
+## Get all cdd and prot ids first --------
+
+# CDD search for list of RIT terms
+# terms <- tibble(term = map_chr(c('A', 'B', 'C'), ~glue('INT_Rit{.x}_C_like')))
+# cdd_searches <- terms |> cdd_search(term = term)
+# cdd_summary <- cdd_searches |> unnest_wider(cdd_summary)
+# write_rds(cdd_summary, './data/CDD/cdd_summary.rds')
 
 # ## Link cdd records to proteins and nucleotides
-cdd_prot_ids <-
-  cdd_searches |>
-  select(-cdd_summary) |>
-  cdd_link_protein(id = cdd_id) |> 
-  unnest(prot_id)
+# cdd_prot_ids <-
+#   cdd_searches |>
+#   select(-cdd_summary) |>
+#   link_cdd_protein(id = cdd_id) |> 
+#   unnest(prot_id)
+# beep()
+# write_rds(cdd_prot_ids, './data/CDD/cdd_prot_ids.rds')
+cdd_prot_ids <- read_rds('./data/CDD/cdd_prot_ids.rds')
 
-cdd_prot_nuc_ids <- 
-  cdd_prot_ids |>
-  protein_link_nuccore(id = prot_id) |> 
-  unnest(nuc_id)
+
+## link prot to nuc -----
+# 
+# ## DIDN'T WORK
+# prot_ids <- cdd_prot_ids |> select(prot_id) |> distinct()
+# 
+# n <- nrow(cdd_prot_ids)
+# chunk_size <- 100
+# pb <- progress_bar$new(
+#   format = "  downloading [:bar] :percent eta: :eta",
+#   total = n%/%100, clear = FALSE, width= 60
+#   )
+# 
+# cdd_prot_nuc_ids <-
+#   # split prot ids into in chunks
+#   tibble(
+#     df = map(
+#       .x = seq(1, n, chunk_size),
+#       .f = ~prot_ids |> slice(.x:min(.x + chunk_size, n)))
+#   ) |> 
+#   # get nuc ids
+#   mutate(nuc_id = map(df, ~{
+#     pb$tick()
+#     link_protein_nuccore(.x, id = prot_id)
+#   }
+#   ))
+
+## DIDNT WORK 
+# cdd_prot_nuc_ids1 <- 
+#   cdd_prot_ids |>
+#   link_protein_nuccore(id = prot_id) |> 
+#   unnest(nuc_id)
+# beep()
+
+# cdd_prot_nuc_tax_ids <- 
+#   cdd_prot_nuc_ids |> 
+#   link_nuccore_taxonomy(id = nuc_id)
+
+# write_rds(cdd_prot_nuc_tax_ids, './data/CDD/dataset_ids.rds')
+
+# id_data <- cdd_prot_nuc_tax_ids
+
+## Download data -------
+## check number of records before committing to download
+
+id_data <- read_rds('./data/CDD/prot_and_nuc_ids.rds')
+
+# # get protein data and summaries
+# prot_data <- id_data |>
+#   fetch_data(id = prot_id, db = 'protein', chunk_size = 50) |> 
+#   unnest(cols = c(id, prot_name, prot_seq)) |> 
+#   transmute(prot_id = id, prot_name, prot_seq)
+# beep()
+# write_rds(prot_data, './data/CDD/prot_data.rds')
+# 
+# prot_summary <- id_data |> 
+#   fetch_summaries(id = prot_id, db = 'protein', chunk_size = 50)
+# 
+# prot_summary |> select(-token) |> unnest_wider(summary)
+# beep()
+# write_rds(prot_summary, './data/CDD/prot_summary.rds')
+# rm(prot_data, prot_summary, prot_ids)
+
+
+##
+nuc_ids <- id_data |>
+  unnest(nuc_id) |> 
+  select(nuc_id) |> 
+  distinct()
+rm(id_data)
+
+dir.create('./data/CDD/nuc_data')
+
+## for 16 individual sets....
+nuc_data1 <- nuc_ids |> slice(1:1000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data1, './data/CDD/nuc_data/1.rds', compress = 'gz')
+beep()
+rm(nuc_data1)
+
+nuc_data2 <- nuc_ids |> slice(1001:2000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data2, './data/CDD/nuc_data/2.rds')
+beep()
+rm(nuc_data2)
+
+nuc_data3 <- nuc_ids |> slice(2001:3000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data3, './data/CDD/nuc_data/3.rds')
+beep()
+rm(nuc_data3)
+
+nuc_data4 <- nuc_ids |> slice(3001:4000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100)  |> 
+  parse_nuc_data()
+write_rds(nuc_data4, './data/CDD/nuc_data/4.rds')
+beep()
+rm(nuc_data4)
+
+nuc_data5 <- nuc_ids |> slice(4001:5000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data5, './data/CDD/nuc_data/5.rds')
+beep()
+rm(nuc_data5)
+
+nuc_data6 <- nuc_ids |> slice(5001:6000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data6, './data/CDD/nuc_data/6.rds')
+beep()
+rm(nuc_data6)
+
+nuc_data7 <- nuc_ids |> slice(6001:7000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data7, './data/CDD/nuc_data/7.rds')
+rm(nuc_data7)
 beep()
 
-cdd_prot_nuc_tax_ids <- 
-  cdd_prot_nuc_ids |> 
-  nuccore_link_taxonomy(id = nuc_id)
+nuc_data8 <- nuc_ids |> slice(7001:8000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data8, './data/CDD/nuc_data/8.rds')
+beep()
+rm(nuc_data8)
 
-write_rds(cdd_prot_nuc_tax_ids, './data/CDD/dataset_ids.rds')
+nuc_data9 <- nuc_ids |> slice(8001:9000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data9, './data/CDD/nuc_data/9.rds')
+rm(nuc_data9)
+beep()
 
-id_data <- 
-## check number of records before commiting to download
+nuc_data10 <- nuc_ids |> slice(9001:10000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data10, './data/CDD/nuc_data/10.rds')
+rm(nuc_data10)
+beep()
 
-# id_data <- 
-#   read_rds('./data/CDD/prot_and_nuc_ids.rds') |> 
-#   unnest(nuc_id)
+nuc_data11 <- nuc_ids |> slice(10001:11000) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+write_rds(nuc_data11, './data/CDD/nuc_data/11.rds')
+rm(nuc_data11)
+beep()
 
-prot_data <- id_data |>
-  fetch_data(id = prot_id, db = 'protein', chunk_size = 50) |> 
-  unnest(cols = c(id, prot_name, prot_seq)) |> 
-  transmute(prot_id = id, prot_name, prot_seq)
-
-prot_summary <- id_data |> 
-  fetch_summaries(id = nuc_id, db = 'protein', chunk_size = 50)
-
-nuc_data <- id_data |>
-  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 10) |> 
-  unnest(cols = c(id, nuc_name, nuc_seq)) |> 
-  transmute(nuc_id = id, nuc_name, nuc_seq)
-
-nuc_summary <- id_data |>
-  fetch_summaries(id = nuc_id, db = 'nuccore', chunk_size = 50)
-
-
-
-beepr::beep()
-glimpse(try_this)
-
-
-try_this |> 
-  select(id, contains('name'), contains('seq')) |> 
-  unnest(cols = c(id, nuc_name, nuc_seq))
-
-id_data |> 
-  transmute(id = tax_id)
+nuc_data12 <- nuc_ids |> slice(11001:nrow(nuc_ids)) |> 
+  fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
+  parse_nuc_data()
+beep()
+write_rds(nuc_data12, './data/CDD/nuc_data/12.rds')
+rm(nuc_data12)
 
 
-id_data |> pull(tax_id) |> unique() |> length()
-# 
-# id_data <- 
-#   read_rds('./data/CDD/prot_and_nuc_ids.rds') |> 
-#   unnest(nuc_id)
-# 
-# nuc_df <- 
-#   id_data |> 
-#   select(nuc_id) |> 
-#   distinct() |> 
-#   slice(1:200)
-# 
-# nuc_dfs <- tibble(
-#   id_set = map(.x = seq(1, nrow(nuc_df), 50),
-#                .f = ~nuc_df |> slice(.x:min(.x+49, nrow(nuc_df))))
-# ) |> 
-#   mutate()
-# 
-# nuc_dfs <- nuc_dfs |> 
-#   mutate(token = map(id_set, ~{
-#     Sys.sleep(0.2)
-#     entrez_post(db = 'nuccore', id =.x$nuc_id)
-#     }))
-# 
-# nuc_data <- nuc_dfs |> 
-#   mutate(get = map(token, ~{
-#     entrez_fetch(db = 'nuccore', web_history = .x, rettype = 'fasta')
-#   }))
-# 
-# nuc_dat2 <- nuc_data |> 
-#   mutate(nuc_summary = map(token, ~{
-#     Sys.sleep(0.2)
-#     entrez_summary(db = 'nuccore', web_history = .x)  |> 
-#       enframe() |> 
-#       unnest_wider(value)
-#   }))
-# nuc_dat2
-# nuc_dat2 |> 
-#   unnest()
-# 
-# entrez_summary(db = 'nuccore', web_history = nuc_data$token[[1]]) |> 
-#   enframe() |> 
-#   unnest_wider(value)
-# 
-# # fasta to DNA set
-# fasta_to_DNAss <- function(x){
-#   temp <- tempfile()
-#   write_file(x, temp)
-#   Biostrings::readDNAStringSet(temp)
-# }
-# 
-# if (db == 'nuccore'){
-#   
-# }
-# nuc_data |> 
-#   mutate(nuc_ss = map(get, fasta_to_DNAss),
-#          nuc_name = map(nuc_ss, names),
-#          nuc_seq = map(nuc_ss, paste)
-#          )
-# 
-# nuc_data |> unnest_wider(id_set)
