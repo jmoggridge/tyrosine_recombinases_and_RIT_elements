@@ -277,12 +277,14 @@ rm(prepped_data)
 
 ## Save Final Results  ----
 
-final_res <- models_rs |>
+final_res <- fit_models |>
   select(model_type, model_id, final_metrics) |>
   bind_rows(
     thresh_res |>
       nest(final_metrics = c('.metric', '.estimator', '.estimate'))
   )
+
+final_res |> unnest(final_metrics) |> print(n=100)
 
 write_rds(
   x = final_res,
