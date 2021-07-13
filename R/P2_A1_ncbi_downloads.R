@@ -255,76 +255,134 @@ fetch_summaries <- function(data, id, db = 'nuccore', chunk_size = 50){
   toc()
   return(dfs)
 }
-
-# return taxonomic records for ids
-# input dataframe with column called tax_id,
-fetch_taxonomy <- function(data, id, chunk_size = 50){
-  
-  message('input data')
-  # only keep unique identifiers
-  df <- data |> 
-    transmute(id = {{id}}) |> 
-    distinct() 
-  glimpse(df)
-  
-  # split data into chunks of chunk_size
-  n <- chunk_size
-  dfs <- 
-    tibble(
-      id_set = map(.x = seq(1, nrow(df), n),
-                   .f = ~df |> slice(.x:min(.x + n - 1, nrow(df))))
-    ) |> 
-    unnest_wider(id_set)
-  
-  message('Posting requests')
-  pb <- progress_bar$new(total = nrow(dfs))
-  dfs <- dfs |> 
-    mutate(
-      token = map(id, ~{
-        Sys.sleep(0.2)
-        pb$tick()
-        entrez_post(db = 'taxonomy', id =.x)
-      }))
-  
-  message('Fetching summaries')
-  pb <- progress_bar$new(total = nrow(dfs))
-  dfs <- dfs |> 
-    mutate(
-      xml = map(token, ~{
-        Sys.sleep(0.2)
-        pb$tick()
-        entrez_fetch(db = 'taxonomy', web_history = .x)
-        })
-    )
-  toc()
-  return(dfs)
-}
-
-
-
-# return taxonomic records for ids
-# input dataframe with column called tax_id,
-parse_taxonomy <- function(data, xml){
+# 
+# # return taxonomic records for ids
+# # input dataframe with column called tax_id,
+# fetch_taxonomy <- function(data, id, chunk_size = 50){
 #   
-  data |>
+#   message('input data')
+#   # only keep unique identifiers
+#   df <- data |> 
+#     transmute(id = {{id}}) |> 
+#     distinct() 
+#   glimpse(df)
+#   
+#   # split data into chunks of chunk_size
+#   n <- chunk_size
+#   dfs <- 
+#     tibble(
+#       id_set = map(.x = seq(1, nrow(df), n),
+#                    .f = ~df |> slice(.x:min(.x + n - 1, nrow(df))))
+#     ) |> 
+#     unnest_wider(id_set)
+#   
+#   message('Posting requests')
+#   pb <- progress_bar$new(total = nrow(dfs))
+#   dfs <- dfs |> 
+#     mutate(
+#       token = map(id, ~{
+#         Sys.sleep(0.2)
+#         pb$tick()
+#         entrez_post(db = 'taxonomy', id =.x)
+#       }))
+#   
+#   message('Fetching summaries')
+#   pb <- progress_bar$new(total = nrow(dfs))
+#   dfs <- dfs |> 
+#     mutate(
+#       xml = map(token, ~{
+#         Sys.sleep(0.2)
+#         pb$tick()
+#         entrez_fetch(db = 'taxonomy', web_history = .x)
+#         })
+#     )
+#   toc()
+#   return(dfs)
+# }
+# 
+# 
+# 
+# 
+# # return taxonomic records for ids
+# # input dataframe with column called tax_id,
+# parse_taxonomy <- function(data, xml){
+# #   
+#   data |>
+#     # TODO check that map_chr works here
+#     mutate(
+#       xml =
+#         map_chr({{id}}, ~entrez_fetch(db = 'taxonomy', id = .x,
+#                                       rettype="xml")),
+#       tax_name =
+#         str_extract(xml, '<ScientificName>.*?</ScientificName>') |>
+#         str_remove_all('<ScientificName>|</ScientificName>'),
+#       tax_parent =
+#         str_extract(xml, '<ParentTaxId>[0-9]+') |>
+#         str_remove_all('<ParentTaxId>'),
+#       tax_lineage =
+#         str_extract(xml, '<Lineage>.*?</Lineage>\n') |>
+#         str_remove_all('<Lineage>|</Lineage>\n'),
+#       tax_genetic_code =
+#         str_extract(xml, '<GeneticCode>\n        <GCId>[0-9]+') |>
+#         str_remove_all('<GeneticCode>\n        <GCId>'),
+#     )  |>
+#     separate(
+#       tax_lineage, sep = '; ', remove = T, extra = 'merge',
+#       into = c(
+#         'no rank',
+#         'superkingdom',
+#         'clade',
+#         'phylum',
+#         'class',
+#         'order',
+#         'family',
+#         'genus',
+#         'species',
+#         'strain'
+#       )) |>
+#     nest(tax_lineage = c(
+#       'no rank',
+#       'superkingdom',
+#       'clade',
+#       'phylum',
+#       'class',
+#       'order',
+#       'family',
+#       'genus',
+#       'species',
+#       'strain'
+#     )) |>
+#     select(-xml)
+# }
+
+
+# return taxonomic records for ids
+# input dataframe with column called tax_id,
+fetch_taxonomy <- function(data, id){
+  pb <- progress_bar$new(total = nrow(data))
+  data %>% 
     # TODO check that map_chr works here
     mutate(
-      xml =
-        map_chr({{id}}, ~entrez_fetch(db = 'taxonomy', id = .x,
-                                      rettype="xml")),
-      tax_name =
-        str_extract(xml, '<ScientificName>.*?</ScientificName>') |>
+      xml = 
+        map_chr({{id}}, 
+                ~{
+                  pb$tick()
+                  entrez_fetch(db = 'taxonomy', id = .x, 
+                               rettype="xml")}
+                ),
+      tax_name = 
+        str_extract(xml, '<ScientificName>.*?</ScientificName>') %>%
         str_remove_all('<ScientificName>|</ScientificName>'),
-      tax_parent =
-        str_extract(xml, '<ParentTaxId>[0-9]+') |>
+      tax_parent = 
+        str_extract(xml, '<ParentTaxId>[0-9]+') %>% 
         str_remove_all('<ParentTaxId>'),
-      tax_lineage =
-        str_extract(xml, '<Lineage>.*?</Lineage>\n') |>
+      tax_lineage = 
+        str_extract(xml, '<Lineage>.*?</Lineage>\n') %>% 
         str_remove_all('<Lineage>|</Lineage>\n'),
       tax_genetic_code =
-        str_extract(xml, '<GeneticCode>\n        <GCId>[0-9]+') |>
+        str_extract(xml, '<GeneticCode>\n        <GCId>[0-9]+') %>% 
         str_remove_all('<GeneticCode>\n        <GCId>'),
-    )  |>
+    )  %>% 
     separate(
       tax_lineage, sep = '; ', remove = T, extra = 'merge',
       into = c(
@@ -338,7 +396,7 @@ parse_taxonomy <- function(data, xml){
         'genus',
         'species',
         'strain'
-      )) |>
+      )) %>% 
     nest(tax_lineage = c(
       'no rank',
       'superkingdom',
@@ -350,7 +408,7 @@ parse_taxonomy <- function(data, xml){
       'genus',
       'species',
       'strain'
-    )) |>
+    )) %>% 
     select(-xml)
 }
 
@@ -359,7 +417,8 @@ parse_taxonomy <- function(data, xml){
 
 ## Get all cdd and prot ids first --------
 
-# CDD search for list of RIT terms
+# ## CDD search for list of RIT terms
+
 # terms <- tibble(term = map_chr(c('A', 'B', 'C'), ~glue('INT_Rit{.x}_C_like')))
 # cdd_searches <- terms |> cdd_search(term = term)
 # cdd_summary <- cdd_searches |> unnest_wider(cdd_summary)
@@ -373,54 +432,45 @@ parse_taxonomy <- function(data, xml){
 #   unnest(prot_id)
 # beep()
 # write_rds(cdd_prot_ids, './data/CDD/cdd_prot_ids.rds')
+
 cdd_prot_ids <- read_rds('./data/CDD/cdd_prot_ids.rds')
 
 
-## link prot to nuc -----
-# 
-# ## DIDN'T WORK
-# prot_ids <- cdd_prot_ids |> select(prot_id) |> distinct()
-# 
-# n <- nrow(cdd_prot_ids)
-# chunk_size <- 100
-# pb <- progress_bar$new(
-#   format = "  downloading [:bar] :percent eta: :eta",
-#   total = n%/%100, clear = FALSE, width= 60
-#   )
-# 
-# cdd_prot_nuc_ids <-
-#   # split prot ids into in chunks
-#   tibble(
-#     df = map(
-#       .x = seq(1, n, chunk_size),
-#       .f = ~prot_ids |> slice(.x:min(.x + chunk_size, n)))
-#   ) |> 
-#   # get nuc ids
-#   mutate(nuc_id = map(df, ~{
-#     pb$tick()
-#     link_protein_nuccore(.x, id = prot_id)
-#   }
-#   ))
+## Worked once, but usually fails...
+cdd_prot_nuc_ids <-
+  cdd_prot_ids |>
+  link_protein_nuccore(id = prot_id) |>
+  unnest(nuc_id)
+beep()
+# write_rds(cdd_prot_nuc_ids, './data/CDD/cdd_prot_nuc_ids.rds')
 
-## DIDNT WORK 
-# cdd_prot_nuc_ids1 <- 
-#   cdd_prot_ids |>
-#   link_protein_nuccore(id = prot_id) |> 
-#   unnest(nuc_id)
-# beep()
+# previously_obtained_data_ids <- read_rds('./data/CDD/prot_and_nuc_ids.rds')
+# cdd_prot_nuc_ids <- previously_obtained_data_ids
 
-# cdd_prot_nuc_tax_ids <- 
-#   cdd_prot_nuc_ids |> 
-#   link_nuccore_taxonomy(id = nuc_id)
+cdd_prot_nuc_ids
 
-# write_rds(cdd_prot_nuc_tax_ids, './data/CDD/dataset_ids.rds')
+cdd_prot_nuc_tax_ids <-
+  cdd_prot_nuc_ids |>
+  link_nuccore_taxonomy(id = nuc_id)
+beepr::beep()
+write_rds(cdd_prot_nuc_tax_ids, './data/CDD/cdd_prot_nuc_tax_ids.rds')
 
+tax_data <- 
+  id_data |>
+  select(tax_id) |> 
+  filter(!is.na(tax_id)) |> 
+  distinct() |> 
+  fetch_taxonomy(id = tax_id)
+
+beep()
+write_rds(tax_data, './data/CDD/tax_data.rds')
+  
 # id_data <- cdd_prot_nuc_tax_ids
 
 ## Download data -------
-## check number of records before committing to download
 
-id_data <- read_rds('./data/CDD/prot_and_nuc_ids.rds')
+## check number of records before committing to download
+id_data <- read_rds('./data/CDD/cdd_prot_nuc_tax_ids.rds')
 
 # # get protein data and summaries
 # prot_data <- id_data |>
@@ -462,7 +512,7 @@ fetch_nuc_datasets <- function(data, set_number) {
 n <- nrow(nuc_ids)
 nuc_sets <- 
   tibble(
-    id_set = map(seq(1, n, 1000), ~nuc_ids[.x: min(.x + 1000, n),])
+    id_set = map(seq(1, n, 1000), ~nuc_ids[.x: min(.x + 999, n),])
     ) |> 
   mutate(set_number = row_number(),
          filepath = map2(
@@ -471,6 +521,25 @@ nuc_sets <-
            .f = ~fetch_nuc_datasets(data = .x, set_number = .y)
            )
          )
+
+# TODO RUN THIS
+try1 <- 
+  read_rds('./data/CDD/nuc_data/1.rds') |> 
+  mutate(n_ids = map_dbl(id, length),
+         n_seqs = map_dbl(nuc_seq, length)) |> 
+  filter(n_ids == n_seqs) |> 
+  unnest(c(id, nuc_name, nuc_seq))
+
+# weird error earlier -x no esummaryrecords found in file
+nuc_summary <- try1 |>
+  transmute(nuc)
+  fetch_summaries(id = nuc_id, db = 'nuccore', chunk_size = 50)
+
+nuc_summary |> select(-token) |> unnest_wider(summary)
+beep()
+write_rds(nuc_summary, './data/CDD/nuc_summary.rds')
+
+
 
 
 # 
