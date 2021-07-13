@@ -2,9 +2,12 @@
 
 
 library(tidyverse)
+source('./R/P2_entrez_functions.R')
 
 id_data <- read_rds('./data/CDD/cdd_prot_nuc_tax_ids.rds')
+summaries <- read_rds('./data/CDD/nuc_summary.rds')
 map(id_data, ~sum(is.na(.x)))
+
 no_tax_id <- id_data |> 
   filter(is.na(tax_id))
   

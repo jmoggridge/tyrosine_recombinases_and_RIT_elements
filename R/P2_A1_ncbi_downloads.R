@@ -319,26 +319,26 @@ Sys.getenv('ENTREZ_KEY')
 # 
 
 
-source('./R/P2_entr')
+source('./R/P2_entrez_functions.R')
 # MAIN: get ids ------------------------------------------------------
 
 ## CDD and prot ids first --------
 
 # ## CDD search for list of RIT terms
 
-# terms <- tibble(term = map_chr(c('A', 'B', 'C'), ~glue('INT_Rit{.x}_C_like')))
-# cdd_searches <- terms |> cdd_search(term = term)
-# cdd_summary <- cdd_searches |> unnest_wider(cdd_summary)
-# write_rds(cdd_summary, './data/CDD/cdd_summary.rds')
+terms <- tibble(term = map_chr(c('A', 'B', 'C'), ~glue('INT_Rit{.x}_C_like')))
+cdd_searches <- terms |> cdd_search(term = term)
+cdd_summary <- cdd_searches |> unnest_wider(cdd_summary)
+write_rds(cdd_summary, './data/CDD/cdd_summary.rds')
 
-# ## Link cdd records to proteins and nucleotides
-# cdd_prot_ids <-
-#   cdd_searches |>
-#   select(-cdd_summary) |>
-#   link_cdd_protein(id = cdd_id) |> 
-#   unnest(prot_id)
-# beep()
-# write_rds(cdd_prot_ids, './data/CDD/cdd_prot_ids.rds')
+## Link cdd records to proteins and nucleotides
+cdd_prot_ids <-
+  cdd_searches |>
+  select(-cdd_summary) |>
+  link_cdd_protein(id = cdd_id) |>
+  unnest(prot_id)
+beep()
+write_rds(cdd_prot_ids, './data/CDD/cdd_prot_ids.rds')
 
 cdd_prot_ids <- read_rds('./data/CDD/cdd_prot_ids.rds')
 
@@ -350,8 +350,8 @@ cdd_prot_nuc_ids <-
   unnest(nuc_id)
 beep()
 
-# write_rds(cdd_prot_nuc_ids, './data/CDD/cdd_prot_nuc_ids.rds')
-# rm(cdd_prot_ids)
+write_rds(cdd_prot_nuc_ids, './data/CDD/cdd_prot_nuc_ids.rds')
+rm(cdd_prot_ids)
 
 cdd_prot_nuc_ids
 
@@ -384,21 +384,21 @@ rm(tax_data)
 
 ## Prot data -------
 
-# # get protein data and summaries
-# prot_data <- id_data |>
-#   fetch_data(id = prot_id, db = 'protein', chunk_size = 50) |> 
-#   unnest(cols = c(id, prot_name, prot_seq)) |> 
-#   transmute(prot_id = id, prot_name, prot_seq)
-# beep()
-# write_rds(prot_data, './data/CDD/prot_data.rds')
-# 
-# prot_summary <- id_data |> 
-#   fetch_summaries(id = prot_id, db = 'protein', chunk_size = 50)
-# 
-# prot_summary |> select(-token) |> unnest_wider(summary)
-# beep()
-# write_rds(prot_summary, './data/CDD/prot_summary.rds')
-# rm(prot_data, prot_summary, prot_ids)
+# get protein data and summaries
+prot_data <- id_data |>
+  fetch_data(id = prot_id, db = 'protein', chunk_size = 50) |>
+  unnest(cols = c(id, prot_name, prot_seq)) |>
+  transmute(prot_id = id, prot_name, prot_seq)
+beep()
+write_rds(prot_data, './data/CDD/prot_data.rds')
+
+prot_summary <- id_data |>
+  fetch_summaries(id = prot_id, db = 'protein', chunk_size = 50)
+
+prot_summary |> select(-token) |> unnest_wider(summary)
+beep()
+write_rds(prot_summary, './data/CDD/prot_summary.rds')
+rm(prot_data, prot_summary, prot_ids)
 
 
 ## Nucleotide data  -----
