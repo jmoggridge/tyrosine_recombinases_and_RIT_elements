@@ -130,7 +130,14 @@ See also `Classifier_results_plots.R` -- TODO combine all scripts with these var
 
 ### Part 2: A pipeline to identify new RIT elements  <a name="p2"></a>
 
+
+
 #### Overview  <a name="p2o"></a>
+
+- Obtain data from NCBI by linking CDD ->> proteins ->> nucleotides -> taxonomy
+- Translate nucleotide sequences -> proteins with locations
+- Classify protein sequences
+- Figure out which nucleotides have RIT arrangement
 
 
 #### Workflow  <a name="p2w"></a>
@@ -211,11 +218,19 @@ Downloading `P2_A1_ncbi data.R`:
  
 **Classifiers**
 
-  - ran final classifiers - one of each glmnet, knn, rf.
-    - `3c_fit_final_model.R`
+  - Re-ran final classifiers - one of each glmnet, knn, rf.
+    - `3c_fit_final_model.R` script updated -
     - Now creates one model for each of rf, knn, glmnet; and two sets of thresholds: normalized+smoted or from raw hmm scores...  
     - Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files...  
  
+ - Continuing P2_A1_ncbi_downloads
+   - linking taxonomy ids to nucleotide ids. (`link_nuccore_taxonomy`)
+   - downloading taxonomy summaries (old `fetch_taxonomy`)
+   - weird error when trying to get nucleotide summaries:
+      ` x No esummary records found in file `
+
+      
+  
 <!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
 - [x] `2b_align_all_domains.R`
   - Same as 2a but aligns all domain sequences to create the final HMMs.
@@ -249,79 +264,5 @@ Downloading `P2_A1_ncbi data.R`:
      - protein lengths  
      - protein composition??  
 
-<!--
-**1. Data acquisition, tidying, joining**
-
-- [x] `1a_tidy_smart_data.R`
-  - Reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and *full_protein_fasta/*.  
-  - Joins domain and protein datasets into *./data/SMART/smart_df.rds*. 
-  - Removes sequences found in more than 1 subfamily.
-  - Splits ref integrases into test and training datasets. 
-
-- [x] `1b_get_refseq_non_integrases.R`
-  - Downloads various groups of non-integrases from NCBI entrez api.
-  - Saves to *./data/non_integrase_seqs/refseq_non_integrases_raw.rds*.  
-
-- [x] `1c_tidy_non_integrases.R`
-  - Combines all non-integrase sequences in *./data/non_integrase_seqs/*.
-  - Tidies data up to match integrase dataset.
-  - Data sanity checks & filtering.
-  - Train/test split 
-  - Saves *nonint_train_df.rds* and *nonint_test_df.rds* dfs to *./data/non_integrase_seqs/*.
-
-------------------------------------------------------------------------
-
-**2. Alignment, HMM building**
-
-- [ ] `2a_align_training_domains.R` (rerun)
-  - Alignment of training domains for each of the subfamilies. 
-  - Uses training domain sequences from *./data/SMART/smart_train.rds* created in `1a`
-  - Saves them to _./data/SMART/domain_align_training/*.train.aln_.
-
-- [x] `2b_align_all_domains.R`
-  - Same as 2a but aligns all domain sequences to create the final HMMs.
-  - Uses all domain sequences from *./data/SMART/smart_df.rds* created in `1a`
-  - Saves them to *./data/SMART/domain_alignments/*.
 
 
-------------------------------------------------------------------------
-
-**3. Consolidate data, score sequences, join scores, prepare for classifier**
-- [x] `3a_join_data.R`
-  - Splits test/train from non_integrase data.
-  - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as *train_df.rds* and *test_df.rds*.
-  - Consolidates fasta files for hmmsearch scores: *train_seq.fa* & *test_seq.fa*
-
-- [x] `3b_hmmbuild_and_hmmsearch.sh`
-  - Bash script to run from the project directory.
-  - Builds the training and final HMMs from the alignments in step 2.
-  - Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
-  - Run hmmsearch for sequences against 20 HMMs made from training sequences.
-  - Save hmmsearch tables to _./data/hmmsearch_res/_
-
-- [x] `3c_prep_for_classifier.R` (needs refactoring)
-  - Processes hmmsearch output and joins to train and test data
-  - Add kmer counts for each sequence
-  - Add longer Dayhoff alphabet kmers? (5mers = 7,700 cols)
-  
-  
-------------------------------------------------------------------------
-
-**4. Classification: model selection and assessment**
-- `4a_eda.R` (to do)
-  - [x] plot sequence lengths
-  - [ ] plot sequence composition profiles
-  - [x] plot hmmsearch scores
-  
-- `4_classifier.R` (to do)
-  - [ ] Check accuracy of classification by hmmsearch best score.
-  - [ ] Nested cross-validation for assessment
-  - [ ] Model tuning CV
-  - [ ] Model stacking CV
-  - [ ] Final model selection and training
- 
-  -->
-
-<!-- TODO Continue code documentation here. -->
-
-<!-- - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it.... -->
