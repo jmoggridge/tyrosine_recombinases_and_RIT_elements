@@ -223,7 +223,7 @@ Downloading `P2_A1_ncbi data.R`:
     - Now creates one model for each of rf, knn, glmnet; and two sets of thresholds: normalized+smoted or from raw hmm scores...  
     - Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files...  
  
- - Continuing P2_A1_ncbi_downloads
+ - Continuing `P2_A1_ncbi_downloads.R`
    - linking taxonomy ids to nucleotide ids. (`link_nuccore_taxonomy`)
    - downloading taxonomy summaries (old `fetch_taxonomy`)
    - weird error when trying to get nucleotide summaries: seems random
@@ -231,8 +231,9 @@ Downloading `P2_A1_ncbi data.R`:
    - splitting into half and using `fetch_summary` to get nested data worked on the first half.
    - some cols with the same name have different types (list vs char or num); if we make all columns into character, then they can be unnested together. Not if the co
    - the dataframes have different numbers of columns.
-  
+   - **Solved** by making columns as.character in each dataframe, then unnesting...
 
+  - Working on P@_A2_rep
       
   
 <!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
