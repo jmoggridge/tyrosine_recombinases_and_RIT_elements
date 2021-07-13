@@ -1,6 +1,14 @@
 ## P2_A2_repair_nucleotide_data -----
 
+
+library(tidyverse)
+
 id_data <- read_rds('./data/CDD/cdd_prot_nuc_tax_ids.rds')
+map(id_data, ~sum(is.na(.x)))
+no_tax_id <- id_data |> 
+  filter(is.na(tax_id))
+  
+
 nuc_ids <- 
   id_data |> 
   select(nuc_id) |> 
