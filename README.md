@@ -223,6 +223,9 @@ Downloading `P2_A1_ncbi data.R`:
     - Now creates one model for each of rf, knn, glmnet; and two sets of thresholds: normalized+smoted or from raw hmm scores...  
     - Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files...  
  
+ 
+**Part 2 data**
+
  - Continuing `P2_A1_ncbi_downloads.R`
    - linking taxonomy ids to nucleotide ids. (`link_nuccore_taxonomy`)
    - downloading taxonomy summaries (old `fetch_taxonomy`)
@@ -240,6 +243,16 @@ Downloading `P2_A1_ncbi data.R`:
    - still need to remove 205 seqs 
    - get updated taxonomy for remaining that are missing it from the nuc_summary$taxid column
       
+     
+#### Tues, July 13th
+ 
+**Part 2**
+
+- Simplified P2_A2_filter_nuc_ids_and_taxonomy
+- *should just retrieve nucleotides after P2_A2??*
+  - suppressed ids could be reason for seq retrieving failure?
+
+
   
 ---------
 
