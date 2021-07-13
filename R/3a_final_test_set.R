@@ -170,7 +170,7 @@ beep()
 train_prep <- train |> join_hmmsearches(files = train_scores$out_path)
 test_prep <- test |> join_hmmsearches(files = test_scores$out_path)
 
-## prepared data
+## prepared data - scored but not normalized or SMOTE'd
 prepped_data <- tibble(train_prep = list(train_prep), 
                        test_prep = list(test_prep))
 prepped_data
@@ -208,7 +208,6 @@ recip |> prep() |> juice() |> skimr::skim()
 # create workflow for modelling
 wkfl <- workflow() |> add_recipe(recip)
 wkfl
-rm(recip)
 
 
 #### Fit & Eval ------------------------------------------------
@@ -274,6 +273,23 @@ thresh_res <-
 thresh_res
 rm(prepped_data)
 
+## TODO juice recip and test classifier *
+
+normalized_smoted <- recip
+normalized_threshold_res <- 
+  recip |> prep() |> juice() |> 
+  mutate(threshold_res = map2(
+    .x = train_prep, 
+    .y = test_prep, 
+    .f = ~eval_threshold_classififer(.x, .y)
+  )) |>
+  select(threshold_res) |>
+  unnest(threshold_res) |>
+  mutate(model_type = 'score & threshold rule', model_id = NA)
+
+# 
+# thresh_res
+# rm(prepped_data)
 
 ## Save Final Results  ----
 
