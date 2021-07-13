@@ -226,8 +226,12 @@ Downloading `P2_A1_ncbi data.R`:
  - Continuing P2_A1_ncbi_downloads
    - linking taxonomy ids to nucleotide ids. (`link_nuccore_taxonomy`)
    - downloading taxonomy summaries (old `fetch_taxonomy`)
-   - weird error when trying to get nucleotide summaries:
+   - weird error when trying to get nucleotide summaries: seems random
       ` x No esummary records found in file `
+   - splitting into half and using `fetch_summary` to get nested data worked on the first half.
+   - some cols with the same name have different types (list vs char or num); if we make all columns into character, then they can be unnested together. Not if the co
+   - the dataframes have different numbers of columns.
+  
 
       
   
