@@ -15,17 +15,6 @@ glimpse(id_data)
 map(id_data |> select(nuc_id, tax_id) |> distinct(),
     ~sum(is.na(.x)))
 
-# 
-# # index of nucleotide ids for sequence files
-# nuc_ids <- unique(id_data$nuc_id)
-# n <- length(nuc_ids)
-# nuc_sets <- 
-#   tibble(id_set = map(
-#     seq(1, n, 1000),
-#     ~ nuc_ids[.x: min(.x + 999, n)])) |> 
-#   mutate(set_number = row_number())
-# glimpse(nuc_sets)
-# rm(n, nuc_ids)
 
 summaries <- 
   read_rds('./data/CDD/nuc_summary.rds') |> 
