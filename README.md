@@ -236,11 +236,9 @@ Downloading `P2_A1_ncbi data.R`:
    
  - Working on `P1_A2_repair_nucleotide_data.R`:
    - [x] fixed 2 superceded sequences and replaced ids, got new taxonomy and seq. *still need to replace seq*
-   - figure out which ids are 'removed'.
-     -"This record was removed by RefSeq staff. Please contact info@ncbi.nlm.nih.gov for further details."
-   - filter out those ids -> filtered_id_data
-   - see if can rescue downloaded dataframes and join seqs to ids somehow..
-   
+   - [x] fixed 2 updated seqs... got data + linked tax
+   - still need to remove 205 seqs 
+   - get updated taxonomy for remaining that are missing it from the nuc_summary$taxid column
       
   
 ---------
