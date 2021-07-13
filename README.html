@@ -412,13 +412,24 @@ still need the taxonomy but no rush</p></li>
 </li>
 <li>Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files…</li>
 </ul></li>
-<li>Continuing P2_A1_ncbi_downloads
+<li>Continuing <code>P2_A1_ncbi_downloads.R</code>
 <ul>
 <li>linking taxonomy ids to nucleotide ids. (<code>link_nuccore_taxonomy</code>)</li>
 <li>downloading taxonomy summaries (old <code>fetch_taxonomy</code>)</li>
-<li>weird error when trying to get nucleotide summaries: <code>x No esummary records found in file</code></li>
+<li>weird error when trying to get nucleotide summaries: seems random <code>x No esummary records found in file</code></li>
+<li>splitting into half and using <code>fetch_summary</code> to get nested data worked on the first half.</li>
+<li>some cols with the same name have different types (list vs char or num); if we make all columns into character, then they can be unnested together. Not if the co</li>
+<li>the dataframes have different numbers of columns.</li>
+<li><strong>Solved</strong> by making columns as.character in each dataframe, then unnesting…</li>
+<li><strong>Finished</strong> Downloaded ids, sequences, summaries for cdd, prot, nuc, tax.</li>
+</ul></li>
+<li>Working on <code>P1_A2_repair_nucleotide_data.R</code>:
+<ul>
+<li>figure out which ids are ‘removed’.</li>
+<li>filter out those ids -&gt; filtered_id_data</li>
 </ul></li>
 </ul>
+<hr />
 <!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
 - [x] `2b_align_all_domains.R`
   - Same as 2a but aligns all domain sequences to create the final HMMs.

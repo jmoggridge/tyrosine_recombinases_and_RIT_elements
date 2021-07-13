@@ -231,11 +231,20 @@ Downloading `P2_A1_ncbi data.R`:
    - splitting into half and using `fetch_summary` to get nested data worked on the first half.
    - some cols with the same name have different types (list vs char or num); if we make all columns into character, then they can be unnested together. Not if the co
    - the dataframes have different numbers of columns.
-   - **Solved** by making columns as.character in each dataframe, then unnesting...
-
-  - Working on P@_A2_rep
+   - **Solved** by making columns as.character in each dataframe, then unnesting... 
+   - **Finished** Downloaded ids, sequences, summaries for cdd, prot, nuc, tax.   
+   
+ - Working on `P1_A2_repair_nucleotide_data.R`:
+   - [x] fixed 2 superceded sequences and replaced ids, got new taxonomy and seq. *still need to replace seq*
+   - figure out which ids are 'removed'.
+     -"This record was removed by RefSeq staff. Please contact info@ncbi.nlm.nih.gov for further details."
+   - filter out those ids -> filtered_id_data
+   - see if can rescue downloaded dataframes and join seqs to ids somehow..
+   
       
   
+---------
+
 <!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
 - [x] `2b_align_all_domains.R`
   - Same as 2a but aligns all domain sequences to create the final HMMs.
