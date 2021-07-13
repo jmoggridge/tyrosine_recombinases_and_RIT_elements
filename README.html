@@ -167,195 +167,350 @@ pre code {
 </div>
 
 
-<div id="tyrosine-recombination-classification-for-rit-element-data-mining" class="section level1">
-<h1>Tyrosine recombination classification for RIT element data-mining</h1>
-<p>Master’s thesis work on tyrosine recombinases and recombinase-in-trio elements.</p>
+<div id="tyrosine-recombination-classification-for-rit-element-data-mining" class="section level2">
+<h2>Tyrosine recombination classification for RIT element data-mining</h2>
+<p><em>Master’s thesis work on tyrosine recombinases and recombinase-in-trio elements.</em></p>
 <hr />
-<div id="objective-1" class="section level2">
-<h2>Objective 1</h2>
-<p><strong>Create a tool to classify ‘phage integrase’ proteins by their catalytic domains, in line with the 20 subfamilies described by Smyshlaev <em>et al.</em> (2021).</strong></p>
-<hr />
-<div id="datasets" class="section level4">
-<h4>Datasets</h4>
+<div id="contents" class="section level4">
+<h4>Contents</h4>
+<ol style="list-style-type: decimal">
+<li><a href="#obj">Objectives</a></li>
+<li><a href="#p1">Part 1: Classifier for tyrosine recombinases</a>
 <ul>
-<li><strong>SMART</strong>:
-<ul>
-<li>Has domain sequences and protein sequences for 20 integrase subfamilies.</li>
-<li>Total number of sequences is ~120k, but with large class imbalance: Xer has ~34k members and Int_Des has only 62.</li>
-<li>Problematically, some sequences are annotated with &gt;1 subfamily, for the same portion of sequence (ambiguous classifications).</li>
-<li>Any sequence belonging to more than one subfamily was removed.</li>
-<li>After filtering, 114,848 sequences remain.<br />
-<br />
-</li>
+<li><a href="#p1o">Overview</a></li>
+<li><a href="#p1w">Workflow</a></li>
 </ul></li>
-<li><strong>Non-integrase</strong>:
+<li><a href="#p2">Part 2: Pipeline for identification of RIT elements</a>
 <ul>
-<li>Combination of:
-<ul>
-<li>various searches of Refseq for recombinases and nucleases,</li>
-<li>some Pfam families of transposases (domain sequences)</li>
-<li>Uniprot proteomes of yeast, arabidopsis, and human proteomes.</li>
+<li><a href="#p2o">Overview</a></li>
+<li><a href="#p2w">Workflow</a></li>
 </ul></li>
-<li>Large groups downsampled to 2000 sequences.</li>
-<li>A total of 39,691 sequences were retained after downsampling.</li>
-</ul></li>
-</ul>
+<li><a href="#dpt">Daily Progress Tracking</a></li>
+</ol>
 <hr />
 </div>
-<div id="workflow" class="section level4">
-<h4>Workflow</h4>
+<div id="objectives" class="section level3">
+<h3>Objectives <a name="obj"></a></h3>
+<p><strong>1 </strong>. Create a tool to <strong>classify ‘phage integrase’ proteins</strong> by their catalytic domains, in line with the <strong>20 subfamilies</strong> described by Smyshlaev <em>et al.</em> (2021).</p>
+<p><strong>2</strong>. Apply classifier to known integrases in sequenced genomes and mobile element databases. For <strong>RitA, RitB, and RitC</strong> domains, map their genomic coordinates and check whether there are multiple tyrosine recombinases constituting a <strong>RIT element</strong>. Characterize the arrangement of subfamilies, flanking inverted repeats, and their insertion sites in terms of flanking genes.</p>
+<hr />
+</div>
+<div id="part-1-classifier-for-tyrosine-recombinases" class="section level3">
+<h3>Part 1: Classifier for tyrosine recombinases <a name="p1"></a></h3>
+<div id="overview" class="section level4">
+<h4>Overview <a name="p1o"></a></h4>
 <ul class="task-list">
 <li><input type="checkbox" disabled checked></input>
 Obtain SMART reference data &amp; other non-integrase sequences as negative examples.</li>
 <li><input type="checkbox" disabled checked></input>
-Create hold-out set for final testing.</li>
+Downsample &amp; Split data: Create hold-out sets for final testing.</li>
 <li><input type="checkbox" disabled checked></input>
-Align SMART domain sequences (for assessment and final models).</li>
+Modelling Pipeline - to take a data split, return model performance measures.<ul>
+<li>create 20 alignments from YR catalytic domains of training seqs</li>
+<li>create 20 HMMs from the alignments</li>
+<li>score train and test seqs against HMMs</li>
+<li>normalize scores and use SMOTE upsampling</li>
+<li>train classifier with prepared training data</li>
+<li>apply classifier to testing set.</li>
+<li>evaluate predictions and return performance metrics.</li>
+</ul></li>
 <li><input type="checkbox" disabled checked></input>
-Build HMMs from training data.</li>
-<li><input type="checkbox" disabled checked></input>
-Score 20 integrase HMM alignments for each sequence.<br />
+3-fold Nested-CV (rep 3 times)<ul>
+<li>Apply above pipeline to with variety of models &amp; hyperparameters for nested CV resamples.<br />
 </li>
-<li><input type="checkbox" disabled checked></input>
-Gather HMM scores (&amp; generate k-mer features).</li>
-<li><input type="checkbox" disabled></input>
-Get baseline accuracy from HMM scoring approach.</li>
-<li><input type="checkbox" disabled></input>
-Tune &amp; assess classifiers. Possibly: attempt stacking classifiers.</li>
-</ul>
-<p><em>Then…</em> Apply classifier to MGE proteins and proteomes from<br />
-assembled genomes (objective 2).</p>
-<hr />
-</div>
-<div id="scripts" class="section level3">
-<h3>Scripts</h3>
-<p>All scripts are in the project directory <code>./code/</code></p>
-<p><strong>1. Data acquisition, tidying, joining</strong></p>
-<ul class="task-list">
-<li><input type="checkbox" disabled checked></input>
-<code>1a_tidy_smart_data.R</code><ul>
-<li>Reads domain and protein fasta sequences for 20 subfamilies from <em>./data/SMART/domain_fasta/</em> and <em>full_protein_fasta/</em>.<br />
+<li>Get an estimate of performance for <em>the model-fitting procedure</em> (not actually selecting the model hyperparameters for the final model).<br />
 </li>
-<li>Joins domain and protein datasets into <em>./data/SMART/smart_df.rds</em>.</li>
-<li>Removes sequences found in more than 1 subfamily.</li>
-<li>Splits ref integrases into test and training datasets.</li>
 </ul></li>
 <li><input type="checkbox" disabled checked></input>
-<code>1b_get_refseq_non_integrases.R</code><ul>
-<li>Downloads various groups of non-integrases from NCBI entrez api.</li>
-<li>Saves to <em>./data/non_integrase_seqs/refseq_non_integrases_raw.rds</em>.</li>
+3-fold CV (rep 3 times).<ul>
+<li>Selection of models with best mean MCC across.</li>
 </ul></li>
 <li><input type="checkbox" disabled checked></input>
-<code>1c_tidy_non_integrases.R</code><ul>
-<li>Combines all non-integrase sequences in <em>./data/non_integrase_seqs/</em>.</li>
-<li>Tidies data up to match integrase dataset.</li>
-<li>Data sanity checks &amp; filtering.</li>
-<li>Train/test split</li>
-<li>Saves <em>nonint_train_df.rds</em> and <em>nonint_test_df.rds</em> dfs to <em>./data/non_integrase_seqs/</em>.</li>
+Last validation<ul>
+<li>Fit ‘best’ models from CV using pipeline, with all training data (75 %)<br />
+</li>
+<li>Get point estimates of performance from prediction of holdout data (25%)</li>
+</ul></li>
+<li><input type="checkbox" disabled checked></input>
+Fit final models.<ul>
+<li>Align all seqs, build HMMs, score all seqs, normalize &amp; SMOTE, train classifier.</li>
 </ul></li>
 </ul>
+<p><em>Then…</em> Apply classifier to MGE proteins and proteomes from assembled genomes (objective 2).</p>
 <hr />
-<p><strong>2. Alignment, HMM building</strong></p>
-<ul class="task-list">
-<li><input type="checkbox" disabled></input>
-<code>2a_align_training_domains.R</code> (rerun)<ul>
-<li>Alignment of training domains for each of the subfamilies.</li>
-<li>Uses training domain sequences from <em>./data/SMART/smart_train.rds</em> created in <code>1a</code></li>
-<li>Saves them to _./data/SMART/domain_align_training/*.train.aln_.</li>
-</ul></li>
-<li><input type="checkbox" disabled checked></input>
-<code>2b_align_all_domains.R</code><ul>
-<li>Same as 2a but aligns all domain sequences to create the final HMMs.</li>
-<li>Uses all domain sequences from <em>./data/SMART/smart_df.rds</em> created in <code>1a</code></li>
-<li>Saves them to <em>./data/SMART/domain_alignments/</em>.</li>
-</ul></li>
-</ul>
-<hr />
-<p><strong>3. Consolidate data, score sequences, join scores, prepare for classifier</strong></p>
-<ul class="task-list">
-<li><input type="checkbox" disabled checked></input>
-<code>3a_join_data.R</code><ul>
-<li>Splits test/train from non_integrase data.</li>
-<li>Consolidates integrases (SMART) &amp; non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as <em>train_df.rds</em> and <em>test_df.rds</em>.</li>
-<li>Consolidates fasta files for hmmsearch scores: <em>train_seq.fa</em> &amp; <em>test_seq.fa</em></li>
-</ul></li>
-<li><input type="checkbox" disabled checked></input>
-<code>3b_hmmbuild_and_hmmsearch.sh</code><ul>
-<li>Bash script to run from the project directory.</li>
-<li>Builds the training and final HMMs from the alignments in step 2.</li>
-<li>Saves training HMMs to <em>./data/SMART/domain_hmm_training/</em>, and the final HMMs to <em>./data/SMART/domain_hmm/</em>.</li>
-<li>Run hmmsearch for sequences against 20 HMMs made from training sequences.</li>
-<li>Save hmmsearch tables to <em>./data/hmmsearch_res/</em></li>
-</ul></li>
-<li><input type="checkbox" disabled checked></input>
-<code>3c_prep_for_classifier.R</code> (needs refactoring)<ul>
-<li>Processes hmmsearch output and joins to train and test data</li>
-<li>Add kmer counts for each sequence</li>
-<li>Add longer Dayhoff alphabet kmers? (5mers = 7,700 cols)</li>
-</ul></li>
-</ul>
-<hr />
-<p><strong>4. Classification: model selection and assessment</strong></p>
+</div>
+<div id="workflow" class="section level4">
+<h4>Workflow <a name="p1w"></a></h4>
+<div id="obtain-data" class="section level5">
+<h5>1. Obtain data:</h5>
+<p><strong>SMART</strong></p>
+<p><code>1a_tidy_smart_data.R</code> organizes SMART data from fasta files.<br />
+<br />
+<br />
+- Has domain sequences and protein sequences for 20 integrase subfamilies.<br />
+- Total number of sequences is ~120k, but with large class imbalance, like Xer has ~34k members and Int_Des has only 62.<br />
+- Problematically, some sequences are annotated with &gt;1 subfamily, for the same portion of sequence (ambiguous classifications). I removed these double-labelled sequences, entirely.<br />
+- After filtering, 114,848 sequences remain.<br />
+- The dataset for modelling was downsampled by subfamily to a max of 10k, with the removed sequences retained for classifier validation.<br />
+<!-- *show bar chart here* --></p>
+<p><strong>Non-integrases</strong></p>
+<p><code>1b_get_refseq_non_integrases.R</code><br />
+- Uses keyword searches to Entrez API to get a variety of decoys.</p>
 <ul>
-<li><code>4a_eda.R</code> (to do)
-<ul class="task-list">
-<li><input type="checkbox" disabled checked></input>
-plot sequence lengths</li>
-<li><input type="checkbox" disabled></input>
-plot sequence composition profiles</li>
-<li><input type="checkbox" disabled checked></input>
-plot hmmsearch scores</li>
+<li>Combination of:
+<ul>
+<li>From various searches of Refseq for recombinases and nucleases,<br />
+</li>
+<li>Several Pfam families of transposases (domain sequences only)<br />
+</li>
+<li>Uniprot proteomes of yeast, Arabidopsis, and human proteomes.<br />
+</li>
 </ul></li>
-<li><code>4_classifier.R</code> (to do)
-<ul class="task-list">
-<li><input type="checkbox" disabled></input>
-Check accuracy of classification by hmmsearch best score.</li>
-<li><input type="checkbox" disabled></input>
-Nested cross-validation for assessment</li>
-<li><input type="checkbox" disabled></input>
-Model tuning CV</li>
-<li><input type="checkbox" disabled></input>
-Model stacking CV</li>
-<li><input type="checkbox" disabled></input>
-Final model selection and training</li>
+<li>Large groups down-sampled to 2000 sequences.<br />
+</li>
+<li>A total of 39,691 sequences were retained after downsampling.</li>
 </ul>
-<!-- TODO Continue code documentation here. --></li>
+<p><code>1c_tidy_non_integrase.R</code><br />
+- Cleans up data gathered by step 1b</p>
+</div>
+</div>
+<div id="searching-for-best-models" class="section level4">
+<h4>2. Searching for best models</h4>
+<p>2a. Data splitting for classifier</p>
+<ul>
+<li>75-25 split for train (building &amp; tuning classifiers) / test (final validation)</li>
+<li>2 files in <code>./data/</code>:
+<ul>
+<li><code>classif_train_set.rds</code> (training 75 %)</li>
+<li><code>classif_test_set.rds</code> (testing 25 %)</li>
+</ul></li>
 </ul>
-<!-- - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it.... -->
+<p>2b. Nested cross-validation</p>
+<ul>
+<li>Nested cv: <code>2b_nested_CV.R</code></li>
+<li>Plots: <code>2b_nested_cv_tables_and_plots.R</code></li>
+</ul>
+<p>2c. Regular CV</p>
+<ul>
+<li><code>2c_regular_CV.R</code></li>
+</ul>
+<p>See also <code>Classifier_results_plots.R</code> – TODO combine all scripts with these various plots into one place for consistency….</p>
+</div>
+<div id="final-validation-and-model-fitting" class="section level4">
+<h4>3. Final validation and model fitting</h4>
+<ul>
+<li><code>3a_final_test_set.R</code> - fit/eval of best models on the final validation set</li>
+<li><code>3a_final_test_set.R</code> - visualize results from 3a.</li>
+<li><code>3c_fit_final_model.R</code> - fits one best model of each type using the full, downsampled dataset</li>
+</ul>
 <hr />
 </div>
 </div>
-<div id="objective-2" class="section level2">
-<h2>Objective 2</h2>
-<p><strong>Identify integrases in assembled genomes</strong> and mobile element databases and <strong>classify by subfamily</strong>. For <strong>RitA, RitB, and RitC</strong> domains, map their genomic coordinates and check whether these constitute a <strong>RIT element</strong>.</p>
-<div id="search-mge-databases" class="section level4">
-<h4>Search MGE databases</h4>
+<div id="part-2-a-pipeline-to-identify-new-rit-elements" class="section level3">
+<h3>Part 2: A pipeline to identify new RIT elements <a name="p2"></a></h3>
+<div id="overview-1" class="section level4">
+<h4>Overview <a name="p2o"></a></h4>
 </div>
-<div id="search-assembled-genomes" class="section level4">
-<h4>Search assembled genomes</h4>
+<div id="workflow-1" class="section level4">
+<h4>Workflow <a name="p2w"></a></h4>
 </div>
-<div id="search-for-flanking-repeats" class="section level4">
-<h4>Search for flanking repeats</h4>
-<ul>
-<li>Extract flanking genomic sequence</li>
-<li>Algorithm for identifying inverted repeat:
-<ul>
-<li>subsequence’s reverse complement is the same as the reverse of the subsequence, for perfect base-pairing</li>
-</ul></li>
-</ul>
-<hr />
-</div>
-<div id="other-work-done-so-far" class="section level3">
-<h3>Other work done so far</h3>
+<div id="other-random-scraps-of-work-done-so-far" class="section level4">
+<h4>Other random scraps of work done so far</h4>
 <p>Various scripts for obtaining &amp; tidying mobile genetic element data to search: Iceberg, Aclame, pVOG,</p>
 <!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
-<p> </p>
 <hr />
-<p>New questions:</p>
-<ul>
-<li>what to do about ambiguous characters in sequences?? one sequence contains an XXXXX segment? <strong>need to remove these seqs from kmer counting</strong>? kmer::kcount doesn’t work with them …</li>
+</div>
+</div>
+</div>
+<div id="daily-progress-tracking" class="section level2">
+<h2>Daily Progress Tracking <a name="dpt"></a></h2>
+<div id="july-8th" class="section level4">
+<h4>July 8th</h4>
+<p>Restarted nested CV - runs ~40 hrs.</p>
+<ul class="task-list">
+<li><input type="checkbox" disabled checked></input>
+Created a new set of model specifications, including larger search grid for glmnet and rpart models, added random forest models with 5 mtry parameters.<br />
+</li>
+<li><input type="checkbox" disabled checked></input>
+Implemented new recipe with SMOTE and normalization (within CV).<br />
+</li>
+<li><input type="checkbox" disabled checked></input>
+Executed nested 3-fold CV, 3-repeats.<br />
+</li>
+<li><input type="checkbox" disabled checked></input>
+Had to fix many bugs in functions arising from adding SMOTE and different recipes…</li>
 </ul>
 </div>
+<div id="july-9th" class="section level4">
+<h4>July 9th</h4>
+<p>(<em>this wouldn’t work on the full dataset, but only on the small testing set</em>)<br />
+- Created script that gets all ids for CDD families Rit- A, B, C.<br />
+- Gets cdd ids, gets protein ids linked to each cdd id.<br />
+- Then gets nuccore ids linked to each protein id.<br />
+- Then gets taxonomy id linked to each nuccore id.</p>
+<p>Downloading the sequences is more tricky. Keep getting HTTP errors. Probably sending too many requests - &gt; maybe use post request then set get request using the webhistory token. Alternately add sleep between blocks of x ids sent in batches.</p>
+</div>
+<div id="july-10th" class="section level4">
+<h4>July 10th</h4>
+<p>Nested CV finished today.<br />
+- saved <code>./results/07-08-3x3_nested....</code>.<br />
+- Results look awesome again (too awesome).</p>
+<p>Still trying to rewrite script to retrieve NCBI data linked to cdd specific proteins…<br />
+- trying to use webhistories<br />
+- trying to chunk requests into smaller than 50 for protein,<br />
+- trying to chunk into smaller than 10 for nucleotides… (not necessary, actually) 50 or 100 is ok.).</p>
+<p>Restarting regular CV with new model set.<br />
+Needed to change:<br />
+- models<br />
+- {out_path} issues: needs to be complete path to output dirs for aligns, hmms….<br />
+- otherwise everything worked.<br />
+- Saved to <code>results/regular_cv_07-10/</code><br />
+- <em>could</em> do stupid t-tests. to check for significance….</p>
+</div>
+<div id="july-11th" class="section level4">
+<h4>July 11th</h4>
+<p>Running <code>3_final_test_set.R</code></p>
+<ul>
+<li>had to change recipe to include smote and normalize<br />
+</li>
+<li>changed file paths and names to make more sense<br />
+</li>
+<li>Issue: system runs out of memory…
+<ul>
+<li>I think this was before when trying to save unnested workflows/preds/data<br />
+</li>
+</ul></li>
+<li>Decided: just use the few specifications that performed best in regular CV<br />
+</li>
+<li>Works fine for smaller amount (&lt;10) models.</li>
+</ul>
+<p>Downloading <code>P2_A1_ncbi data.R</code>:</p>
+<ul class="task-list">
+<li><p><input type="checkbox" disabled checked></input>
+Finally managed to get all the sequences!<br />
+</p></li>
+<li><p><input type="checkbox" disabled checked></input>
+<strong>TRICK</strong> some genomes are really, large, need to get sequences in large chunks of 1000; do requests within in mini chunks of 100. Parse sequences and save compressed data. <strong>Issue</strong> even if managing to get full download complete before, ran out of memory trying to parse or save data.</p></li>
+<li><p><input type="checkbox" disabled></input>
+still need the taxonomy but no rush</p></li>
+</ul>
+</div>
+<div id="july-12th-monday" class="section level4">
+<h4>July 12th (monday)</h4>
+<p><strong>Classifiers</strong></p>
+<ul>
+<li>ran final classifiers - one of each glmnet, knn, rf.
+<ul>
+<li><code>3c_fit_final_model.R</code></li>
+<li>Now creates one model for each of rf, knn, glmnet; and two sets of thresholds: normalized+smoted or from raw hmm scores…<br />
+</li>
+<li>Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files…</li>
+</ul></li>
+</ul>
+</div>
+<div id="todo-list" class="section level4">
+<h4>TODO LIST</h4>
+<p><strong>Part 1</strong></p>
+<ul class="task-list">
+<li><input type="checkbox" disabled></input>
+redo plots for regular cv - compare to nested ; incorp final valid resuls and plot</li>
+<li><input type="checkbox" disabled></input>
+redo k-means with letting k be variable…</li>
+</ul>
+<p><strong>Part 2</strong></p>
+<ul class="task-list">
+<li><input type="checkbox" disabled></input>
+prepare a slide of ideas that I am working on for meeting</li>
+<li><input type="checkbox" disabled></input>
+proceed to finding proteins with nucleotide sequence<ul>
+<li>translate to proteins, keep locations<br />
+</li>
+</ul></li>
+<li><input type="checkbox" disabled></input>
+also EDA:<ul>
+<li>dna seq lengths<br />
+</li>
+<li>how many proteins per sequence<br />
+</li>
+<li>protein lengths<br />
+</li>
+<li>protein composition??</li>
+</ul></li>
+</ul>
+<!--
+**1. Data acquisition, tidying, joining**
+
+- [x] `1a_tidy_smart_data.R`
+  - Reads domain and protein fasta sequences for 20 subfamilies from *./data/SMART/domain_fasta/* and *full_protein_fasta/*.  
+  - Joins domain and protein datasets into *./data/SMART/smart_df.rds*. 
+  - Removes sequences found in more than 1 subfamily.
+  - Splits ref integrases into test and training datasets. 
+
+- [x] `1b_get_refseq_non_integrases.R`
+  - Downloads various groups of non-integrases from NCBI entrez api.
+  - Saves to *./data/non_integrase_seqs/refseq_non_integrases_raw.rds*.  
+
+- [x] `1c_tidy_non_integrases.R`
+  - Combines all non-integrase sequences in *./data/non_integrase_seqs/*.
+  - Tidies data up to match integrase dataset.
+  - Data sanity checks & filtering.
+  - Train/test split 
+  - Saves *nonint_train_df.rds* and *nonint_test_df.rds* dfs to *./data/non_integrase_seqs/*.
+
+------------------------------------------------------------------------
+
+**2. Alignment, HMM building**
+
+- [ ] `2a_align_training_domains.R` (rerun)
+  - Alignment of training domains for each of the subfamilies. 
+  - Uses training domain sequences from *./data/SMART/smart_train.rds* created in `1a`
+  - Saves them to _./data/SMART/domain_align_training/*.train.aln_.
+
+- [x] `2b_align_all_domains.R`
+  - Same as 2a but aligns all domain sequences to create the final HMMs.
+  - Uses all domain sequences from *./data/SMART/smart_df.rds* created in `1a`
+  - Saves them to *./data/SMART/domain_alignments/*.
+
+
+------------------------------------------------------------------------
+
+**3. Consolidate data, score sequences, join scores, prepare for classifier**
+- [x] `3a_join_data.R`
+  - Splits test/train from non_integrase data.
+  - Consolidates integrases (SMART) & non-integrases data into training and test dataframes for the classifier. These are saved in ./data/ as *train_df.rds* and *test_df.rds*.
+  - Consolidates fasta files for hmmsearch scores: *train_seq.fa* & *test_seq.fa*
+
+- [x] `3b_hmmbuild_and_hmmsearch.sh`
+  - Bash script to run from the project directory.
+  - Builds the training and final HMMs from the alignments in step 2.
+  - Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
+  - Run hmmsearch for sequences against 20 HMMs made from training sequences.
+  - Save hmmsearch tables to _./data/hmmsearch_res/_
+
+- [x] `3c_prep_for_classifier.R` (needs refactoring)
+  - Processes hmmsearch output and joins to train and test data
+  - Add kmer counts for each sequence
+  - Add longer Dayhoff alphabet kmers? (5mers = 7,700 cols)
+  
+  
+------------------------------------------------------------------------
+
+**4. Classification: model selection and assessment**
+- `4a_eda.R` (to do)
+  - [x] plot sequence lengths
+  - [ ] plot sequence composition profiles
+  - [x] plot hmmsearch scores
+  
+- `4_classifier.R` (to do)
+  - [ ] Check accuracy of classification by hmmsearch best score.
+  - [ ] Nested cross-validation for assessment
+  - [ ] Model tuning CV
+  - [ ] Model stacking CV
+  - [ ] Final model selection and training
+ 
+  -->
+<!-- TODO Continue code documentation here. -->
+<!-- - `./code/classifier1.R`: adds kmer profiles and splits data, does resampling for tuning and assessment. Trains final model and saves it.... -->
 </div>
 </div>
 
