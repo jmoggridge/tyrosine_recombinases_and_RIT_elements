@@ -148,6 +148,7 @@ summaries_fix1 <-
 # replacement sequences
 superceded_updated_seq <- superceded_updated |> 
   select(nuc_id, old_nuc_id, nuc_name, nuc_seq)
+write_rds(superceded_updated_seq, './data/CDD/superceded_updated_seq.rds')
 
 # replacement taxonomy
 superceded_updated_tax <- superceded_updated |> 
