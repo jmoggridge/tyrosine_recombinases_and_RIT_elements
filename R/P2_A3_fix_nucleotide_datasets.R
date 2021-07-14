@@ -7,7 +7,7 @@ library(beepr)
 library(rentrez)
 source('./R/P2_entrez_functions.R')
 
-## Fix nuc data function -----
+## Nucleotide data fixer function -----
 
 ## tidy_up_nuc_set(nuc_file):
 
@@ -65,10 +65,13 @@ tidy_up_nuc_set <- function(nuc_file, nuc_summary, out_folder) {
   return(fixed_data |> select(nuc_id))
 }
 
+
+
 ## Main ----
 
 id_data <- read_rds('./data/CDD/id_data_fixed.rds')
 nuc_summary <- read_rds('./data/CDD/nuc_summary_fixed.rds')
+updated_seq <- read_rds('./data/CDD/superceded_updated_seq.rds')
 
 in_folder <- './data/CDD/nuc_data/'
 out_folder <- './data/CDD/nuc_data_fixed/'
@@ -77,15 +80,24 @@ dir.create(out_folder)
 nuc_id_sets <- 
   Sys.glob(glue('{in_folder}*.rds')) |> 
   map(~tidy_up_nuc_set(nuc_file = .x, nuc_summary, out_folder))
+beep()
 
 # all the ids that I have records for already
 nuc_ids_downloaded <- reduce(nuc_id_sets, bind_rows)
 
-# nuc_ids missing data
+
+## Get remaining sequences -----
+
+# 11 ids unaccounted for... 
+nrow(nuc_ids_downloaded) 
+nrow(id_data |> select(nuc_id) |> distinct())
+
+# these nuc_ids are missing data
 missing_data <- id_data |> 
   filter(!nuc_id %in% nuc_ids_downloaded$nuc_id) 
+missing_data
 
-# get any missing records for ids in id_data
+# try to get any missing records for ids in id_data
 new_records <- 
   missing_data |> 
   select(nuc_id) |>   
@@ -100,12 +112,60 @@ new_records <-
         db = 'nuccore', 
         web_history = .x$web_history, 
         rettype = 'fasta'
-      ))
+      )),
+    summary = map(
+      token,
+      ~entrez_summary(
+        db =  'nuccore', 
+        web_history = .x$web_history
+      )
+    )
   ) |> 
   mutate(ss = map(fasta, fasta_to_DNAss),
          nuc_name = map(ss, names),
          nuc_seq = map(ss, paste)) |> 
   select(-ss)
+beep()
+new_records
 
-new_records |> 
-  select(-token) |> unnest()
+# managed to get a couple records
+fixed_seq <- 
+  new_records |> 
+  select(-token) |>
+  mutate(n_seq = map_int(nuc_seq, length)) |> 
+  filter(n_seq == 1) |> 
+  select(-fasta, -n_seq, -summary) |> 
+  unnest(everything())
+
+# add to last dataset with updated from P2_A2_
+read_rds(glue('{out_folder}/12.rds')) |> 
+  bind_rows(fixed_seq, updated_seq) |> 
+  select(-old_nuc_id) |> 
+  distinct() |> 
+  write_rds(glue('{out_folder}/12.rds'))
+  
+
+# why is there a fasta record that isn't parsed?
+still_missing <- 
+  new_records |> 
+  filter(!nuc_id %in% fixed_seq$nuc_id) |> 
+  select(nuc_id, summary) |> 
+  unnest_wider(summary) 
+
+## All are full wgs projects or are MAGS...
+# still_missing |> 
+#   View()
+assemblies <- tribble(
+  ~id, ~note,
+  'SUDE00000000', 'wgs assembly',
+  'RPMC00000000', 'wgs assembly',
+  'VBLP00000000', 'Excluded from RefSeq: derived from metagenome; genus undefined',
+  'LNMN00000000', 'wgs assembly',
+  'RPMM00000000', 'wgs assembly',
+  'QTUO00000000', 'wgs assembly',
+  'SARS00000000', 'Excluded from RefSeq: derived from metagenome',
+  'FZRE00000000', 'Excluded from RefSeq: genus undefined',
+  'PHAD00000000', 'Excluded from RefSeq: derived from metagenome; genus undefined'
+)
+
+write_rds(assemblies, './data/CDD/assembly_gi_lists/assemblies.rds')
