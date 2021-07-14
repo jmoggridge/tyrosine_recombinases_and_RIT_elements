@@ -256,7 +256,7 @@ fetch_nuc_datasets <- function(data, set_number) {
   data |> 
     fetch_data(id = nuc_id, db = 'nuccore', chunk_size = 100) |> 
     parse_nuc_data() |> 
-    write_rds(nuc_data12, glue('./data/CDD/nuc_data/{set_number}.rds'))
+    write_rds(glue('./data/CDD/nuc_data/{set_number}.rds'))
   return('./data/CDD/nuc_data/{set_number}.rds')
 }
 
