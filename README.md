@@ -248,9 +248,14 @@ Downloading `P2_A1_ncbi data.R`:
  
 **Part 2**
 
-- Simplified P2_A2_filter_nuc_ids_and_taxonomy
-- *should just retrieve nucleotides after P2_A2??*
-  - suppressed ids could be reason for seq retrieving failure?
+- Simplified `P2_A2_filter_nuc_ids_and_taxonomy` - first filtering is done now
+- Wrote `P2_A3_fix_nucleotide_datasets.R` 
+  - fixes the nucleotide datasets -> to *./data/CDD/nuc_data_fixed/*
+  - tries to get the missing data for remaining few sequences
+  - 9 ids are from assemblies - mulitple contigs
+  - saved gi # (nuc_ids) from browser by searching nuc_id in nucleotide, then finding the assembly, going to that, and finding the 'nucleotide Refseq' or 'nucleotide INSD' links, then downloading the list to *./data/CDD/assemblies_gi_lists/*
+  
+- Updating clustering:
 
 
   
