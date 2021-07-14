@@ -97,7 +97,7 @@ combo |>
 library(tidyverse)
 library(glue)
 
-source('./R/00_get_model_specs.R')
+models <- read_rds('./data/unfitted_parsnip_model_set.rds')
 cv_res <- read_rds('./results/3x3_regular_CV_07-02/cv_res.rds')
 
 

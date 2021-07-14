@@ -6,9 +6,12 @@ source('./R/00_functions.R')
 
 ## Main --------------------------------------------------------------------
 
-knn_model <- read_rds('./results/knn_model_wkfl.rds')
-iceberg <- read_tsv('data/iceberg/ICE_db.tsv')
 
+knn_model <- read_rds('./models/knn_classifier.rds')
+glmnet_model <- read_rds('./models/glmnet_classifier.rds')
+rf_model <- read_rds('./models/rf_classifier.rds')
+iceberg <- read_tsv('data/iceberg/ICE_db.tsv')
+hmm_path <- './models/hmm/'
 ice <- iceberg |> 
   transmute(acc = prot_accession, prot_seq) |> 
   filter(!is.na(prot_seq)) |> 
@@ -27,6 +30,7 @@ writeXStringSet(fasta, fasta_path)
 
 junk <- tempfile()
 # setup paths for hmms and table outputs; build hmmsearch calls
+# TODO fix where files are going out to
 hmmsearches <- 
   tibble(hmm_path = Sys.glob(glue('{hmm_path}*'))) |> 
   mutate(
@@ -53,23 +57,38 @@ join_hmmsearches2 <- function(df, files){
   return(df)
 }
 
+# get scored data
 ice_scored <- 
   join_hmmsearches2(df = ice, files = hmmsearches$out_path)
 
-preds <- 
-  predict(knn_model, new_data = ice_scored) |> 
-  bind_cols(ice_scored) |> 
+# make predictions with 3 models
+knn_preds <- predict(knn_model, new_data = ice_scored) |> 
+  transmute(knn = .pred_class)
+glmnet_preds <- predict(glmnet_model, new_data = ice_scored) |> 
+  transmute(glmnet = .pred_class)
+rf_preds <- predict(rf_model, new_data = ice_scored) |> 
+  transmute(rf = .pred_class)
+  
+iceberg_preds <- 
+  ice_scored |> 
+  bind_cols(knn_preds, glmnet_preds, rf_preds) |> 
   mutate(prot_accession = acc) |> 
   select(-acc) |> 
   left_join(ice |> mutate(prot_accession = acc))
 
-iceberg_preds <- 
-  left_join(iceberg, preds, by = c("prot_seq", "prot_accession"))
 
-summary(iceberg_preds$.pred_class)
+iceberg_w_preds <- iceberg |> 
+  left_join(iceberg_preds, by = c("prot_seq"))
+
+iceberg_w_preds |> 
+  filter(is.na(glmnet))
+
 iceberg_preds |> 
-  count(.pred_class) |> 
-  ggplot(aes(n, fct_rev(.pred_class))) +
+  count(knn, glmnet, rf)
+
+iceberg_w_preds |> 
+  count(glmnet) |> 
+  ggplot(aes(n, fct_rev(glmnet))) +
   geom_col() +
   geom_text(aes(label = n), nudge_x = 800) +
   theme_bw() +
@@ -77,9 +96,13 @@ iceberg_preds |>
        title = 'ICEberg2.0 dataset protein classifications')
 
 iceberg_preds |> 
-  filter(str_detect(.pred_class, 'Rit')) |> 
+  filter(str_detect(glmnet, 'Rit')) |> 
   group_by(type, name, id) |> 
-  count(.pred_class) |> 
+  count(glmnet) |> 
   ungroup() |> 
   gt::gt() |> 
   gt::tab_options(table.font.size = 11)
+
+
+
+

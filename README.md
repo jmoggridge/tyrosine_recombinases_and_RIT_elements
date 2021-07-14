@@ -256,6 +256,14 @@ Downloading `P2_A1_ncbi data.R`:
   - saved gi # (nuc_ids) from browser by searching nuc_id in nucleotide, then finding the assembly, going to that, and finding the 'nucleotide Refseq' or 'nucleotide INSD' links, then downloading the list to *./data/CDD/assemblies_gi_lists/*
   
 - Updating clustering:
+  - Added Dunn index and some other indexes using nb_clust
+  - Not sure if wanting to use PCA figures, would need to try to explain, requires many dimensions but also have many groups.
+  
+##### TO DO
+
+- ICEberg -> classify 
+- Classifier -> all new plots but mostly glmnet ones
+  
 
 
   
