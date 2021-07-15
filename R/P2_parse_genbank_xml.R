@@ -11,14 +11,21 @@ fetch_genbank <- function(nuc_id){
   gbk <- entrez_fetch(web_history = es$web_history,
                       db = 'nuccore', rettype = 'gb', retmode = 'xml')
   gbk <- read_xml(gbk) |> as_list()
+  # start extraction
   tbl <- 
     tibble(GBSet=gbk) |> 
     unnest_wider(GBSet) |> 
     unnest_wider(GBSeq) |> 
     clean_names() |> 
     rename_all(~str_remove(.x, 'gb_seq_'))
+  # start unnesting features
   tbl_unnest <- tbl |> 
-    select(-c(references, keywords, other_seqids, xrefs)) |> 
+    select(-c(contains('references'), 
+              contains('keywords'),
+              contains('other_seqids'),
+              contains('xrefs')
+              )
+           ) |> 
     relocate(-feature_table) |> 
     unnest(-feature_table) |> 
     unnest(-feature_table) |> 
@@ -30,7 +37,12 @@ fetch_genbank <- function(nuc_id){
     hoist(feature_table, 'GBFeature_key', .simplify = T) |> 
     clean_names() |> 
     unnest_longer(gb_feature_key) |> 
-    filter(gb_feature_key == 'CDS') |> 
+    filter(gb_feature_key == 'CDS') 
+  
+  # no CDS features in record
+  if (nrow(ft) == 0) return(NA)
+  # full features extraction for CDS items in table only
+  ft <- ft |> 
     mutate(feat_id = row_number()) |> 
     hoist(feature_table, 'GBFeature_intervals') |>
     hoist(GBFeature_intervals, 'GBInterval') |> 
@@ -74,14 +86,16 @@ fetch_genbank <- function(nuc_id){
 # # map(seq(1, ))
 # 
 # # select one id to get genbank id
-nuc_id <- nuc_summary$nuc_id[1000]
-
-nuc_summary[1000,1]
+# nuc_id <- nuc_summary$nuc_id[1002]
 # 
+# nuc_summary[1002,1]
+# # 
 # gb <- fetch_genbank(nuc_id)
-# 
-# gb |> View()
+# # 
+# gb
+# gb |> unnest(feature_table)
 # gb |> unnest(feature_table) |> View()
+
 # 
 # # get genbank recd
 # es <- entrez_search(db = 'nuccore', term = s1, use_history = T)
