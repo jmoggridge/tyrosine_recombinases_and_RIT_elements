@@ -61,8 +61,8 @@ fetch_genbank <- function(nuc_id){
     pivot_wider(names_from = GBQualifier_name, values_from = GBQualifier_value) |> 
     clean_names() |> 
     unnest(gb_feature_key:translation) |> 
-    select(-c(contains('old_locus_tag'), contains('note'), 
-              contains('ec_number'), contains('gene'), contains('pseudo')))
+    select(-contains('old_locus_tag'), -contains('note'), 
+              -contains('ec_number'), -contains('gene'), -contains('pseudo')))
   
   ft_nest <- ft |> 
     unnest(gb_feature_key:translation) |> 
