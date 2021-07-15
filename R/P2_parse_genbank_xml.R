@@ -10,6 +10,8 @@ fetch_genbank <- function(nuc_id){
   es <- entrez_search(db = 'nuccore', term = nuc_id, use_history = T)
   gbk <- entrez_fetch(web_history = es$web_history,
                       db = 'nuccore', rettype = 'gb', retmode = 'xml')
+}
+parse_genbank <- function(gbk){
   gbk <- read_xml(gbk) |> as_list()
   # start extraction
   tbl <- 
@@ -61,8 +63,13 @@ fetch_genbank <- function(nuc_id){
     pivot_wider(names_from = GBQualifier_name, values_from = GBQualifier_value) |> 
     clean_names() |> 
     unnest(gb_feature_key:translation) |> 
-    select(-contains('old_locus_tag'), -contains('note'), 
-              -contains('ec_number'), -contains('gene'), -contains('pseudo')))
+    select(
+      -contains('old_locus_tag'),
+      -contains('note'), 
+      -contains('ec_number'), 
+      -contains('gene'), 
+      -contains('pseudo')
+      )
   
   ft_nest <- ft |> 
     unnest(gb_feature_key:translation) |> 
@@ -86,7 +93,8 @@ fetch_genbank <- function(nuc_id){
 # # map(seq(1, ))
 # 
 # # select one id to get genbank id
-# nuc_id <- nuc_summary$nuc_id[1002]
+nuc_id <- nuc_summary$nuc_id[19]
+gbk <- fetch_genbank(nuc_id)
 # 
 # nuc_summary[1002,1]
 # # 

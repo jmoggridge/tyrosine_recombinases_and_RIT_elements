@@ -2,7 +2,10 @@
 
 library(tidyverse)
 library(progress)
+library(rentrez)
 source('./R/P2_parse_genbank_xml.R')
+set_entrez_key('889fdb9786a14019a0a1257196a09ba4ba08')
+Sys.getenv('ENTREZ_KEY')
 
 #
 id_data <- read_rds('./data/CDD/id_data_fixed.rds')
@@ -33,23 +36,67 @@ tot <- three_integrases |>
   nrow()
 tot
 
-# skip these for now...
+# skip these for now... problems parsing these genbank records
 issues <-  c('1052702473', '483281088')
-pb <- progress_bar$new(total = tot)
+pb <- progress_bar$new(total = 100)
 
-gb_records <- 
+to_retrieve <- 
   three_integrases |> 
-  filter(!nuc_id %in% issues) |> 
   select(nuc_id, tax_id) |> 
-  distinct() |> 
+  filter(!nuc_id %in% issues) |> 
+  distinct()
+
+# first 100
+gb_records1 <- 
+  to_retrieve |> 
+  slice(1:100) |> 
   mutate(gbk = map(nuc_id, ~{
     pb$tick()
     fetch_genbank(.x)
     }))
+beepr::beep()
+write_rds(gb_records1, './data/CDD/RIT_gbk_1.rds')
 
-write_rds(gb_records, './data/CDD/genbank_for_nuc_w_3_integrases')
+# second 100
+gb_records2 <- 
+  to_retrieve |> 
+  slice(101:200) |> 
+  mutate(gbk = map(nuc_id, ~{
+    pb$tick()
+    fetch_genbank(.x)
+  }))
+beepr::beep()
+write_rds(gb_records2, './data/CDD/RIT_gbk_2.rds')
 
-# problems
-# 1052702473
-# 483281088
-# 
+# 3rd 100
+gb_records3 <- 
+  to_retrieve |> 
+  slice(201:300) |> 
+  mutate(gbk = map(nuc_id, ~{
+    pb$tick()
+    fetch_genbank(.x)
+  }))
+beepr::beep()
+write_rds(gb_records3, './data/CDD/RIT_gbk_3.rds')
+
+# 4th 100
+gb_records4 <- 
+  to_retrieve |> 
+  slice(301:400) |> 
+  mutate(gbk = map(nuc_id, ~{
+    pb$tick()
+    fetch_genbank(.x)
+  }))
+beepr::beep()
+write_rds(gb_records4, './data/CDD/RIT_gbk_4.rds')
+
+# 5th 100
+gb_records5 <- 
+  to_retrieve |> 
+  slice(401:500) |> 
+  mutate(gbk = map(nuc_id, ~{
+    pb$tick()
+    fetch_genbank(.x)
+  }))
+beepr::beep()
+write_rds(gb_records5, './data/CDD/RIT_gbk_5.rds')
