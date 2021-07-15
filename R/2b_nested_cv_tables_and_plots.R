@@ -1,10 +1,11 @@
 
 library(tidyverse)
 library(gt)
+library(glue)
 
 run_name <- '3x3-fold_07-08'
 
-
+models <- read_rds('./data/unfitted_parsnip_model_set.rds')
 nest_cv_results <- read_rds('./results/3x3-fold_07-08_nest_cv_results.rds')
 final_summary <- read_rds('./results/3x3-fold_07-08_nest_cv_summary.rds')
 
@@ -39,7 +40,7 @@ best_tunes <- nest_cv_results |>
 best_tunes |> 
   map(~select(.x, model_type, model_id)) |> 
   bind_rows() |> 
-  ggplot(aes(x = model_id)) +
+  ggplot(aes(x = as_factor(model_id))) +
   geom_bar() +
   facet_wrap(~model_type, nrow = 3) +
   theme_bw() +
@@ -133,11 +134,11 @@ glmnet_plot <-
   ggplot(aes(penalty, mixture)) +
   geom_tile(aes(fill = mean), color = 'black') +
   geom_point(aes(size = error)) +
-  scale_fill_viridis_c() +
+  scale_fill_viridis_c(begin = 0.2) +
   scale_x_log10() +
   theme_bw() +
   labs(title = 'MCC as a function of penalty and mixture parameters for elastic net',
-       subtitle = 'colors represent means, points represent sd',
+       subtitle = 'Colors represent means of 81 inner folds, points represent sd',
        fill = 'MCC mean', size = 'MCC sd')
 
 glmnet_plot
@@ -215,7 +216,7 @@ rf_plot <- rf_scores |>
        subtitle = 'Gray traces and points represent the results for 81 individual inner CV folds;\nthe blue trace shows the average across all inner folds.') +
   theme(plot.title = element_markdown())
   
-
+rf_plot
 
 save(knn_plot, rf_plot, glmnet_plot, all_metrics_plot, file = './results/3x3-fold-07-08-nested_cv_plots.rda')
 
