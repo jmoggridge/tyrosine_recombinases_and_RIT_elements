@@ -11,6 +11,7 @@ fetch_genbank <- function(nuc_id){
   gbk <- entrez_fetch(web_history = es$web_history,
                       db = 'nuccore', rettype = 'gb', retmode = 'xml')
 }
+
 parse_genbank <- function(gbk){
   gbk <- read_xml(gbk) |> as_list()
   # start extraction
@@ -25,7 +26,9 @@ parse_genbank <- function(gbk){
     select(-c(contains('references'), 
               contains('keywords'),
               contains('other_seqids'),
-              contains('xrefs')
+              contains('contig'),
+              contains('xrefs'),
+              contains('sequence')
               )
            ) |> 
     relocate(-feature_table) |> 
@@ -61,24 +64,45 @@ parse_genbank <- function(gbk){
     unnest(c(GBQualifier_name, GBQualifier_value)) |> 
     select(-feature_table) |> 
     pivot_wider(names_from = GBQualifier_name, values_from = GBQualifier_value) |> 
-    clean_names() |> 
-    unnest(gb_feature_key:translation) |> 
+    clean_names() 
+  ft <- ft |> 
+    select(-contains('pseudo'),
+           -contains('ribosomal_slippage'),
+           -contains('inference'),
+           -contains('function'),
+           -contains('transl_except'),
+           -contains('artificial_location'),
+           -contains('old_locus_tag'),
+           -contains('note'), 
+           -contains('ec_number'), 
+           -contains('gene'), 
+           -contains('transl_except'),
+           -contains('artificial_location'),
+           -contains('pseudo')
+           )
+  ft_unnest <- ft |> 
+    unnest(names(ft)[2:ncol(ft)]) |> 
     select(
       -contains('old_locus_tag'),
       -contains('note'), 
       -contains('ec_number'), 
       -contains('gene'), 
+      -contains('transl_except'),
+      -contains('artificial_location'),
       -contains('pseudo')
-      )
+    )
   
-  ft_nest <- ft |> 
+  ft_nest <- ft_unnest |> 
     unnest(gb_feature_key:translation) |> 
     nest(feature_table = gb_feature_key:translation)
-  
-  gb_record <- left_join(tbl_unnest |> select(-feature_table),
-                         ft_nest, by = "locus")
+  tbl <- tbl_unnest |> 
+    select(-feature_table) |> 
+    distinct()
+  gb_record <- left_join(tbl, ft_nest, by = "locus")
   return(gb_record)
 }
+
+
 
 
 # id_data <- read_rds('./data/CDD/id_data_fixed.rds')
@@ -93,8 +117,8 @@ parse_genbank <- function(gbk){
 # # map(seq(1, ))
 # 
 # # select one id to get genbank id
-nuc_id <- nuc_summary$nuc_id[19]
-gbk <- fetch_genbank(nuc_id)
+# nuc_id <- nuc_summary$nuc_id[19]
+# gbk <- fetch_genbank(nuc_id)
 # 
 # nuc_summary[1002,1]
 # # 
