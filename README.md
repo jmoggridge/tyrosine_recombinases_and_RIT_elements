@@ -259,10 +259,31 @@ Downloading `P2_A1_ncbi data.R`:
   - Added Dunn index and some other indexes using nb_clust
   - Not sure if wanting to use PCA figures, would need to try to explain, requires many dimensions but also have many groups.
   
+    
+#### Weds, July 14th
+  
+  - meeting: prioritize RIT finding + description
+  - wrote genbank fetcher and parser functions: 
+  
+
+#### Thurs, July 15th
+
+  - started: `P2_A4_get_genbank_data_for_probable_RITs.R`
+    - filter ids down to nucleotide ids with three linked RIT proteins.
+    - get genbank records for those - split the downloads into chunks of 100. Saved as `./data/CDD/RIT_gbk_<1-6>.rds`
+  - still having some issues with iceberg data - HMM scores not being created in right folder...
+  
+#### Friday, July 16th
+
+Iceberg data to Nicole
+    
 ##### TO DO
 
 - ICEberg -> classify 
-- Classifier -> all new plots but mostly glmnet ones
+- Find all RITs
+- Start writing some parts...
+
+
   
 
 
