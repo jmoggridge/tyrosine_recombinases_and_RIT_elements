@@ -412,6 +412,9 @@ still need the taxonomy but no rush</p></li>
 </li>
 <li>Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files…</li>
 </ul></li>
+</ul>
+<p><strong>Part 2 data</strong></p>
+<ul>
 <li>Continuing <code>P2_A1_ncbi_downloads.R</code>
 <ul>
 <li>linking taxonomy ids to nucleotide ids. (<code>link_nuccore_taxonomy</code>)</li>
@@ -425,9 +428,122 @@ still need the taxonomy but no rush</p></li>
 </ul></li>
 <li>Working on <code>P1_A2_repair_nucleotide_data.R</code>:
 <ul>
-<li>figure out which ids are ‘removed’.</li>
-<li>filter out those ids -&gt; filtered_id_data</li>
+<li><input type="checkbox" disabled checked></input>
+fixed 2 superceded sequences and replaced ids, got new taxonomy and seq. <em>still need to replace seq</em></li>
+<li><input type="checkbox" disabled checked></input>
+fixed 2 updated seqs… got data + linked tax</li>
+<li>still need to remove 205 seqs</li>
+<li>get updated taxonomy for remaining that are missing it from the nuc_summary$taxid column</li>
 </ul></li>
+</ul>
+</div>
+<div id="tues-july-13th" class="section level4">
+<h4>Tues, July 13th</h4>
+<p><strong>Part 2</strong></p>
+<ul>
+<li>Simplified <code>P2_A2_filter_nuc_ids_and_taxonomy</code> - first filtering is done now</li>
+<li>Wrote <code>P2_A3_fix_nucleotide_datasets.R</code>
+<ul>
+<li>fixes the nucleotide datasets -&gt; to <em>./data/CDD/nuc_data_fixed/</em></li>
+<li>tries to get the missing data for remaining few sequences</li>
+<li>9 ids are from assemblies - mulitple contigs</li>
+<li>saved gi # (nuc_ids) from browser by searching nuc_id in nucleotide, then finding the assembly, going to that, and finding the ‘nucleotide Refseq’ or ‘nucleotide INSD’ links, then downloading the list to <em>./data/CDD/assemblies_gi_lists/</em></li>
+</ul></li>
+<li>Updating clustering:
+<ul>
+<li>Added Dunn index and some other indexes using nb_clust</li>
+<li>Not sure if wanting to use PCA figures, would need to try to explain, requires many dimensions but also have many groups.</li>
+</ul></li>
+</ul>
+</div>
+<div id="weds-july-14th" class="section level4">
+<h4>Weds, July 14th</h4>
+<ul>
+<li>meeting: prioritize RIT finding + description</li>
+<li>wrote genbank fetcher and parser functions:</li>
+</ul>
+</div>
+<div id="thurs-july-15th" class="section level4">
+<h4>Thurs, July 15th</h4>
+<ul>
+<li>started: <code>P2_A4_get_genbank_data_for_probable_RITs.R</code>
+<ul>
+<li>filter ids down to nucleotide ids with three linked RIT proteins.</li>
+<li>get genbank records for those - split the downloads into chunks of 100. Saved as <code>./data/CDD/RIT_gbk_&lt;1-6&gt;.rds</code></li>
+</ul></li>
+<li>still having some issues with iceberg data - HMM scores not being created in right folder…</li>
+</ul>
+</div>
+<div id="friday-july-16th" class="section level4">
+<h4>Friday, July 16th</h4>
+<p>Iceberg data to Nicole - <em>done</em>.</p>
+<p>Working on P2_A5 - Rit identification pipeline. Documentation:</p>
+<p><strong>The main wrapper <code>rit_finder()</code> </strong>:</p>
+<ul>
+<li>uses set of probable Rits (<code>ids_w_three_integrases.rds</code>)
+<ul>
+<li>these already have genbank data from <code>P2_A3</code> + <code>A4</code>.<br />
+</li>
+</ul></li>
+<li>parses genbank record with <code>open_genbank()</code><br />
+</li>
+<li>extracts feature table with <code>extract_features_table()</code><br />
+</li>
+<li>classifies all translations of the CDSs with <code>classify_proteins()</code>
+<ul>
+<li>uses consensus of knn and glmnet to create <code>consensus_pred</code> column.<br />
+</li>
+</ul></li>
+<li>tidies up start, stop, orientation with <code>edit_feature_table()</code>.<br />
+</li>
+<li>take lag + lead row data with <code>pivot_feature_table</code>
+<ul>
+<li>now each CDS has linked up- and downstream CDSs for testing.<br />
+</li>
+</ul></li>
+<li>Test trios with <code>rit_tester</code> to check whether trio of proteins are:
+<ul>
+<li><code>rit_length_check</code>: p1 start to p3 stop &lt; 4000 bp<br />
+</li>
+<li><code>rit_distance_check</code>: CDS not separated by gap &gt; 250 bp<br />
+</li>
+<li><code>rit_all</code>: all Rit subfamily members,<br />
+</li>
+<li><code>rit_ABC</code>: trio is Rit&lt;A, B, C&gt; or Rit&lt;C, B, A&gt;<br />
+</li>
+<li><code>rit_orientation</code>: all forward or reverse? or not all same?<br />
+</li>
+</ul></li>
+<li>Select which are RITs with <code>rit_selector()</code> based on <code>rit_all</code>, <code>_distance_check</code>, and <code>_length_check</code><br />
+</li>
+<li>Return value is a tibble with nuc_id and nested tibble of Rit trios!</li>
+</ul>
+<p><strong><code>rit_finder</code> works on nucs 1-4, not 5, 6-8… </strong></p>
+<ul>
+<li><p><strong>Issue</strong> with HMM searches coming back empty for some domains.<br />
+</p></li>
+<li><p><strong>Solution</strong> create filler dataset <code>./data/hmmsearch_filler.rds</code> to concatenate with query sequences, such that there is always at least one hit and the hmmsearch output is not an empty table. Empty table causes an error because read_hmmsearches is expecting specific columns to be present in the table.</p></li>
+<li><p><strong>Issue</strong> Some genbank files are full of partial sequences and pseudogenes but the only info I have is the absence of protein_id and translation values…<br />
+</p></li>
+<li><p><strong>work-around</strong> label these as pseudo_or_partial = TRUE.</p></li>
+<li><p><strong>Issue</strong> not sure what data to collect for later analysis<br />
+</p></li>
+<li><p><strong>action</strong> show Nicole what I have so far…</p></li>
+<li><p><strong>Issue</strong> no CDS….<br />
+</p></li>
+<li><p>e.g.: 1817592545 (5),<br />
+</p></li>
+<li><p><strong>Possible</strong> download their files manually and parse the xml.</p>
+<ul>
+<li><strong>Issue</strong> parse_genbank() ‘Error: object ’GBSeq’ not found’</li>
+</ul></li>
+</ul>
+<div id="to-do" class="section level5">
+<h5>TO DO</h5>
+<ul>
+<li>ICEberg -&gt; classify</li>
+<li>Find all RITs</li>
+<li>Start writing some parts…</li>
 </ul>
 <hr />
 <!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
@@ -445,6 +561,7 @@ still need the taxonomy but no rush</p></li>
 
 -->
 </div>
+</div>
 <div id="todo-list" class="section level4">
 <h4>TODO LIST</h4>
 <p><strong>Part 1</strong></p>
@@ -456,12 +573,11 @@ redo k-means with letting k be variable…</li>
 </ul>
 <p><strong>Part 2</strong></p>
 <ul class="task-list">
-<li><input type="checkbox" disabled></input>
+<li><input type="checkbox" disabled checked></input>
 prepare a slide of ideas that I am working on for meeting</li>
-<li><input type="checkbox" disabled></input>
+<li><input type="checkbox" disabled checked></input>
 proceed to finding proteins with nucleotide sequence<ul>
-<li>translate to proteins, keep locations<br />
-</li>
+<li>Using genbank….</li>
 </ul></li>
 <li><input type="checkbox" disabled></input>
 also EDA:<ul>
@@ -471,7 +587,8 @@ also EDA:<ul>
 </li>
 <li>protein lengths<br />
 </li>
-<li>protein composition??</li>
+<li>taxonomy for rit elements…</li>
+<li></li>
 </ul></li>
 </ul>
 </div>

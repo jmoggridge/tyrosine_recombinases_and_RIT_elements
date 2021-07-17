@@ -275,45 +275,45 @@ Downloading `P2_A1_ncbi data.R`:
   
 #### Friday, July 16th
 
-Iceberg data to Nicole - *done*.
+Iceberg data to Nicole - *done*.     
+     
+Working on P2_A5 - Rit identification pipeline. Documentation:     
+     
+**The main wrapper `rit_finder()` **:     
 
-Working on P2_A5 - Rit identification pipeline...
-
-The main wrapper `rit_finder()`:
-   - uses set of probable Rits (`ids_w_three_integrases.rds`)
-     - these already have genbank data from `P2_A3` + `A4`.
-   - parses genbank record with `open_genbank()`
-   - extracts feature table with ` extract_features_table() `
-   - classifies all translations of the CDSs with `classify_proteins()`
-     - uses consensus of knn and glmnet to create `consensus_pred` column.
-   - tidies up start, stop, orientation with `edit_feature_table()`.
-   - take lag + lead row data with `pivot_feature_table`
-     - now each CDS has linked up- and downstream CDSs for testing.
-   - Test trios with `rit_tester` to check whether trio of proteins are:
-     - `rit_length_check`: p1 start to p3 stop < 4000 bp
-     - `rit_distance_check`: CDS not separated by gap > 250 bp 
-     - `rit_all`: all Rit subfamily members,
-     - `rit_ABC`: trio is Rit<A, B, C> or Rit<C, B, A>
-     - `rit_orientation`: all forward or reverse? or not all same?
-   - Select which are RITs with `rit_selector()` based on `rit_all`, `_distance_check`, and `_length_check`
+   - uses set of probable Rits (`ids_w_three_integrases.rds`)     
+     - these already have genbank data from `P2_A3` + `A4`.     
+   - parses genbank record with `open_genbank()`     
+   - extracts feature table with ` extract_features_table() `     
+   - classifies all translations of the CDSs with `classify_proteins()`     
+     - uses consensus of knn and glmnet to create `consensus_pred` column.     
+   - tidies up start, stop, orientation with `edit_feature_table()`.     
+   - take lag + lead row data with `pivot_feature_table`     
+     - now each CDS has linked up- and downstream CDSs for testing.     
+   - Test trios with `rit_tester` to check whether trio of proteins are:     
+     - `rit_length_check`: p1 start to p3 stop < 4000 bp     
+     - `rit_distance_check`: CDS not separated by gap > 250 bp      
+     - `rit_all`: all Rit subfamily members,     
+     - `rit_ABC`: trio is Rit<A, B, C> or Rit<C, B, A>     
+     - `rit_orientation`: all forward or reverse? or not all same?     
+   - Select which are RITs with `rit_selector()` based on `rit_all`, `_distance_check`, and `_length_check`   
+   - Return value is a tibble with nuc_id and nested tibble of Rit trios!    
    
-   
-rit_finder <- function(x){
+**`rit_finder` works on nucs 1-4, not 5, 6-8...    **
 
-  # determine protein orientations and start/stop; drop some data 
-  ft_edit <- edit_feature_table(ft = ft_join)
+  - **Issue** with HMM searches coming back empty for some domains.    
+  - **Solution** create filler dataset `./data/hmmsearch_filler.rds` to concatenate with query sequences, such that there is always at least one hit and the hmmsearch output is not an empty table. Empty table causes an error because read_hmmsearches is expecting specific columns to be present in the table.    
   
-  # for each feature (besides the first and last)
-  # take info from previous and next features.
-  ft_pivot <- pivot_feature_table(ft_edit = ft_edit)
-  rit_tests <- rit_tester(ft_pivot = ft_pivot)
+  - **Issue** Some genbank files are full of partial sequences and pseudogenes but the only info I have is the absence of protein_id and translation values...    
+  - **work-around** label these as pseudo_or_partial = TRUE.    
   
-  # rit selector: check tests, filter candidates,
-  # package up upstream and downstream cds.
-  rits <- rit_selector(rit_tests = rit_tests, ft_edit = ft_edit)
-  return(rits)
-  }
-
+  - **Issue** not sure what data to collect for later analysis    
+  - **action** show Nicole what I have so far...    
+     
+  - **Issue** no CDS....    
+   - e.g.: 1817592545 (5),     
+  - **Possible** download their files manually and parse the xml.    
+      - **Issue** parse_genbank() 'Error: object 'GBSeq' not found'    
     
 ##### TO DO
 

@@ -8,62 +8,63 @@ library(glue)
 library(Biostrings)
 library(furrr)
 library(tidymodels)
+library(beepr)
+library(tictoc)
 
-# for parse_genbank function
+# load parse_genbank function
 source('./R/P2_parse_genbank_xml.R')
+rm(fetch_genbank)
+# Data for rit_finder() routines ----
 
+# classifiers
+knn_model <- read_rds('./models/knn_classifier.rds')
+glmnet_model <- read_rds('./models/glmnet_classifier.rds')
 
-## Functions for opening genbank and classifying proteins -----
+# some data that is necessary for classify_proteins()'s hmmsearches
+hmmsearch_filler <- read_rds('./data/hmmsearch_filler.rds')
+
+## rit_finder functions -----
 
 # for a nuc_id, return the parsed genbank record as a tibble
+# genbank_files_index needs to be loaded in the environment
 open_genbank <- function(x){
-  # figure out which file to open from index
-  file <- genbank_files_index |> 
+  genbank_files_index |> 
+    # figure out which file to open from index
     filter(nuc_id == x) |> 
-    pull(file)
-  file
-  
-  # pull the genbank record and parse
-  gbk <- read_rds(file) |> 
+    pull(file) |> 
+    # pull the genbank record for id and parse it
+    read_rds() |> 
     filter(nuc_id == x) |> 
     unnest(gbk) |> 
     pull(gbk) |> 
     parse_genbank()
-  return(gbk)
 }
+
+## TODO secondary parser for downloaded genbank .xml files
+# open_genbank2 <- function(x){
+#   gb <- read_file(glue('./data/CDD/genbank_w_cds/{x}.xml'))
+#   gb |> parse_genbank()
+# }
+
 
 extract_features_table <- function(gbk){
   # unnests the features table of genbank record gbk to return CDS items
-  gbk |>
-    select(feature_table) |> 
+  gbk |> select(feature_table) |> 
     unnest(feature_table) |> 
     select(-c(gb_feature_key, locus_tag, transl_table)) 
 }
-
-## rit_finder functions -----
-
-# first, some data that is necessary for classify_proteins()'s hmmsearches
-hmmsearch_filler <- read_rds('./data/hmmsearch_filler.rds')
-
 
 read_hmmsearch <- function(path){
   # read hmmsearch tblout result for one dataset vs one HMM; 
   # return df of (acc, <hmm_name>)
   read_delim(
-    file = path, 
-    na = '-', 
-    delim = ' ', 
-    comment = '#',  
-    trim_ws = T,
-    col_types = cols(), 
-    col_names = FALSE
+    file = path, na = '-', delim = ' ', comment = '#',  trim_ws = T,
+    col_types = cols(), col_names = FALSE
   ) |> 
     transmute(acc = X1, hmm_name = X3, best_dom_score = X9) |> 
     # keep only the best hmm score for each protein
-    group_by(acc) |> 
-    filter(best_dom_score == max(best_dom_score)) |> 
-    ungroup() |>  
-    distinct() |> 
+    group_by(acc) |> filter(best_dom_score == max(best_dom_score)) |> 
+    ungroup() |>  distinct() |> 
     # name the values column after the subfamily hmm
     pivot_wider(names_from = hmm_name, values_from = best_dom_score) 
 }
@@ -73,8 +74,7 @@ join_hmmsearches2 <- function(df, files){
   # (need to match the headers in the fasta passed to hmmsearch)
   # read and combine hmmsearch data with reduce
   # join scores to input data & replace any NAs with zeros
-  files |> 
-    map(read_hmmsearch) |> 
+  files |> map(read_hmmsearch) |> 
     purrr::reduce(.f = full_join, by = 'acc') |> 
     right_join(df, by = 'acc') |>
     mutate(across(Arch1:Xer, ~replace_na(.x, 0))) |> 
@@ -237,70 +237,28 @@ rit_tester <- function(ft_pivot){
     )
 }
 
-rit_selector <- function(rit_tests, ft_edit){
-  # rit selector: check tests, filter candidates,
-  # package up upstream and downstream cds.
+rit_selector <- function(nuc_id, rit_tests, ft_edit){
   rits <- rit_tests |> 
+    # rit selector: check tests, filter candidates,
     rowwise() |> 
     filter(all(rit_dist_check, rit_all_check, rit_length_check)) |> 
+    # package up upstream and downstream cds.
     mutate(
       upstream_cds = map(
         p1_start, 
-        ~ft_edit |> 
-          filter(.x - stop > -200 & .x - stop < 1000)
+        ~ft_edit |> filter(.x - stop > -200 & .x - stop < 1000)
       ),
       downstream_cds = map(
         p3_stop, 
-        ~ft_edit |> 
-          filter(start -.x > -200 & start - .x < 1000)
+        ~ft_edit |> filter(start -.x > -200 & start - .x < 1000)
       )
     ) |> 
     ungroup() |> 
     nest(rits = everything()) |> 
-    transmute(nuc_id = x, rits)
+    transmute(nuc_id = nuc_id, rits, success = T)
   return(rits)
 }
 
-## Main ----
-
-## load classifiers
-knn_model <- read_rds('./models/knn_classifier.rds')
-glmnet_model <- read_rds('./models/glmnet_classifier.rds')
-
-### Load probable RIT elements id data ----
-
-# genbank files for these nuc ids lack the CDS features.
-no_cds <- c('1834417989', '1024364864')
-
-# these nucleotides probably contain RIT element bc have 3 CDD proteins.
-three_ints <- read_rds('./data/CDD/ids_w_three_integrases.rds') |> 
-  filter(!nuc_id %in% no_cds) |> 
-  arrange(slen)
-glimpse(three_ints)
-
-# prot_id and accessions for this set of nt's.
-three_ints_prots <- three_ints |> unnest(prot_id) |> pull(prot_id)
-
-# join with other accession numbers
-prot_accessions <- read_rds('./data/CDD/prot_summary_fixed.rds') |> 
-  filter(prot_id %in% three_ints_prots) |> 
-  transmute(prot_id, prot_accession = glue('{caption}.1'))
-
-# join the protein accession labels that match the genbank CDS entries
-three_ints <- three_ints |> 
-  unnest(c(prot_id, cdd_title)) |> 
-  left_join(prot_accessions, by = c("prot_id")) |> 
-  group_by(nuc_id) |> 
-  nest(prot_data = c(prot_id, prot_accession, cdd_title)) |> 
-  mutate(nuc_accession = caption)
-
-# create an index for nuc ids to their genbank records
-genbank_files_index <- 
-  tibble(file = Sys.glob('./data/CDD/RIT_gbk_[0-9].rds')) |> 
-  mutate(nuc_id = map(file, ~ read_rds(.x) |> pull(nuc_id))) |> 
-  unnest(nuc_id)
-
-rm(prot_accessions, three_ints_prots, no_cds)
 
 ##  Find RITs -----
 
@@ -314,7 +272,18 @@ rm(prot_accessions, three_ints_prots, no_cds)
 rit_finder <- function(x){
   
   # open genbank and extract features table for nuc_id x,
-  ft <- open_genbank(x = x) |> 
+  ft <- 
+    open_genbank(x = x)
+  
+  # if no CDS in feature table, return NA
+  # TODO use 2ndary parser for downloaded .xml files
+  if(is.na(ft)) {
+    # ft <- open_genbank2(x)
+    # if(is.na(ft))
+    return(tibble(nuc_id = x, rits = list(NA), success = F))
+  }
+  
+  ft <- ft |> 
     extract_features_table() 
   
   # predict integrase classes for all protein CDSs
@@ -339,85 +308,90 @@ rit_finder <- function(x){
   
   # rit selector: check tests, filter candidates,
   # package up upstream and downstream cds.
-  rits <- rit_selector(rit_tests = rit_tests, ft_edit = ft_edit)
+  rits <- rit_selector(rit_tests = rit_tests, ft_edit = ft_edit, nuc_id = x)
   return(rits)
-  }
+}
+
+## Main1 -----
+
+### Load probable RIT elements id data ----
+
+# genbank files for these nuc ids lack the CDS features.
+no_cds <- c('1834417989', '1024364864', '1817592545')
+
+# these nucleotides probably contain RIT element bc have 3 CDD proteins.
+three_ints <- read_rds('./data/CDD/ids_w_three_integrases.rds') |> 
+  filter(!nuc_id %in% no_cds) |> 
+  arrange(slen)
+glimpse(three_ints)
+
+# # prot_id and accessions for this set of nt's.
+# three_ints_prots <- three_ints |> unnest(prot_id) |> pull(prot_id)
+# 
+# # join with other accession numbers
+# prot_accessions <- read_rds('./data/CDD/prot_summary_fixed.rds') |> 
+#   filter(prot_id %in% three_ints_prots) |> 
+#   transmute(prot_id, prot_accession = glue('{caption}.1'))
+# 
+# # join the protein accession labels that match the genbank CDS entries
+# three_ints <- three_ints |> 
+#   unnest(c(prot_id, cdd_title)) |> 
+#   left_join(prot_accessions, by = c("prot_id")) |> 
+#   group_by(nuc_id) |> 
+#   nest(prot_data = c(prot_id, prot_accession, cdd_title)) |> 
+#   mutate(nuc_accession = caption) |> 
+#   ungroup()
+
+# create an index for nuc ids to their genbank records
+genbank_files_index <- 
+  tibble(file = Sys.glob('./data/CDD/RIT_gbk_[0-9].rds')) |> 
+  mutate(nuc_id = map(file, ~ read_rds(.x) |> pull(nuc_id))) |> 
+  unnest(nuc_id)
+
+rm(prot_accessions, three_ints_prots, no_cds)
+
+
+## Main2 -----
+
+### find RITs ------
 
 # example
 
-x <- three_ints$nuc_id[[2]]
-x
-df <- rit_finder(x)
-df
+# TODO issue with many ids.... record is too large?
+
+# x5 <- three_ints$nuc_id[[5]]
+# df5 <- rit_finder(x5)
+# gbk <- './data/CDD/genbank_w_cds/1817592545.xml'
+rm(gbk)
+# 
+# x6 <- three_ints$nuc_id[[6]]
+# df6 <- rit_finder(x6)
+# 
+# x7 <- three_ints$nuc_id[[7]]
+# df7 <- rit_finder(x7)
+# 
+# x8 <- three_ints$nuc_id[[8]]
+# df8 <- rit_finder(x8)
+# beep()
+# rm(df5, df6, df7, df8)
 
 
-# TODO figure out the issue with nuc_id 2
-## issue was HMM search results were empty so had no HMM name in col X3
+pb <- progress_bar$new(total = 47)
+
+rit_by_id_list <- three_ints |> 
+  dplyr::slice(1:47) |> 
+  pull(nuc_id) |> 
+  map(~{ pb$tick()
+    rit_finder(.x)
+  }
+  ) 
+
+# |> 
+  # purrr::reduce(bind_rows)
+beep()
+
+# [============================================================================>---]  96%Error in gzfile(file, "rb") : invalid 'description' argument
+# 48*
 
 
-# are the three RIT proteins there??
-# prot_x <- three_ints |>
-#   filter(nuc_id == x) |> 
-#   unnest(prot_data) |> 
-#   pull(prot_accession)
-# 
-# ft[which(ft$protein_id %in% prot_x), ] |> 
-#   left_join()
-
-
-
-# figure out where there is three RITs in a row...
-
-
-
-# for one nucleotide -> get genbank -> identify RITs
-
-
-
-# 
-# 
-# ## PARSE FILES -------
-# rm(count_table, id_data, nuc_summary, three_integrases, to_retrieve)
-# 
-# wont_parse <- c()
-# 
-# gb1 <- read_rds('./data/CDD/RIT_gbk_1.rds') |> slice(1:20)
-# 
-# pb <- progress_bar$new(total = 20)
-# parsed_gb1a <- gb1 |> 
-#   filter(!nuc_id %in% wont_parse) |> 
-#   filter(!nuc_id %in% no_CDS) |> 
-#   mutate(genbank_rcd = map2(gbk, nuc_id, ~{
-#     print(glue('\nnuc_id: {.y}'))
-#     parsed <- parse_genbank(.x)
-#     pb$tick()
-#     return(parsed)
-#   })
-#   ) |> 
-#   select(nuc_id, genbank_rcd)
-# write_rds(parsed_gb1a, './data/CDD/RIT_gbk_1a_parsed.rds')
-# beepr::beep()
-# rm(parsed_gb1a)
-# 
-# 
-# gb1 <- read_rds('./data/CDD/RIT_gbk_1.rds') |> slice(21:40)
-# pb <- progress_bar$new(total = 20)
-# parsed_gb <- gb1 |> 
-#   filter(!nuc_id %in% wont_parse) |> 
-#   filter(!nuc_id %in% no_CDS) |> 
-#   mutate(genbank_rcd = map2(gbk, nuc_id, ~{
-#     print(glue('\nnuc_id: {.y}'))
-#     parsed <- parse_genbank(.x)
-#     pb$tick()
-#     return(parsed)
-#   })
-#   ) |> 
-#   select(nuc_id, genbank_rcd)
-# write_rds(parsed_gb_1b, './data/CDD/RIT_gbk_1b_parsed.rds')
-# beepr::beep()
-# 
-# 
-# 
-# 
-# 
-# 
+rit_by_id_list |> unnest() |> View()
