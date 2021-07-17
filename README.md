@@ -275,7 +275,45 @@ Downloading `P2_A1_ncbi data.R`:
   
 #### Friday, July 16th
 
-Iceberg data to Nicole
+Iceberg data to Nicole - *done*.
+
+Working on P2_A5 - Rit identification pipeline...
+
+The main wrapper `rit_finder()`:
+   - uses set of probable Rits (`ids_w_three_integrases.rds`)
+     - these already have genbank data from `P2_A3` + `A4`.
+   - parses genbank record with `open_genbank()`
+   - extracts feature table with ` extract_features_table() `
+   - classifies all translations of the CDSs with `classify_proteins()`
+     - uses consensus of knn and glmnet to create `consensus_pred` column.
+   - tidies up start, stop, orientation with `edit_feature_table()`.
+   - take lag + lead row data with `pivot_feature_table`
+     - now each CDS has linked up- and downstream CDSs for testing.
+   - Test trios with `rit_tester` to check whether trio of proteins are:
+     - `rit_length_check`: p1 start to p3 stop < 4000 bp
+     - `rit_distance_check`: CDS not separated by gap > 250 bp 
+     - `rit_all`: all Rit subfamily members,
+     - `rit_ABC`: trio is Rit<A, B, C> or Rit<C, B, A>
+     - `rit_orientation`: all forward or reverse? or not all same?
+   - Select which are RITs with `rit_selector()` based on `rit_all`, `_distance_check`, and `_length_check`
+   
+   
+rit_finder <- function(x){
+
+  # determine protein orientations and start/stop; drop some data 
+  ft_edit <- edit_feature_table(ft = ft_join)
+  
+  # for each feature (besides the first and last)
+  # take info from previous and next features.
+  ft_pivot <- pivot_feature_table(ft_edit = ft_edit)
+  rit_tests <- rit_tester(ft_pivot = ft_pivot)
+  
+  # rit selector: check tests, filter candidates,
+  # package up upstream and downstream cds.
+  rits <- rit_selector(rit_tests = rit_tests, ft_edit = ft_edit)
+  return(rits)
+  }
+
     
 ##### TO DO
 
@@ -314,14 +352,15 @@ Iceberg data to Nicole
  
 **Part 2**
 
-  - [ ] prepare a slide of ideas that I am working on for meeting
-  - [ ] proceed to finding proteins with nucleotide sequence  
-     - translate to proteins, keep locations  
+  - [x] prepare a slide of ideas that I am working on for meeting
+  - [x] proceed to finding proteins with nucleotide sequence  
+     - Using genbank....
   - [ ] also EDA:  
      - dna seq lengths  
      - how many proteins per sequence  
      - protein lengths  
-     - protein composition??  
+     - taxonomy for rit elements...
+     - 
 
 
 
