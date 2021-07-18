@@ -323,6 +323,33 @@ Today:
 2. Figure out if it is possible to create a different parser for genbank records
 downloaded via browser for those currently missing CDS.
     
+Tried to extract RIT sequences by locating protein with translation of ICEs for all reading frames, many protein simply not present in entire set of translations. Protein sequences do not seem to match the DNA sequences.
+
+Instead, just blasted proteins against strain to find location.
+Went to genbank and expanded range to find trio. Took start and stop from the range containing the trio. 
+Aligned mesorhizobium rits and they were the same.
+Only get one blast hit despite triplicate of double RIT segment.
+
+Trying to finish RIT finder script. Still finding weird issues:
+- "47118329" -> "Column `locus_tag` doesn't exist."
+- "339284117", "737980678", '1980667557' ->  "Error in gzfile(file, "rb") : invalid 'description' argument"
+
+
+#### Sunday, July 18th   
+
+- Trying to process all genbank files with `rit_finder` (P2_A5)
+
+- Trying to figure out how to answer Nicole's qs about ICEs' RITs.
+  
+Bordetella RITs:
+
+RITs 1,2,3 - identical - except for insertion in RIT 3
+RITs (1,2,3) vs 4 - different
+
+Mesorhizobium
+
+
+
 ##### TO DO
 
 - Find all RITs

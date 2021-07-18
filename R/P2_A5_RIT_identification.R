@@ -11,7 +11,7 @@ library(tidymodels)
 library(beepr)
 library(tictoc)
 
-# load functions
+# load functions and models
 source('./R/P2_rit_finder.R')
 
 
@@ -19,13 +19,11 @@ source('./R/P2_rit_finder.R')
 
 ### Load probable RIT elements id data ----
 
-# genbank files for these nuc ids lack the CDS features.
-no_cds <- c('1834417989', '1024364864', '1817592545')
-
 # these nucleotides probably contain RIT element bc have 3 CDD proteins.
+# TODO go back to P2_A4 and find out why duplicated rows here
 three_ints <- read_rds('./data/CDD/ids_w_three_integrases.rds') |> 
-  filter(!nuc_id %in% no_cds) |> 
-  arrange(slen)
+  arrange(slen) |> 
+  distinct()
 glimpse(three_ints)
 
 # create an index for nuc ids to their genbank records
@@ -35,61 +33,148 @@ genbank_files_index <-
   unnest(nuc_id) |> 
   distinct()
 
+# these ids have genbank files downloaded already
+have_genbank <- three_ints |> 
+  filter(nuc_id %in% genbank_files_index$nuc_id)
+
+# these are ids that genbank records aren't present for
+no_genbank <- 
+  anti_join(three_ints, have_genbank) |> pull(nuc_id) |> unique()
+no_genbank
+
+
+create_errors <- c(
+  # ids that seem to be causing parsing errors
+  "737980678", "47118329", "339284117", "1980667557", 
+  # R just hangs when these are processed
+  '56311475', '1008271296', '237624339'
+  )
+
+## ERRORS
+##  "47118329"
+##  x Column `locus_tag` doesn't exist.
+##  "339284117", "737980678"
+##  Error in gzfile(file, "rb") : invalid 'description' argument
+
+# genbank files for these nuc ids lack the CDS features.
+# no_CDS <- c('1834417989', '1024364864', '1817592545')
+# No cds issues with many records: 7, 11, 13, 14*, 16, 17, 19,22, 32*, 34, 35, 46... many others.
+
+
+# remove any ids that have no genbank or cause other errors
+three_ints_filter <- three_ints |> 
+  filter(!nuc_id %in% create_errors) |> 
+  filter(!nuc_id %in% no_genbank) |> 
+  left_join(genbank_files_index)
+  
+# 531 records remaining for rit_finder
+glimpse(three_ints_filter)
+
+rm(no_genbank, have_genbank)
 
 ## Main2 -----
 
 ### Run rit_finder ------
-
-three_ints |> 
-  filter(nuc_id %in% genbank)
-# TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
-
-# No cds issues with: 7, 11, 13, 14*, 16, 17, 19,22, 32*, 34, 35, 46... many others.
-# seem to have cds when browsing but gives error with my code
-creates_errors <- c(
-  "737980678" ,# nuc_id [48],
-  "47118329", # 219
-  "339284117", # 
-  "1980667557", # not in file index...
-  ''
+make_pb <- function(n){
+  progress_bar$new(
+    format = "Finding Rits: [:bar] :percent eta: :eta",
+    total = n,
+    clear = FALSE,
   )
+}
 
-# 
-# pb <- progress_bar$new(
-#   format = "Finding Rits: [:bar] :percent eta: :eta",
-#   total = (nrow(three_ints) - length(creates_errors)),
-#   clear = FALSE, 
-#   )
-# 
-# rits_list_all_nuc <- three_ints |> 
-#   filter(!nuc_id %in% creates_errors) |> 
-#   pull(nuc_id) |> 
-#   map(~{pb$tick()
-#     rit_finder(.x)}) 
+# pb <- make_pb(200)
+# rit_list1 <- three_ints_filter |>
+#   dplyr::slice(1:200) |>
+#   select(nuc_id, file) |>
+#   mutate(rit_output = map2(
+#     .x = nuc_id,
+#     .y = file,
+#     .f = ~{
+#       pb$tick()
+#       print(.x)
+#       rit_finder(x = .x, genbank_library = .y)
+#       }
+#     ))
 # beep()
+# write_rds(rit_list1, './data/CDD/RIT_finder_rs_1_200.rds')
+# 
 
-length(rits_list)
+# 
+# pb <- make_pb(50)
+# rit_list3 <- three_ints_filter |>
+#   dplyr::slice(201:250) |>
+#   select(nuc_id, file) |>
+#   mutate(rit_output = map2(
+#     .x = nuc_id,
+#     .y = file,
+#     .f = ~{
+#       pb$tick()
+#       print(.x)
+#       rit_finder(x = .x, genbank_library = .y)
+#     }
+#   ))
+# beep()
+# 
+# write_rds(rit_list3, './data/CDD/RIT_finder_rs_201_250.rds')
+# rm(rit_list3)
 
-rits_output <- 
-  rits_list |> 
-  purrr::reduce(bind_rows) |> 
-  left_join(three_ints) |> 
-  mutate(
-    null_rits = map_lgl(rits, ~ifelse(is.null(nrow(.x)), T, F))
-  ) |> 
-  filter(null_rits == F) |> 
-  mutate(n_rits = map_dbl(rits, nrow))
+# 
+# 
+# pb <- make_pb(50)
+# rit_list4 <- three_ints_filter |>
+#   dplyr::slice(251:300) |>
+#   select(nuc_id, file) |>
+#   mutate(rit_output = map2(
+#     .x = nuc_id,
+#     .y = file,
+#     .f = ~{
+#       pb$tick()
+#       print(.x)
+#       rit_finder(x = .x, genbank_library = .y)
+#     }
+#   ))
+# beep()
+# write_rds(rit_list4, './data/CDD/RIT_finder_rs_251_300.rds')
+# 
+# rit_list4 |> unnest(rit_output) |> unnest(rits) |>  View()
+# rm(rit_list4)
 
-write_rds(rits_output, './data/CDD/Rits.rds')
 
-# rits_output |>  View()
-# rits_output |> unnest(rits) |> View()
+pb <- make_pb(25)
+rit_list5 <- three_ints_filter |>
+  dplyr::slice(301:325) |>
+  select(nuc_id, file) |>
+  mutate(rit_output = map2(
+    .x = nuc_id,
+    .y = file,
+    .f = ~{
+      pb$tick()
+      print(.x)
+      rit_finder(x = .x, genbank_library = .y)
+    }
+  ))
+write_rds(rit_list5, './data/CDD/RIT_finder_rs_301_325.rds')
+beep()
 
+pb <- make_pb(25)
+rit_list6 <- three_ints_filter |> 
+  dplyr::slice(326:350) |> 
+  select(nuc_id, file) |> 
+  mutate(rit_output = map2(
+    .x = nuc_id, 
+    .y = file, 
+    .f = ~{
+      print(.x)
+      rits <- rit_finder(x = .x, genbank_library = .y)
+      pb$tick()
+      return(rits)
+    }
+  ))
+write_rds(rit_list6, './data/CDD/RIT_finder_rs_301_325.rds')
 
-# TODO figure out which ids are missing from the results
-three_ints |> 
-  select(nuc_id) |> 
-  anti_join(rits_output |> select(nuc_id))
+# TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
+# seem to have cds when browsing but gives error with my code
 
 
 
@@ -127,80 +212,79 @@ three_ints |>
 
 
 
-# three_ints$nuc_id[219] "47118329"
-# x Column `locus_tag` doesn't exist.
-# "339284117" # 226
-# Error in gzfile(file, "rb") : invalid 'description' argument
-
-
-remaining <- three_ints |>
-  dplyr::slice(201:300) |>
-  filter(!nuc_id %in% creates_errors) |> 
-  pull(nuc_id)
-
-pb <- progress_bar$new(
-  format = "Finding Rits: [:bar] :percent eta: :eta",
-  total = length(remaining),
-  clear = FALSE,
-  )
-
-rit_by_id_list4 <-
-  remaining |> 
-  map(~{
-    pb$tick()
-    print(.x)
-    rit_finder(.x)
-    })
-beep()
-
-
-pb <- progress_bar$new(total = 100)
-rit_by_id_list5 <- three_ints |>
-  dplyr::slice(301:400) |>
-  pull(nuc_id) |>
-  map(~{pb$tick()
-    rit_finder(.x)})
+# 
+# remaining <- three_ints |>
+#   dplyr::slice(201:300) |>
+#   filter(!nuc_id %in% creates_errors) |> 
+#   pull(nuc_id)
+# 
+# pb <- progress_bar$new(
+#   format = "Finding Rits: [:bar] :percent eta: :eta",
+#   total = length(remaining),
+#   clear = FALSE,
+#   )
+# 
+# rit_by_id_list4 <-
+#   remaining |> 
+#   map(~{
+#     pb$tick()
+#     print(.x)
+#     rit_finder(.x)
+#     })
 # beep()
-# rit_by_id_list5
 # 
-
-three_ints$nuc_id[410]
-pb <- progress_bar$new(total = 100)
-rit_by_id_list6 <- three_ints |>
-  dplyr::slice(401:500) |>
-  pull(nuc_id) |>
-  map(~{pb$tick()
-    rit_finder(.x)})
 # 
-# [======>---------------------------------------------------------------]  10%Error in gzfile(file, "rb") : invalid 'description' argument
-# In addition: There were 11 warnings (use warnings() to see them)
-beep()
+# pb <- progress_bar$new(total = 100)
+# rit_by_id_list5 <- three_ints |>
+#   dplyr::slice(301:400) |>
+#   pull(nuc_id) |>
+#   map(~{pb$tick()
+#     rit_finder(.x)})
+# # beep()
+# # rit_by_id_list5
+# # 
+# 
+# three_ints$nuc_id[410]
+# pb <- progress_bar$new(total = 100)
+# rit_by_id_list6 <- three_ints |>
+#   dplyr::slice(401:500) |>
+#   pull(nuc_id) |>
+#   map(~{pb$tick()
+#     rit_finder(.x)})
+# # 
 # rit_by_id_list6
 
 
-
-
-
-
-
-
-
-
-
-
-# # prot_id and accessions for this set of nt's.
-# three_ints_prots <- three_ints |> unnest(prot_id) |> pull(prot_id)
 # 
-# # join with other accession numbers
-# prot_accessions <- read_rds('./data/CDD/prot_summary_fixed.rds') |> 
-#   filter(prot_id %in% three_ints_prots) |> 
-#   transmute(prot_id, prot_accession = glue('{caption}.1'))
+# pb <- progress_bar$new(
+#   format = "Finding Rits: [:bar] :percent eta: :eta",
+#   total = (nrow(three_ints) - length(creates_errors)),
+#   clear = FALSE, 
+#   )
 # 
-# # join the protein accession labels that match the genbank CDS entries
-# three_ints <- three_ints |> 
-#   unnest(c(prot_id, cdd_title)) |> 
-#   left_join(prot_accessions, by = c("prot_id")) |> 
-#   group_by(nuc_id) |> 
-#   nest(prot_data = c(prot_id, prot_accession, cdd_title)) |> 
-#   mutate(nuc_accession = caption) |> 
-#   ungroup()
+# rits_list_all_nuc <- three_ints |> 
+#   filter(!nuc_id %in% creates_errors) |> 
+#   pull(nuc_id) |> 
+#   map(~{pb$tick()
+#     rit_finder(.x)}) 
+# beep()
+# 
+# length(rits_list)
+# 
+# rits_output <- 
+#   rits_list |> 
+#   purrr::reduce(bind_rows) |> 
+#   left_join(three_ints) |> 
+#   mutate(
+#     null_rits = map_lgl(rits, ~ifelse(is.null(nrow(.x)), T, F))
+#   ) |> 
+#   filter(null_rits == F) |> 
+#   mutate(n_rits = map_dbl(rits, nrow))
+# 
+# write_rds(rits_output, './data/CDD/Rits.rds')
+# 
+# # TODO figure out which ids are missing from the results
+# three_ints |> 
+#   select(nuc_id) |> 
+#   anti_join(rits_output |> select(nuc_id))
+

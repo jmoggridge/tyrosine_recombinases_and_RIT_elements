@@ -43,11 +43,11 @@ three_integrases <-
   left_join(
     nuc_summary |> select(nuc_id, slen, organism, caption)
     )
+
 # smallest nucleotides first; check which CD are present
 three_integrases |>
   arrange(slen) |>  
-  unnest(c(prot_id, cdd_title)) |> 
-  View()
+  unnest(c(prot_id, cdd_title)) # |> View()
 
 three_integrases |> unnest(c(prot_id, cdd_title)) |>  print(n=50)
 
@@ -66,7 +66,8 @@ nucs_by_taxid <-
   ungroup() |> 
   arrange(desc(n_nuc))
   
-nucs_by_taxid
+nucs_by_taxid |> 
+  left_join(nuc_summary |> transmute(tax_id = taxid, organism) |> distinct())
 
 
 # how many nucleotides with > 3 RIT specific proteins?
@@ -78,6 +79,9 @@ tot
 
 # skip these for now... problems parsing these genbank records
 issues <-  c('1052702473', '483281088')
+# three_integrases |> 
+#   filter(nuc_id %in% issues)
+
 pb <- progress_bar$new(total = 100)
 
 to_retrieve <- 
