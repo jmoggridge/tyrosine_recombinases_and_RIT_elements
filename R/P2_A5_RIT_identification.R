@@ -174,6 +174,7 @@ pivot_feature_table <- function(ft_edit){
       p3_start = lead(start),
       p3_stop = lead(stop),
       p3_orientation = lead(orientation),
+      # proteins flanking upstream and downstream
       lflank_id = lag(protein_id, 2),
       lflank_pred = lag(consensus_pred, 2),
       lflank_product = lag(product, 2),
@@ -186,6 +187,7 @@ pivot_feature_table <- function(ft_edit){
       rflank_start = lead(start, 2),
       rflank_stop = lead(stop, 2),
       rflank_orientation = lead(orientation, 2),
+      # are the p1, p2, and p3 CDSs in series (T) or seperated by other genes(F)?
       p1_adjacent = ifelse(feat_id == lag(feat_id) + 1, yes = T, no = F),
       p3_adjacent = ifelse(feat_id == lead(feat_id) - 1, yes = T, no =  F),
     ) |> 
@@ -201,9 +203,10 @@ rit_tester <- function(ft_pivot){
     mutate(across(contains('pred'), ~as.character(.x))) |> 
     # check gap sizes, full span of trio CDSs
     mutate(
+      # TODO FIX OVERLAP
       # find size of gap/ovelap between CDS
-      dist_p1_p2 = p2_start - p1_stop,
-      dist_p2_p3 = p3_start - p2_stop,
+      overlap_p1p2 =  p1_stop - p2_start + 1,
+      overlap_p2p3 = p2_stop - p3_start + 1,
       # test whether both gaps smaller than 100 bp
       # test length of element
       element_CDS_length = p3_stop - p1_start
@@ -212,7 +215,7 @@ rit_tester <- function(ft_pivot){
     # tests
     mutate(
       # both gaps < 250 bp? overlaps are negative.
-      rit_dist_check = all(dist_p1_p2 < 250, dist_p2_p3 < 250),
+      rit_dist_check = all(overlap_p1p2 < 250, overlap_p2p3 < 250),
       # full element is less than 4kbp?
       rit_length_check = ifelse(element_CDS_length < 4000, T, F),
       # all CDS are predicted Rit subfamilies members
@@ -241,7 +244,7 @@ rit_selector <- function(nuc_id, rit_tests, ft_edit){
   rits <- rit_tests |> 
     # rit selector: check tests, filter candidates,
     rowwise() |> 
-    filter(all(rit_dist_check, rit_all_check, rit_length_check)) |> 
+    filter(all(rit_dist_check, rit_all_check, rit_ABC_check, rit_length_check)) |> 
     # package up upstream and downstream cds.
     mutate(
       upstream_cds = map(
@@ -353,59 +356,99 @@ rm(prot_accessions, three_ints_prots, no_cds)
 
 ## Main2 -----
 
-### find RITs ------
+### Run rit_finder ------
 
-# example
-
-# issues with: 7, 11, 13, 14*, 16, 17, 19,22, 32*, 34, 35, 46
-nuc_id <- three_ints$nuc_id[48]
 # TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
 
+# No cds issues with: 7, 11, 13, 14*, 16, 17, 19,22, 32*, 34, 35, 46... many others.
 # seem to have cds when browsing but gives error with my code
-has_cds_still_error_though <- c(
-  "737980678", # nuc_id [48]
+creates_errors <- c(
+  "737980678" # nuc_id [48]
   )
 
 
-pb <- progress_bar$new(total = 47)
+pb <- progress_bar$new(
+  format = "Finding Rits: [:bar] :percent eta: :eta",
+  total = (nrow(three_ints) - length(creates_errors)),
+  clear = FALSE, 
+  )
 
-rit_by_id_list1 <- three_ints |> 
-  dplyr::slice(1:47) |> 
+rits_list_all_nuc <- three_ints |> 
+  filter(!nuc_id %in% creates_errors) |> 
   pull(nuc_id) |> 
-  map(
-    ~{
-      pb$tick()
-      rit_finder(.x)
-    }) 
+  map(~{pb$tick()
+    rit_finder(.x)}) 
 beep()
 
-
-pb <- progress_bar$new(total = 51)
-
-rit_by_id_list2 <- three_ints |> 
-  dplyr::slice(49:100) |> 
-  pull(nuc_id) |> 
-  map(
-    ~{
-      pb$tick()
-      rit_finder(.x)
-    }) 
-beep()
-
-rts_list <- c(rit_by_id_list1, rit_by_id_list2)
-
+length(rits_list)
 
 rits_output <- 
-  rit_by_id_list |> 
+  rits_list |> 
   purrr::reduce(bind_rows) |> 
   left_join(three_ints) |> 
   mutate(
-    n_rits = map_dbl(rits, ~ifelse(is.null(nrow(.x)), 0, nrow(.x)))
+    null_rits = map_lgl(rits, ~ifelse(is.null(nrow(.x)), T, F))
   ) |> 
-  filter(n_rits > 0)
+  filter(null_rits == F) |> 
+  mutate(n_rits = map(rits, nrow))
 
-# [============================================================================>---]  96%Error in gzfile(file, "rb") : invalid 'description' argument
-# 48*
+write_rds(rits_output, './data/CDD/Rits.rds')
+
+# rits_output |>  View()
+# rits_output |> unnest(rits) |> View()
 
 
-rit_by_id_list |> unnest() |> View()
+
+
+
+# 
+# pb <- progress_bar$new(total = 47)
+# 
+# rit_by_id_list1 <- three_ints |> 
+#   dplyr::slice(1:47) |> 
+#   pull(nuc_id) |> 
+#   map(~{pb$tick()
+#       rit_finder(.x)}) 
+# beep()
+# 
+# 
+# pb <- progress_bar$new(total = 52)
+# 
+# rit_by_id_list2 <- three_ints |> 
+#   dplyr::slice(49:100) |> 
+#   pull(nuc_id) |> 
+#   map(~{pb$tick()
+#       rit_finder(.x)}) 
+# beep()
+# rit_by_id_list2
+# 
+# 
+# pb <- progress_bar$new(total = 100)
+# rit_by_id_list3 <- three_ints |> 
+#   dplyr::slice(101:200) |> 
+#   pull(nuc_id) |> 
+#   map(~{pb$tick()
+#     rit_finder(.x)}) 
+# beep()
+# rit_by_id_list3
+# 
+# 
+# pb <- progress_bar$new(total = 100)
+# rit_by_id_list4 <- three_ints |> 
+#   dplyr::slice(201:300) |> 
+#   pull(nuc_id) |> 
+#   map(~{pb$tick()
+#     rit_finder(.x)}) 
+# beep()
+# rit_by_id_list4
+# 
+# 
+# pb <- progress_bar$new(total = 100)
+# rit_by_id_list5 <- three_ints |> 
+#   dplyr::slice(301:400) |> 
+#   pull(nuc_id) |> 
+#   map(~{pb$tick()
+#     rit_finder(.x)}) 
+# beep()
+# rit_by_id_list5
+# 
