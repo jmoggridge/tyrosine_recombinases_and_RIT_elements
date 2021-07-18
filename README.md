@@ -315,10 +315,18 @@ Working on P2_A5 - Rit identification pipeline. Documentation:
   - **Possible** download their files manually and parse the xml.    
       - **Issue** parse_genbank() 'Error: object 'GBSeq' not found'    
     
+ 
+#### Saturday, July 17th   
+
+Today:
+1. Find out which Genbank files in three_ints don't have the necessary CDS.
+2. Figure out if it is possible to create a different parser for genbank records
+downloaded via browser for those currently missing CDS.
+    
 ##### TO DO
 
-- ICEberg -> classify 
 - Find all RITs
+- ICEberg -> locate, check if duplicated...
 - Start writing some parts...
 
 
