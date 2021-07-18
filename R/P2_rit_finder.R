@@ -35,6 +35,15 @@ open_genbank <- function(x){
     parse_genbank()
 }
 
+open_genbank <- function(x, file){
+  # pull the genbank record for id and parse it
+  read_rds(file) |> 
+    filter(nuc_id == x) |> 
+    unnest(gbk) |> 
+    pull(gbk) |> 
+    parse_genbank()
+}
+
 ## TODO secondary parser for downloaded genbank .xml files
 # open_genbank2 <- function(x){
 #   gb <- read_file(glue('./data/CDD/genbank_w_cds/{x}.xml'))
@@ -253,7 +262,7 @@ rit_selector <- function(nuc_id, rit_tests, ft_edit){
     ) |> 
     ungroup() |> 
     nest(rits = everything()) |> 
-    transmute(nuc_id = nuc_id, rits, success = T)
+    transmute(rits, success = T)
   return(rits)
 }
 
@@ -267,11 +276,10 @@ rit_selector <- function(nuc_id, rit_tests, ft_edit){
 # Protein CDSs are classified by classify_proteins. 
 # Then classified proteins scanned for RIT arrangements
 
-rit_finder <- function(x){
+rit_finder <- function(x, genbank_library){
   
   # open genbank and extract features table for nuc_id x,
-  ft <- 
-    open_genbank(x = x)
+  ft <- open_genbank(x = x, file = genbank_library)
   
   # if no CDS in feature table, return NA
   # TODO use 2ndary parser for downloaded .xml files
@@ -307,5 +315,6 @@ rit_finder <- function(x){
   # rit selector: check tests, filter candidates,
   # package up upstream and downstream cds.
   rits <- rit_selector(rit_tests = rit_tests, ft_edit = ft_edit, nuc_id = x)
+  
   return(rits)
 }
