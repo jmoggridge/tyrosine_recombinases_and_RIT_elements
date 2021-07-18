@@ -357,38 +357,52 @@ rm(prot_accessions, three_ints_prots, no_cds)
 
 # example
 
-# TODO issue with many ids.... record is too large?
+# issues with: 7, 11, 13, 14*, 16, 17, 19,22, 32*, 34, 35, 46
+nuc_id <- three_ints$nuc_id[48]
+# TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
 
-# x5 <- three_ints$nuc_id[[5]]
-# df5 <- rit_finder(x5)
-# gbk <- './data/CDD/genbank_w_cds/1817592545.xml'
-rm(gbk)
-# 
-# x6 <- three_ints$nuc_id[[6]]
-# df6 <- rit_finder(x6)
-# 
-# x7 <- three_ints$nuc_id[[7]]
-# df7 <- rit_finder(x7)
-# 
-# x8 <- three_ints$nuc_id[[8]]
-# df8 <- rit_finder(x8)
-# beep()
-# rm(df5, df6, df7, df8)
+# seem to have cds when browsing but gives error with my code
+has_cds_still_error_though <- c(
+  "737980678", # nuc_id [48]
+  )
 
 
 pb <- progress_bar$new(total = 47)
 
-rit_by_id_list <- three_ints |> 
+rit_by_id_list1 <- three_ints |> 
   dplyr::slice(1:47) |> 
   pull(nuc_id) |> 
-  map(~{ pb$tick()
-    rit_finder(.x)
-  }
-  ) 
-
-# |> 
-  # purrr::reduce(bind_rows)
+  map(
+    ~{
+      pb$tick()
+      rit_finder(.x)
+    }) 
 beep()
+
+
+pb <- progress_bar$new(total = 51)
+
+rit_by_id_list2 <- three_ints |> 
+  dplyr::slice(49:100) |> 
+  pull(nuc_id) |> 
+  map(
+    ~{
+      pb$tick()
+      rit_finder(.x)
+    }) 
+beep()
+
+rts_list <- c(rit_by_id_list1, rit_by_id_list2)
+
+
+rits_output <- 
+  rit_by_id_list |> 
+  purrr::reduce(bind_rows) |> 
+  left_join(three_ints) |> 
+  mutate(
+    n_rits = map_dbl(rits, ~ifelse(is.null(nrow(.x)), 0, nrow(.x)))
+  ) |> 
+  filter(n_rits > 0)
 
 # [============================================================================>---]  96%Error in gzfile(file, "rb") : invalid 'description' argument
 # 48*
