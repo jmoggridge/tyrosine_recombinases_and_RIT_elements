@@ -119,14 +119,14 @@ rit_elements <- elements |>
                       ice_name)
   )
 
-rit_elements |> select(-contains('seq')) |> View()
-
-# rm(proteins, p1, p2, p3, elements, iceberg)
-
 glimpse(rit_elements)
 
+write_rds(rit_elements, './data/iceberg_rit_elements.rds')
 
-## TRANLATION CODE THAT I GAVE UP ON
+
+
+
+## TRANLATION CODE THAT I GAVE UP ON ------
 
 # rit_elements |> pull(dna_acc) |> unique()
 # rit_elements |> pull(dna_seq) |> unique()
