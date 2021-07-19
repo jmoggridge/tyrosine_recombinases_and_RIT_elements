@@ -337,16 +337,28 @@ Trying to finish RIT finder script. Still finding weird issues:
 
 #### Sunday, July 18th   
 
-- Trying to process all genbank files with `rit_finder` (P2_A5)
+Trying to process all genbank files with `rit_finder` (P2_A5)  
 
-- Trying to figure out how to answer Nicole's qs about ICEs' RITs.
-  
+- up to 475
+
+Trying to figure out how to answer Nicole's qs about ICEs' RITs.
+
+- are ICEs distinct 
+  - 
 Bordetella RITs:
 
-RITs 1,2,3 - identical - except for insertion in RIT 3
-RITs (1,2,3) vs 4 - different
+RIT1 
+  - rows (1,2,3) 
+  - identical - except for insertion in RIT 3
+  - one on each ICE...
+RIT2
+  - different from RIT1
 
 Mesorhizobium
+ - ICEberg data needs labels a,b,c for the three ICEs  
+ - each ICE is not uniquely identified in the fasta, sequences are different
+ - this is causing wrong proteins to be joined by id....
+ - TODO need to fix
 
 
 
@@ -354,10 +366,26 @@ Mesorhizobium
 
 - Find all RITs
 - ICEberg -> locate, check if duplicated...
+- Fix mesorhizobium in ICEberg data in P2_B3 before predictions...
 - Start writing some parts...
 
 
-  
+### Writing
+
+- METHODS
+   - part1 data
+   - part1 classifier overview
+   - 
+
+**Part 1**
+
+  - [ ] redo plots for regular cv - compare to nested ; incorp final valid resuls and plot
+  - [ ] redo k-means with letting k be variable...
+ 
+**Part 2**
+
+  - [ ] 
+
 
 
   
@@ -377,25 +405,6 @@ Mesorhizobium
   - Save hmmsearch tables to _./data/hmmsearch_res/_
 
 -->
-
-#### TODO LIST
-
-**Part 1**
-
-  - [ ] redo plots for regular cv - compare to nested ; incorp final valid resuls and plot
-  - [ ] redo k-means with letting k be variable...
- 
-**Part 2**
-
-  - [x] prepare a slide of ideas that I am working on for meeting
-  - [x] proceed to finding proteins with nucleotide sequence  
-     - Using genbank....
-  - [ ] also EDA:  
-     - dna seq lengths  
-     - how many proteins per sequence  
-     - protein lengths  
-     - taxonomy for rit elements...
-     - 
 
 
 

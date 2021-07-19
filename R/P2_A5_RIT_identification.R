@@ -44,11 +44,15 @@ no_genbank
 
 
 create_errors <- c(
-  # ids that seem to be causing parsing errors
-  "737980678", "47118329", "339284117", "1980667557", 
-  # R just hangs when these are processed
+  # ids that seem to be causing parsing errors:
+  # column `locus_tag` doesn't exist...
+  "737980678", "47118329", "339284117", "1980667557", '47118328',
+  # R just seems to hang when these are processed
   '56311475', '1008271296', '237624339', '338755570',
-  '488453735'
+  '488453735', '227337254', '255767010', '184198282',
+  '186474323', '1190193351', 
+  
+  '116222307'
   )
 
 ## ERRORS
@@ -71,7 +75,7 @@ three_ints_filter <- three_ints |>
 # 531 records remaining for rit_finder
 glimpse(three_ints_filter)
 
-rm(no_genbank, have_genbank, three_ints)
+rm(no_genbank, have_genbank, three_ints, genbank_files_index)
 
 ## Main2 -----
 
@@ -84,67 +88,29 @@ make_pb <- function(n){
   )
 }
 
-# pb <- make_pb(200)
-# rit_list1 <- three_ints_filter |>
-#   dplyr::slice(1:200) |>
-#   select(nuc_id, file) |>
-#   mutate(rit_output = map2(
-#     .x = nuc_id,
-#     .y = file,
-#     .f = ~{
-#       pb$tick()
-#       print(.x)
-#       rit_finder(x = .x, genbank_library = .y)
-#       }
-#     ))
-# beep()
-# write_rds(rit_list1, './data/CDD/RIT_finder_rs_1_200.rds')
-# 
-
-# 
-# pb <- make_pb(50)
-# rit_list3 <- three_ints_filter |>
-#   dplyr::slice(201:250) |>
-#   select(nuc_id, file) |>
-#   mutate(rit_output = map2(
-#     .x = nuc_id,
-#     .y = file,
-#     .f = ~{
-#       pb$tick()
-#       print(.x)
-#       rit_finder(x = .x, genbank_library = .y)
-#     }
-#   ))
-# beep()
-# 
-# write_rds(rit_list3, './data/CDD/RIT_finder_rs_201_250.rds')
-# rm(rit_list3)
-
-# 
-# 
-# pb <- make_pb(50)
-# rit_list4 <- three_ints_filter |>
-#   dplyr::slice(251:300) |>
-#   select(nuc_id, file) |>
-#   mutate(rit_output = map2(
-#     .x = nuc_id,
-#     .y = file,
-#     .f = ~{
-#       pb$tick()
-#       print(.x)
-#       rit_finder(x = .x, genbank_library = .y)
-#     }
-#   ))
-# beep()
-# write_rds(rit_list4, './data/CDD/RIT_finder_rs_251_300.rds')
-# 
-# rit_list4 |> unnest(rit_output) |> unnest(rits) |>  View()
-# rm(rit_list4)
+dir.create('./data/CDD/rit_finder/')
+pb <- make_pb(200)
+rit_list1 <- three_ints_filter |>
+  dplyr::slice(1:200) |>
+  select(nuc_id, file) |>
+  mutate(rit_output = map2(
+    .x = nuc_id,
+    .y = file,
+    .f = ~{
+      pb$tick()
+      print(.x)
+      rit_finder(x = .x, genbank_library = .y)
+      }
+    ))
+beep()
+write_rds(rit_list1,
+          './data/CDD/rit_finder/RIT_finder_rs_1_200.rds')
 
 
-pb <- make_pb(25)
-rit_list5 <- three_ints_filter |>
-  dplyr::slice(301:325) |>
+
+pb <- make_pb(50)
+rit_list2 <- three_ints_filter |>
+  dplyr::slice(201:400) |>
   select(nuc_id, file) |>
   mutate(rit_output = map2(
     .x = nuc_id,
@@ -155,49 +121,32 @@ rit_list5 <- three_ints_filter |>
       rit_finder(x = .x, genbank_library = .y)
     }
   ))
-write_rds(rit_list5, './data/CDD/RIT_finder_rs_301_325.rds')
 beep()
-rit_list5 |> unnest(rit_output) |> unnest(rits) |> View()
-rm(rit_list5)
 
-pb <- make_pb(25)
-rit_list6 <- three_ints_filter |> 
-  dplyr::slice(326:350) |> 
-  select(nuc_id, file) |> 
+write_rds(rit_list2,
+          './data/CDD/rit_finder/RIT_finder_rs_201_400.rds')
+rm(rit_list2)
+
+pb <- make_pb(n = nrow(three_ints_filter) - 400)
+rit_list3 <- three_ints_filter |>
+  dplyr::slice(401:nrow(three_ints_filter)) |>
+  select(nuc_id, file) |>
   mutate(rit_output = map2(
-    .x = nuc_id, 
-    .y = file, 
+    .x = nuc_id,
+    .y = file,
     .f = ~{
-      print(.x)
-      rits <- rit_finder(x = .x, genbank_library = .y)
       pb$tick()
-      return(rits)
+      print(.x)
+      rit_finder(x = .x, genbank_library = .y)
     }
   ))
 beep()
-write_rds(rit_list6, './data/CDD/RIT_finder_rs_326_350.rds')
-rm(rit_list6)
 
-pb <- make_pb(25)
-rit_list7 <- three_ints_filter |> 
-  dplyr::slice(351:375) |> 
-  select(nuc_id, file) |> 
-  mutate(rit_output = map2(
-    .x = nuc_id, 
-    .y = file, 
-    .f = ~{
-      print(.x)
-      rits <- rit_finder(x = .x, genbank_library = .y)
-      pb$tick()
-      return(rits)
-    }
-  ))
+write_rds(rit_list3, 
+          './data/CDD/rit_finder/RIT_finder_rs_201_400.rds')
+rm(rit_list3)
 
-beep()
-write_rds(rit_list7, './data/CDD/RIT_finder_rs_351_375.rds')
-
-
-
+#
 # TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
 # seem to have cds when browsing but gives error with my code
 
