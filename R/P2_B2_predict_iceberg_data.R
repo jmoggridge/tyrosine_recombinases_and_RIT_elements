@@ -1,5 +1,6 @@
 ## Predict integrases and find RITs in the ICEberg2.0 dataset ##
 
+dir.create('./data/iceberg/hmm_scores')
 
 library(tidyverse)
 library(Biostrings)
@@ -8,10 +9,8 @@ library(furrr)
 library(patchwork)
 library(seqinr)
 library(glue)
-
 source('./R/00_functions.R')
 
-dir.create('./data/iceberg/hmm_scores')
 ## Main --------------------------------------------------------------------
 
 # classifiers & hmms
@@ -24,6 +23,7 @@ hmm_folder <- './models/hmm/'
 iceberg <- read_tsv('data/iceberg/ICE_db.tsv') |> 
   select(-parent_element, -prot_mystery_id)
 glimpse(iceberg)
+
 
 # ice berg proteins for classifying
 ice_proteins <- iceberg |> 
@@ -130,6 +130,11 @@ iceberg_preds <-
 iceberg_w_preds <- iceberg |> 
   left_join(iceberg_preds, by = c("prot_seq", "prot_accession"))
 
+# write this full, classified dataset to file 
+iceberg_w_preds |> 
+  select(-parent_id, -c(Arch1:Xer)) |> 
+  write_rds('./data/iceberg/iceberg_db_classed_proteins.rds')
+
 # see how predictions match
 iceberg_preds |>  dplyr::count(knn, glmnet, rf)
  
@@ -184,6 +189,7 @@ pred_table <- iceberg_w_preds |>
   group_by(type, name, id) |> 
   dplyr::count(rf, glmnet, knn) |> 
   ungroup()
+pred_table
 
 # any elements with Rit classes, where models all agree
 has_Rit_proteins <- pred_table |> 
@@ -223,5 +229,5 @@ write_csv(iceberg_classes, './results/iceberg_all_integrases.csv')
 
 rm(knn_model, glmnet_model, knn_preds, glmnet_preds, knn_prob, glmnet_prob,
    rf_model, rf_preds, rf_prob, ice_scored, iceberg_classes, iceberg_preds,
-   iceberg_w_preds, pred_table, fasta, fasta_path, hmm_folder, ynames, temp_dir,
-   hmmsearches, ice_proteins)
+   iceberg_w_preds, pred_table, fasta, fasta_path, hmm_folder, ynames,
+   temp_dir, hmmsearches, ice_proteins)

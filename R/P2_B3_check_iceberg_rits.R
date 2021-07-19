@@ -14,7 +14,7 @@ iceberg <- read_tsv('data/iceberg/ICE_db.tsv') |>
 glimpse(iceberg)
 
 results_with_RITs <- read_csv('./results/iceberg_RITs.csv')
-
+glimpse(results_with_RITs)
 
 ## PART 2 Examine RIT elements ------
 
@@ -111,69 +111,85 @@ rit_elements <- elements |>
   left_join(
     rits |> select(contains('ice'), contains('dna')),
     by = 'ice_name') |> 
-  distinct()
+  distinct() |> 
+  ## fix the name of the ICE from M. loti
+  mutate(
+    ice_name = ifelse(str_detect(ice_name, 'ICEMlSym'),
+                      'ICEMlSym(NZP2037)_alpha',
+                      ice_name)
+  )
+
+rit_elements |> select(-contains('seq')) |> View()
 
 # rm(proteins, p1, p2, p3, elements, iceberg)
 
 glimpse(rit_elements)
 
 
+## TRANLATION CODE THAT I GAVE UP ON
 
-rit_elements |> pull(dna_acc) |> unique()
-rit_elements |> pull(dna_seq) |> unique()
-rit_elements |> pull(dna_length) |> unique()
+# rit_elements |> pull(dna_acc) |> unique()
+# rit_elements |> pull(dna_seq) |> unique()
+# rit_elements |> pull(dna_length) |> unique()
+# 
+# rit_elements |> select(-contains('seq')) |>  View()
+# 
+# # translation codes are all 11, add strains
+# rit_elements <- rit_elements |> 
+#   left_join(
+#     tribble(
+#       ~dna_acc, ~dna_code,
+#       'AM902716', 11, 
+#       'CP016079', 11
+#     )) |> 
+#   distinct()  |> 
+#   left_join(rits |> select(strain, ice_id) |> distinct())
+# 
+# # translate dna string for all reading frames, code = 11
+# make_translations <- function(dna){
+#   dna <- s2c(dna)
+#   tibble(
+#     frame = glue('transl_{1:6}'),
+#     offset = rep(c(0,1,2), 2), 
+#     orientation = rep(c('F','R'), each = 3),
+#     translation = map2_chr(
+#       .x = offset,
+#       .y = orientation,
+#       .f = ~{
+#         seqinr::translate(dna, frame = .x, sens = .y, numcode = 11) |> 
+#           c2s()
+#       }) 
+#   )
+# }
+# 
+# # locate proteins in translations.
+# locate_protein <- function(translations, protein, tag){
+#   find_pos <- 
+#     translations |> 
+#     mutate(
+#       prot_acc = tag,
+#       start = str_locate(translation, protein)[,1],
+#       end = str_locate(translation, protein)[,2],
+#       length = end - start + 1,
+#     )
+#   return(find_pos)
+# }
+# 
+# 
+# #  map proteins to gene locations
+# translations <- map(rit_elements$dna_seq, make_translations)
+# locations <- pmap(
+#   .l = list(translations,  rit_elements$p1_seq, rit_elements$p1_acc), 
+#   .f = function(x,y,z) locate_protein(x,y,z)
+# )
+# locations |> bind_rows() |> select(-translation) |> View()
+# 
 
-rit_elements |> select(-contains('seq')) |>  View()
-
-# translation codes are all 11, add strains
-rit_elements <- rit_elements |> 
-  left_join(
-    tribble(
-      ~dna_acc, ~dna_code,
-      'AM902716', 11, 
-      'CP016079', 11
-    )) |> 
-  distinct()  |> 
-  left_join(rits |> select(strain, ice_id) |> distinct())
-
-# translate dna string for all reading frames, code = 11
-make_translations <- function(dna){
-  dna <- s2c(dna)
-  tibble(
-    frame = glue('transl_{1:6}'),
-    offset = rep(c(0,1,2), 2), 
-    orientation = rep(c('F','R'), each = 3),
-    translation = map2_chr(
-      .x = offset,
-      .y = orientation,
-      .f = ~{
-        seqinr::translate(dna, frame = .x, sens = .y, numcode = 11) |> 
-          c2s()
-      }) 
-  )
-}
-
-# locate proteins in translations.
-locate_protein <- function(translations, protein, tag){
-  find_pos <- 
-    translations |> 
-    mutate(
-      prot_acc = tag,
-      start = str_locate(translation, protein)[,1],
-      end = str_locate(translation, protein)[,2],
-      length = end - start + 1,
-    )
-  return(find_pos)
-}
 
 
-#  map proteins to gene locations
-translations <- map(rit_elements$dna_seq, make_translations)
-locations <- pmap(
-  .l = list(translations,  rit_elements$p1_seq, rit_elements$p1_acc), 
-  .f = function(x,y,z) locate_protein(x,y,z)
-)
-locations |> bind_rows() |> select(-translation) |> View()
+
+
+
 
 
 ## NOTE: Couldnt manage to find proteins with ICE translations... records don't seem to match up properly....
