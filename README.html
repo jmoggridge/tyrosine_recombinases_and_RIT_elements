@@ -453,7 +453,9 @@ fixed 2 updated seqs… got data + linked tax</li>
 <ul>
 <li>Added Dunn index and some other indexes using nb_clust</li>
 <li>Not sure if wanting to use PCA figures, would need to try to explain, requires many dimensions but also have many groups.</li>
-</ul></li>
+</ul>
+<br />
+</li>
 </ul>
 </div>
 <div id="weds-july-14th" class="section level4">
@@ -462,6 +464,8 @@ fixed 2 updated seqs… got data + linked tax</li>
 <li>meeting: prioritize RIT finding + description</li>
 <li>wrote genbank fetcher and parser functions:</li>
 </ul>
+<p><br />
+</p>
 </div>
 <div id="thurs-july-15th" class="section level4">
 <h4>Thurs, July 15th</h4>
@@ -473,6 +477,8 @@ fixed 2 updated seqs… got data + linked tax</li>
 </ul></li>
 <li>still having some issues with iceberg data - HMM scores not being created in right folder…</li>
 </ul>
+<p><br />
+</p>
 </div>
 <div id="friday-july-16th" class="section level4">
 <h4>Friday, July 16th</h4>
@@ -538,12 +544,97 @@ fixed 2 updated seqs… got data + linked tax</li>
 <li><strong>Issue</strong> parse_genbank() ‘Error: object ’GBSeq’ not found’</li>
 </ul></li>
 </ul>
-<div id="to-do" class="section level5">
-<h5>TO DO</h5>
+<p><br />
+</p>
+</div>
+<div id="saturday-july-17th" class="section level4">
+<h4>Saturday, July 17th</h4>
+<p>Today: 1. Find out which Genbank files in three_ints don’t have the necessary CDS. 2. Figure out if it is possible to create a different parser for genbank records downloaded via browser for those currently missing CDS.</p>
+<p>Tried to extract RIT sequences by locating protein with translation of ICEs for all reading frames, many protein simply not present in entire set of translations. Protein sequences do not seem to match the DNA sequences.</p>
+<p>Instead, just blasted proteins against strain to find location. Went to genbank and expanded range to find trio. Took start and stop from the range containing the trio. Aligned mesorhizobium rits and they were the same. Only get one blast hit despite triplicate of double RIT segment.</p>
+<p>Trying to finish RIT finder script. Still finding weird issues: - “47118329” -&gt; “Column <code>locus_tag</code> doesn’t exist.” - “339284117”, “737980678”, ‘1980667557’ -&gt; “Error in gzfile(file,”rb“) : invalid ‘description’ argument”</p>
+<p><br />
+</p>
+</div>
+<div id="sunday-july-18th" class="section level4">
+<h4>Sunday, July 18th</h4>
+<p><strong>Trying to process all genbank files with <code>rit_finder</code> (P2_A5) </strong> - Done! Only 399 / 517 of those worked though… - And ~ 25 didn’t run at all</p>
+<p><strong>Trying to figure out how to answer Nicole’s qs about ICEs’ RITs. </strong></p>
 <ul>
-<li>ICEberg -&gt; classify</li>
+<li>are ICEs distinct?
+<ul>
+<li>Yes to all</li>
+</ul></li>
+<li>Are RITs distinct
+<ul>
+<li>Bordetella
+<ul>
+<li>RIT1: rows (1,2,3); identical - except for insertion in ICE-GI3<br />
+</li>
+<li>one on each ICE -<br />
+</li>
+</ul></li>
+<li>RIT2
+<ul>
+<li>different from RIT1, only on third one. ICE-GI3 (222)</li>
+</ul></li>
+</ul></li>
+<li>Mesorhizobium
+<ul>
+<li>ICEberg data needs labels a,b,c for the three ICEs<br />
+</li>
+<li>each ICE is not uniquely identified in the fasta, sequences are different<br />
+</li>
+<li>this is causing wrong proteins to be joined by id….<br />
+</li>
+<li><strong>TODO</strong> need to fix this in script somewhere</li>
+</ul></li>
+</ul>
+</div>
+<div id="to-do" class="section level3">
+<h3>TO DO</h3>
+<ul>
 <li>Find all RITs</li>
+<li>ICEberg -&gt; locate, check if duplicated…</li>
+<li>Fix mesorhizobium in ICEberg data in P2_B3 before predictions…</li>
 <li>Start writing some parts…</li>
+</ul>
+</div>
+<div id="writing" class="section level3">
+<h3>Writing</h3>
+<ul>
+<li>METHODS
+<ul>
+<li>part1 data</li>
+<li>part1 classifier overview</li>
+<li>part1 classifier evaluation, CV, final validation</li>
+<li>part2 data</li>
+<li>part2 RIT pipeline / algorithm for filtering</li>
+<li>part2 further analyses</li>
+</ul></li>
+<li>RESULTS
+<ul>
+<li>part1 EDA</li>
+<li>part1 classifier assessment</li>
+<li>part2 EDA - classify all ‘specific proteins’ - note disparities.</li>
+<li>part2 RIT findings (numbers, taxonomy, lengths, overlaps)</li>
+<li>part2 further analyses…</li>
+</ul></li>
+<li>DISCUSSION / REFs….</li>
+<li>INTRO</li>
+<li>ABSTRACT</li>
+<li>FORMATTING</li>
+</ul>
+<p><strong>Part 1</strong></p>
+<ul class="task-list">
+<li><input type="checkbox" disabled></input>
+redo plots for regular cv - compare to nested ; incorp final valid resuls and plot</li>
+<li><input type="checkbox" disabled></input>
+redo k-means with letting k be variable…</li>
+</ul>
+<p><strong>Part 2</strong></p>
+<ul>
+<li>[ ]</li>
 </ul>
 <hr />
 <!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
@@ -560,37 +651,6 @@ fixed 2 updated seqs… got data + linked tax</li>
   - Save hmmsearch tables to _./data/hmmsearch_res/_
 
 -->
-</div>
-</div>
-<div id="todo-list" class="section level4">
-<h4>TODO LIST</h4>
-<p><strong>Part 1</strong></p>
-<ul class="task-list">
-<li><input type="checkbox" disabled></input>
-redo plots for regular cv - compare to nested ; incorp final valid resuls and plot</li>
-<li><input type="checkbox" disabled></input>
-redo k-means with letting k be variable…</li>
-</ul>
-<p><strong>Part 2</strong></p>
-<ul class="task-list">
-<li><input type="checkbox" disabled checked></input>
-prepare a slide of ideas that I am working on for meeting</li>
-<li><input type="checkbox" disabled checked></input>
-proceed to finding proteins with nucleotide sequence<ul>
-<li>Using genbank….</li>
-</ul></li>
-<li><input type="checkbox" disabled></input>
-also EDA:<ul>
-<li>dna seq lengths<br />
-</li>
-<li>how many proteins per sequence<br />
-</li>
-<li>protein lengths<br />
-</li>
-<li>taxonomy for rit elements…</li>
-<li></li>
-</ul></li>
-</ul>
 </div>
 </div>
 

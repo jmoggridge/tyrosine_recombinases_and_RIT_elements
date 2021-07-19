@@ -1,5 +1,8 @@
 ## P2_A5 figure out how to identify rit element from genbank...
 
+# uses functions from P2_rit_finder on the nucleotides with > 3 specific proteins (selected in P2_A3), for which genbank data was obtained in P2_A4.
+
+
 ## Setup ----
 
 library(tidyverse)
@@ -70,10 +73,12 @@ create_errors <- c(
 three_ints_filter <- three_ints |> 
   filter(!nuc_id %in% create_errors) |> 
   filter(!nuc_id %in% no_genbank) |> 
-  left_join(genbank_files_index)
+  left_join(genbank_files_index) |> 
+  distinct()
   
 # 531 records remaining for rit_finder
 glimpse(three_ints_filter)
+length(unique(three_ints_filter$nuc_id))
 
 rm(no_genbank, have_genbank, three_ints, genbank_files_index)
 
@@ -147,6 +152,7 @@ write_rds(rit_list3,
 rm(rit_list3)
 
 #
-# TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
+# TODO issue with many ids.... records too large? 
+# need genbank records that actually contain CDS, some missing CDS
 # seem to have cds when browsing but gives error with my code
-
+# some have no column 'locus tag' which causes an error...

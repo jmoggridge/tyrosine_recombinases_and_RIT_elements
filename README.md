@@ -260,11 +260,15 @@ Downloading `P2_A1_ncbi data.R`:
   - Not sure if wanting to use PCA figures, would need to try to explain, requires many dimensions but also have many groups.
   
     
+   \
+   
 #### Weds, July 14th
   
   - meeting: prioritize RIT finding + description
   - wrote genbank fetcher and parser functions: 
   
+   \
+   
 
 #### Thurs, July 15th
 
@@ -273,6 +277,9 @@ Downloading `P2_A1_ncbi data.R`:
     - get genbank records for those - split the downloads into chunks of 100. Saved as `./data/CDD/RIT_gbk_<1-6>.rds`
   - still having some issues with iceberg data - HMM scores not being created in right folder...
   
+   \
+   
+   
 #### Friday, July 16th
 
 Iceberg data to Nicole - *done*.     
@@ -315,6 +322,8 @@ Working on P2_A5 - Rit identification pipeline. Documentation:
   - **Possible** download their files manually and parse the xml.    
       - **Issue** parse_genbank() 'Error: object 'GBSeq' not found'    
     
+   \
+   
  
 #### Saturday, July 17th   
 
@@ -333,38 +342,41 @@ Only get one blast hit despite triplicate of double RIT segment.
 Trying to finish RIT finder script. Still finding weird issues:
 - "47118329" -> "Column `locus_tag` doesn't exist."
 - "339284117", "737980678", '1980667557' ->  "Error in gzfile(file, "rb") : invalid 'description' argument"
-
-
+   
+   \
+   
 #### Sunday, July 18th   
 
-Trying to process all genbank files with `rit_finder` (P2_A5)  
+**Trying to process all genbank files with `rit_finder` (P2_A5)    **
+  - Done! Only 399 / 517 of those worked though... 
+  - And ~ 25 didn't run at all  
 
-- up to 475
+**Trying to figure out how to answer Nicole's qs about ICEs' RITs. **
 
-Trying to figure out how to answer Nicole's qs about ICEs' RITs.
-
-- are ICEs distinct 
-  - 
-Bordetella RITs:
-
-RIT1 
-  - rows (1,2,3) 
-  - identical - except for insertion in RIT 3
-  - one on each ICE...
-RIT2
-  - different from RIT1
-
-Mesorhizobium
- - ICEberg data needs labels a,b,c for the three ICEs  
- - each ICE is not uniquely identified in the fasta, sequences are different
- - this is causing wrong proteins to be joined by id....
- - TODO need to fix
-
+  - are ICEs distinct?     
+    - Yes to all    
+      
+  - Are RITs distinct    
+    - Bordetella    
+      - RIT1: rows (1,2,3); identical - except for insertion in ICE-GI3    
+      - one on each ICE -     
+    - RIT2    
+      - different from RIT1, only on third one. ICE-GI3 (222)    
+      
+   - Mesorhizobium    
+     - ICEberg data needs labels a,b,c for the three ICEs      
+     - each ICE is not uniquely identified in the fasta, sequences are different    
+     - this is causing wrong proteins to be joined by id....    
+     - **TODO** need to fix this in script somewhere    
 
 
-##### TO DO
 
-- Find all RITs
+
+
+### TO DO
+
+- Find all RITs ~ try for other sequences that failed... what went wrong - patch functions to ameliorate or write 2nd function
+- Retrieve/ parse full genbank for those missing CDS...
 - ICEberg -> locate, check if duplicated...
 - Fix mesorhizobium in ICEberg data in P2_B3 before predictions...
 - Start writing some parts...
@@ -375,7 +387,24 @@ Mesorhizobium
 - METHODS
    - part1 data
    - part1 classifier overview
-   - 
+   - part1 classifier evaluation, CV, final validation
+   - part2 data
+   - part2 RIT pipeline / algorithm for filtering
+   - part2 further analyses
+   
+   
+- RESULTS
+   - part1 EDA
+   - part1 classifier assessment
+   - part2 EDA - classify all 'specific proteins' - note disparities.
+   - part2 RIT findings (numbers, taxonomy, lengths, overlaps)
+   - part2 further analyses...
+   
+- DISCUSSION / REFs....
+- INTRO
+- ABSTRACT
+- FORMATTING
+
 
 **Part 1**
 
