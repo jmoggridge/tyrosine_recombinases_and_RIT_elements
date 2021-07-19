@@ -33,7 +33,6 @@ genbank_files_index <-
   unnest(nuc_id) |> 
   distinct()
 
-# these ids have genbank files downloaded already
 have_genbank <- three_ints |> 
   filter(nuc_id %in% genbank_files_index$nuc_id)
 
@@ -43,11 +42,13 @@ no_genbank <-
 no_genbank
 
 
+
 create_errors <- c(
   # ids that seem to be causing parsing errors
   "737980678", "47118329", "339284117", "1980667557", 
   # R just hangs when these are processed
-  '56311475', '1008271296', '237624339'
+  '56311475', '1008271296', '237624339', '338755570',
+  '488453735'
   )
 
 ## ERRORS
@@ -70,7 +71,7 @@ three_ints_filter <- three_ints |>
 # 531 records remaining for rit_finder
 glimpse(three_ints_filter)
 
-rm(no_genbank, have_genbank)
+rm(no_genbank, have_genbank, three_ints)
 
 ## Main2 -----
 
@@ -156,6 +157,8 @@ rit_list5 <- three_ints_filter |>
   ))
 write_rds(rit_list5, './data/CDD/RIT_finder_rs_301_325.rds')
 beep()
+rit_list5 |> unnest(rit_output) |> unnest(rits) |> View()
+rm(rit_list5)
 
 pb <- make_pb(25)
 rit_list6 <- three_ints_filter |> 
@@ -171,120 +174,30 @@ rit_list6 <- three_ints_filter |>
       return(rits)
     }
   ))
-write_rds(rit_list6, './data/CDD/RIT_finder_rs_301_325.rds')
+beep()
+write_rds(rit_list6, './data/CDD/RIT_finder_rs_326_350.rds')
+rm(rit_list6)
+
+pb <- make_pb(25)
+rit_list7 <- three_ints_filter |> 
+  dplyr::slice(351:375) |> 
+  select(nuc_id, file) |> 
+  mutate(rit_output = map2(
+    .x = nuc_id, 
+    .y = file, 
+    .f = ~{
+      print(.x)
+      rits <- rit_finder(x = .x, genbank_library = .y)
+      pb$tick()
+      return(rits)
+    }
+  ))
+
+beep()
+write_rds(rit_list7, './data/CDD/RIT_finder_rs_351_375.rds')
+
+
 
 # TODO issue with many ids.... record is too large? need genbank records that actually contain CDS, some missing CDS
 # seem to have cds when browsing but gives error with my code
-
-
-
-
-
-# pb <- progress_bar$new(total = 47)
-# 
-# rit_by_id_list1 <- three_ints |>
-#   dplyr::slice(1:47) |>
-#   pull(nuc_id) |>
-#   map(~{pb$tick()
-#       rit_finder(.x)})
-# # beep()
-# 
-# 
-# pb <- progress_bar$new(total = 52)
-# 
-# rit_by_id_list2 <- three_ints |>
-#   dplyr::slice(49:100) |>
-#   pull(nuc_id) |>
-#   map(~{pb$tick()
-#       rit_finder(.x)})
-# # beep()
-# # rit_by_id_list2
-# 
-# pb <- progress_bar$new(total = 100)
-# rit_by_id_list3 <- three_ints |>
-#   dplyr::slice(101:200) |>
-#   pull(nuc_id) |>
-#   map(~{pb$tick()
-#     rit_finder(.x)})
-# # beep()
-# # rit_by_id_list3
-
-
-
-
-# 
-# remaining <- three_ints |>
-#   dplyr::slice(201:300) |>
-#   filter(!nuc_id %in% creates_errors) |> 
-#   pull(nuc_id)
-# 
-# pb <- progress_bar$new(
-#   format = "Finding Rits: [:bar] :percent eta: :eta",
-#   total = length(remaining),
-#   clear = FALSE,
-#   )
-# 
-# rit_by_id_list4 <-
-#   remaining |> 
-#   map(~{
-#     pb$tick()
-#     print(.x)
-#     rit_finder(.x)
-#     })
-# beep()
-# 
-# 
-# pb <- progress_bar$new(total = 100)
-# rit_by_id_list5 <- three_ints |>
-#   dplyr::slice(301:400) |>
-#   pull(nuc_id) |>
-#   map(~{pb$tick()
-#     rit_finder(.x)})
-# # beep()
-# # rit_by_id_list5
-# # 
-# 
-# three_ints$nuc_id[410]
-# pb <- progress_bar$new(total = 100)
-# rit_by_id_list6 <- three_ints |>
-#   dplyr::slice(401:500) |>
-#   pull(nuc_id) |>
-#   map(~{pb$tick()
-#     rit_finder(.x)})
-# # 
-# rit_by_id_list6
-
-
-# 
-# pb <- progress_bar$new(
-#   format = "Finding Rits: [:bar] :percent eta: :eta",
-#   total = (nrow(three_ints) - length(creates_errors)),
-#   clear = FALSE, 
-#   )
-# 
-# rits_list_all_nuc <- three_ints |> 
-#   filter(!nuc_id %in% creates_errors) |> 
-#   pull(nuc_id) |> 
-#   map(~{pb$tick()
-#     rit_finder(.x)}) 
-# beep()
-# 
-# length(rits_list)
-# 
-# rits_output <- 
-#   rits_list |> 
-#   purrr::reduce(bind_rows) |> 
-#   left_join(three_ints) |> 
-#   mutate(
-#     null_rits = map_lgl(rits, ~ifelse(is.null(nrow(.x)), T, F))
-#   ) |> 
-#   filter(null_rits == F) |> 
-#   mutate(n_rits = map_dbl(rits, nrow))
-# 
-# write_rds(rits_output, './data/CDD/Rits.rds')
-# 
-# # TODO figure out which ids are missing from the results
-# three_ints |> 
-#   select(nuc_id) |> 
-#   anti_join(rits_output |> select(nuc_id))
 
