@@ -96,6 +96,7 @@ skimr::skim(rit_results)
 # orientations of RitA,B,C
 rit_results |> 
   dplyr::count(rit_orientation)
+
 # may the rit_finder is getting messed up by overlapping RIT elements... never frf or rfr, only fff, rrr, ffr, rff
 rit_results |> 
   dplyr::count(p1_orientation, p2_orientation, p3_orientation)
@@ -128,7 +129,7 @@ rm(odd_overlaps, non_consistent_orientation)
 rit_results <- rit_results |> 
   filter(!rit_id %in% weird_overlap_orientation$rit_id)
 
-# 834 putative rit elements in 393 nucleotides; 187 unique taxa
+# 806 putative rit elements
 skimr::skim(rit_results)
 
 rit_results |> 
@@ -143,43 +144,100 @@ extract_sequences <- function(file, ids){
     filter(nuc_id %in% ids)
 }
 
-# for all nuc_data_fixed files, get RIT sequences, take rev.comp if orientation of genes is 'all reverse'
+# TODO unvectorize!!
+# gets reverse complement of dna sequence
+revcomp <- function(dna){
+  map_chr(dna, ~{
+    .x |> str_split('', simplify = T) |>
+    seqinr::comp(ambiguous = T, forceToLower = F) |> 
+    rev() |> 
+    str_c(collapse = '') })
+}
+
+# for all nuc_data_fixed files, read in genbank sequence and join to rit results.
 rit_dna <- 
   Sys.glob('./data/CDD/nuc_data_fixed/*') |> 
   map(~extract_sequences(.x, ids = rit_results$nuc_id)) |> 
   purrr::reduce(bind_rows) |> 
   left_join(
     rit_results |> 
-              transmute(rit_id, 
-                        nuc_id, 
-                        rit_start = p1_start,
-                        rit_stop = p3_stop, 
-                        rit_orientation),
+      transmute(
+        rit_id, 
+        nuc_id, 
+        rit_start = p1_start,
+        rit_stop = p3_stop, 
+        rit_orientation,
+        p1_length, p2_length, p3_length,
+        ),
     by = 'nuc_id'
   ) |> 
+  # extract rit sequences
+  mutate(rit_dna_in_nuc = str_sub(nuc_seq, rit_start, rit_stop)) |> 
+  # get complement if RIT element on minus strand
   mutate(
-    rit_dna = str_sub(nuc_seq, rit_start, rit_stop),
-    # get complement if RIT element on minus strand
     rit_dna = ifelse(
       test = rit_orientation == 'all reverse',
-      yes = rit_dna |> 
-        str_split('', simplify = T) |>
-        seqinr::comp(ambiguous = T) |> 
-        rev() |> 
-        str_c(collapse = ''),
-      no = rit_dna
+      yes = revcomp(rit_dna_in_nuc),
+      no = rit_dna_in_nuc
     ),
     nuc_accession = str_trim(str_extract(nuc_name, '.*?\\s')),
     rit_length = rit_stop - rit_start + 1
   ) |> 
-  relocate(rit_id, rit_length, rit_start, rit_stop)
+  relocate(rit_id, contains('rit'), contains('nuc'), contains('dna'))
 
 
+rit_dna <- rit_dna |> 
+  select(rit_dna) |> 
+  distinct() |> 
+  mutate(rit_dna_id = as_factor(row_number())) |> 
+  right_join(rit_dna)
+
+# rit_dna |> View()
+
+# 421 unique sequences; some as many as 16
+rit_dna_df2 |> 
+  dplyr::count(rit_dna_id) |> arrange(desc(n)) |> 
+  ggplot(aes(n, fill = rit_dna_id)) +
+  geom_histogram(position = 'stack', color = 'white', size = 0.05,
+                 show.legend = F) +
+  labs(title = 'Frequency of unique RIT elements in dataset of 806 sequences',
+       x = 'number of unique RITs elements') +
+  theme_classic() 
+
+length(unique(rit_dna$rit_dna))
+# 
+# unique_rit_df <- rit_dna |> 
+#   left_join(unique_rit_dna)
+#   arrange(rit_dna) |> 
+#   group_by(rit_dna) |> 
+#   nest(occurences = c(rit_id, rit_start, rit_stop, rit_orientation, nuc_id, nuc_name, nuc_accession)) |> 
+#   ungroup() |> 
+#   mutate(rit_dna_id = as.numeric(as_factor(rit_dna))) 
+# unique_rit_df |> 
+#   View()
+
+
+
+# get lengths of RitA,B,C
+rit_rs <- rit_dna |> 
+  relocate(contains('rit'), contains('nuc')) |> 
+  mutate(
+    strand = ifelse(rit_orientation == 'all forward', '+', '-'),
+    rit_A_length = ifelse(strand == '+', p1_length, p3_length),
+    rit_B_length = p2_length,
+    rit_C_length = ifelse(strand == '+', p3_length, p1_length)
+  ) |> 
+  select(-c(p1_length, p2_length, p3_length))
+
+rit_rs |> 
+  ggplot(aes(nchar(rit_dna))) +
+  geom_histogram()
+
+rit_rs |> 
+  pivot_longer(cols = c(rit_A_length, rit_B_length, rit_C_length)) |> 
+  mutate(name = str_remove(name, '_length') |> str_replace('r', 'R')) |> 
+  ggplot(aes(x = value)) +
+  geom_histogram(show.legend = F) +
+  facet_grid(.~name) +
+  labs(x = 'length (AA)')
 ## Time to check which sequences are unique...
-
-
-rit_dna |> 
-  select(-contains('seq')) |> 
-  View()
-  
-
