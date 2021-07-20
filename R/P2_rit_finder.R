@@ -20,20 +20,22 @@ hmmsearch_filler <- read_rds('./data/hmmsearch_filler.rds')
 
 ## rit_finder functions -----
 
+
 # for a nuc_id, return the parsed genbank record as a tibble
 # genbank_files_index needs to be loaded in the environment
-open_genbank <- function(x){
-  genbank_files_index |> 
-    # figure out which file to open from index
-    filter(nuc_id == x) |> 
-    pull(file) |> 
-    # pull the genbank record for id and parse it
-    read_rds() |> 
-    filter(nuc_id == x) |> 
-    unnest(gbk) |> 
-    pull(gbk) |> 
-    parse_genbank()
-}
+
+# open_genbank <- function(x){
+#   genbank_files_index |> 
+#     # figure out which file to open from index
+#     filter(nuc_id == x) |> 
+#     pull(file) |> 
+#     # pull the genbank record for id and parse it
+#     read_rds() |> 
+#     filter(nuc_id == x) |> 
+#     unnest(gbk) |> 
+#     pull(gbk) |> 
+#     parse_genbank()
+# }
 
 open_genbank <- function(x, file){
   # pull the genbank record for id and parse it
@@ -51,11 +53,14 @@ open_genbank <- function(x, file){
 # }
 
 
-extract_features_table <- function(gbk){
+extract_features_table <- function(ft){
   # unnests the features table of genbank record gbk to return CDS items
-  gbk |> select(feature_table) |> 
+  ft |> select(feature_table) |> 
     unnest(feature_table) |> 
-    select(-c(gb_feature_key, locus_tag, transl_table)) 
+    select(-c(matches('gb_feature_key'), 
+              matches('locus_tag'),
+              matches('transl_table')) 
+           )
 }
 
 read_hmmsearch <- function(path){
@@ -158,6 +163,10 @@ edit_feature_table <- function(ft){
 pivot_feature_table <- function(ft_edit){
   # for each feature (besides the first and last)
   # take info from previous and next features.
+  if(!'product' %in% colnames(ft_edit)){
+    ft_edit <- ft_edit |> 
+      mutate(product = as.character(NA))
+  }
   ft_edit |> 
     transmute(
       p1_id = lag(protein_id),
@@ -219,7 +228,8 @@ rit_tester <- function(ft_pivot){
     # tests
     mutate(
       # both gaps < 250 bp? overlaps are negative.
-      rit_dist_check = all(overlap_p1p2 > -500, overlap_p2p3 -500),
+      rit_dist_check = all(overlap_p1p2 > -250, overlap_p2p3 > -250), 
+      rit_overlap_check = all(overlap_p1p2 < 200, overlap_p2p3 < 200), 
       # full element is less than 4kbp?
       rit_length_check = ifelse(element_CDS_length < 8000, T, F),
       # CDS trio are all predicted integrases 
@@ -254,7 +264,8 @@ rit_selector <- function(nuc_id, rit_tests, ft_edit){
   rits <- rit_tests |> 
     rowwise() |> 
     # keep trios that pass: all - integrases, 
-    filter(all(rit_dist_check, rit_integrase_check, rit_length_check)) |> 
+    filter(all(rit_dist_check, rit_overlap_check,
+               rit_integrase_check, rit_length_check)) |> 
     # package up upstream and downstream cds.
     mutate(
       upstream_cds = map(
@@ -285,18 +296,18 @@ rit_selector <- function(nuc_id, rit_tests, ft_edit){
 rit_finder <- function(x, genbank_library){
   
   # open genbank and extract features table for nuc_id x,
-  ft <- open_genbank(x = x, file = genbank_library)
+  gbk <- open_genbank(x = x, file = genbank_library)
   
   # if no CDS in feature table, return NA
   # TODO use 2ndary parser for downloaded .xml files
-  if(is.na(ft)) {
+  
+  if(any(class(gbk) == 'logical')) {
+    ## try alternate parser??
     # ft <- open_genbank2(x)
-    # if(is.na(ft))
     return(tibble(nuc_id_fail = x, rits = list(NA), success = F))
   }
-  
-  ft <- ft |> 
-    extract_features_table() 
+  # extract CDS features
+  ft <- extract_features_table(gbk) 
   
   # predict integrase classes for all protein CDSs
   ft_class <- ft |>
@@ -305,9 +316,7 @@ rit_finder <- function(x, genbank_library){
     select(-acc)
   # join predictions to feature table
   ft_join <- ft |> 
-    left_join(ft_class,
-              by = c("gb_interval_from", "gb_interval_to", "feat_id", 
-                     "codon_start", "product", "protein_id", "translation")) |> 
+    left_join(ft_class) |> 
     mutate(pseudo_or_partial = ifelse(is.na(protein_id), T, F))
   
   # determine protein orientations and start/stop; drop some data 
@@ -320,7 +329,13 @@ rit_finder <- function(x, genbank_library){
   
   # rit selector: check tests, filter candidates,
   # package up upstream and downstream cds.
-  rits <- rit_selector(rit_tests = rit_tests, ft_edit = ft_edit, nuc_id = x)
+  rits <- rit_selector(
+    rit_tests = rit_tests, 
+    ft_edit = ft_edit, 
+    nuc_id = x
+    )
   
   return(rits)
 }
+
+rm(ft, ft_class, ft_edit, ft_pivot, ft_join, rits, rit_tests)
