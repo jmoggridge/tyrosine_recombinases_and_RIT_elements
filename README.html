@@ -558,7 +558,21 @@ fixed 2 updated seqs… got data + linked tax</li>
 </div>
 <div id="sunday-july-18th" class="section level4">
 <h4>Sunday, July 18th</h4>
-<p><strong>Trying to process all genbank files with <code>rit_finder</code> (P2_A5) </strong> - Done! Only 399 / 517 of those worked though… - And ~ 25 didn’t run at all</p>
+<p><strong>Trying to process all genbank files with <code>rit_finder</code> (P2_A5) </strong></p>
+<ul>
+<li><strong>Done! -ish</strong></li>
+<li>Only 399 / 517 of those worked though…</li>
+<li>And ~ 25 didn’t run at all –&gt; various issues
+<ul>
+<li>some missing column ‘locus_tag’; could be a <code>select()</code> issue that might be fixed…</li>
+</ul></li>
+<li>nearly 100 missing genbank CDS!
+<ul>
+<li>tried gb download via browser earlier and file has completely different XML structure / names… <em>ffs</em>.</li>
+</ul></li>
+</ul>
+<p><strong>Started to look at the putative RITs in P2_A5</strong><br />
+- Pulled DNA sequences and joined to elements - Extracted RIT element range - Reverse-complemented sequence where RIT proteins all have reverse orientation. - Some issues with non-distinct elements to watch for in the P2_A pipeline.</p>
 <p><strong>Trying to figure out how to answer Nicole’s qs about ICEs’ RITs. </strong></p>
 <ul>
 <li>are ICEs distinct?
@@ -591,10 +605,23 @@ fixed 2 updated seqs… got data + linked tax</li>
 </ul></li>
 </ul>
 </div>
+<div id="monday-july-19th" class="section level4">
+<h4>Monday, July 19th</h4>
+<p><strong>Continuing with P2_A6</strong> - looking at putative RIT elements extracted in P2_A5</p>
+<ul>
+<li>Confirm DNA sequences make sense… BLAST ’em</li>
+<li>Check whether protein sequences are linked</li>
+<li>EDA for basic things:
+<ul>
+<li>element lengths, overlaps, protein lengths</li>
+</ul></li>
+</ul>
+</div>
 <div id="to-do" class="section level3">
 <h3>TO DO</h3>
 <ul>
-<li>Find all RITs</li>
+<li>Find all RITs ~ try for other sequences that failed… what went wrong - patch functions to ameliorate or write 2nd function</li>
+<li>Retrieve/ parse full genbank for those missing CDS…</li>
 <li>ICEberg -&gt; locate, check if duplicated…</li>
 <li>Fix mesorhizobium in ICEberg data in P2_B3 before predictions…</li>
 <li>Start writing some parts…</li>

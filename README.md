@@ -391,7 +391,8 @@ Trying to finish RIT finder script. Still finding weird issues:
    - element lengths, overlaps, protein lengths
    
    
-   
+Genbank issues for P2_A5 / P2_rit_finder:
+  - 20 nuc ids simply didn't return any results `missing_results.rds`
 
 
 ### TO DO
