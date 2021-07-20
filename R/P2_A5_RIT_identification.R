@@ -16,7 +16,7 @@ library(tictoc)
 
 # load functions and models
 source('./R/P2_rit_finder.R')
-
+dir.create('./data/CDD/rit_finder_rs/')
 
 ## Main1 -----
 
@@ -93,10 +93,10 @@ make_pb <- function(n){
   )
 }
 
-dir.create('./data/CDD/rit_finder/')
-pb <- make_pb(200)
+
+pb <- make_pb(250)
 rit_list1 <- three_ints_filter |>
-  dplyr::slice(1:200) |>
+  dplyr::slice(1:250) |>
   select(nuc_id, file) |>
   mutate(rit_output = map2(
     .x = nuc_id,
@@ -109,13 +109,11 @@ rit_list1 <- three_ints_filter |>
     ))
 beep()
 write_rds(rit_list1,
-          './data/CDD/rit_finder/RIT_finder_rs_1_200.rds')
+          './data/CDD/rit_finder_rs/RIT_finder_rs_1_250.rds')
 
-
-
-pb <- make_pb(50)
+pb <- make_pb(n = nrow(three_ints_filter) - 251 + 1)
 rit_list2 <- three_ints_filter |>
-  dplyr::slice(201:400) |>
+  dplyr::slice(251:nrow(three_ints_filter)) |>
   select(nuc_id, file) |>
   mutate(rit_output = map2(
     .x = nuc_id,
@@ -129,27 +127,10 @@ rit_list2 <- three_ints_filter |>
 beep()
 
 write_rds(rit_list2,
-          './data/CDD/rit_finder/RIT_finder_rs_201_400.rds')
+          './data/CDD/rit_finder_rs/RIT_finder_rs_251_517.rds')
 rm(rit_list2)
 
-pb <- make_pb(n = nrow(three_ints_filter) - 400)
-rit_list3 <- three_ints_filter |>
-  dplyr::slice(401:nrow(three_ints_filter)) |>
-  select(nuc_id, file) |>
-  mutate(rit_output = map2(
-    .x = nuc_id,
-    .y = file,
-    .f = ~{
-      pb$tick()
-      print(.x)
-      rit_finder(x = .x, genbank_library = .y)
-    }
-  ))
-beep()
 
-write_rds(rit_list3, 
-          './data/CDD/rit_finder/RIT_finder_rs_201_400.rds')
-rm(rit_list3)
 
 #
 # TODO issue with many ids.... records too large? 
