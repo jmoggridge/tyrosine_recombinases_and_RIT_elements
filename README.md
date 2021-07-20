@@ -347,9 +347,21 @@ Trying to finish RIT finder script. Still finding weird issues:
    
 #### Sunday, July 18th   
 
-**Trying to process all genbank files with `rit_finder` (P2_A5)    **
-  - Done! Only 399 / 517 of those worked though... 
-  - And ~ 25 didn't run at all  
+**Trying to process all genbank files with `rit_finder` (P2_A5)    **   
+
+  - **Done! -ish**
+  - Only 399 / 517 of those worked though... 
+  - And ~ 25 didn't run at all --> various issues
+    - some missing column 'locus_tag'; could be a `select()` issue that might be fixed...
+  - nearly 100 missing genbank CDS!
+    - tried gb download via browser earlier and file has completely different XML structure / names... *ffs*.
+
+**Started to look at the putative RITs in P2_A5**   
+  - Pulled DNA sequences and joined to elements
+  - Extracted RIT element range
+  - Reverse-complemented sequence where RIT proteins all have reverse orientation.
+  - Some issues with non-distinct elements to watch for in the P2_A pipeline.
+  
 
 **Trying to figure out how to answer Nicole's qs about ICEs' RITs. **
 
@@ -369,8 +381,17 @@ Trying to finish RIT finder script. Still finding weird issues:
      - this is causing wrong proteins to be joined by id....    
      - **TODO** need to fix this in script somewhere    
 
+#### Monday, July 19th   
 
-
+**Continuing with P2_A6** - looking at putative RIT elements extracted in P2_A5    
+ 
+ - Confirm DNA sequences make sense... BLAST 'em
+ - Check whether protein sequences are linked
+ - EDA for basic things:
+   - element lengths, overlaps, protein lengths
+   
+   
+   
 
 
 ### TO DO

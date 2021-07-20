@@ -219,19 +219,23 @@ rit_tester <- function(ft_pivot){
     # tests
     mutate(
       # both gaps < 250 bp? overlaps are negative.
-      rit_dist_check = all(overlap_p1p2 < 250, overlap_p2p3 < 250),
+      rit_dist_check = all(overlap_p1p2 > -500, overlap_p2p3 -500),
       # full element is less than 4kbp?
-      rit_length_check = ifelse(element_CDS_length < 4000, T, F),
-      # all CDS are predicted Rit subfamilies members
+      rit_length_check = ifelse(element_CDS_length < 8000, T, F),
+      # CDS trio are all predicted integrases 
+      rit_integrase_check = all(
+        map_lgl(c(p1_pred, p2_pred, p3_pred), ~!str_detect(.x, 'Other'))
+      ),      
+      # CDS trio are all predicted Rit subfamilies members
       rit_all_check = all(
         map_lgl(c(p1_pred, p2_pred, p3_pred), ~str_detect(.x, 'Rit'))
       ),
-      # trio has ABC or CBA arrangement?
+      # CDS trio has RIT_ABC or CBA arrangement?
       rit_ABC_check = any(
         all(p1_pred == 'RitA', p2_pred == 'RitB', p3_pred == 'RitC'),
         all(p1_pred == 'RitC', p2_pred == 'RitB', p3_pred == 'RitA')
       ),
-      # trio shares orientation?
+      # CDS trio shares gene orientation?
       rit_orientation = case_when(
         all(p1_orientation == 'forward', 
             p2_orientation == 'forward',
@@ -244,11 +248,13 @@ rit_tester <- function(ft_pivot){
     )
 }
 
+
+# rit selector: check tests, filter candidates,
 rit_selector <- function(nuc_id, rit_tests, ft_edit){
   rits <- rit_tests |> 
-    # rit selector: check tests, filter candidates,
     rowwise() |> 
-    filter(all(rit_dist_check, rit_all_check, rit_ABC_check, rit_length_check)) |> 
+    # keep trios that pass: all - integrases, 
+    filter(all(rit_dist_check, rit_integrase_check, rit_length_check)) |> 
     # package up upstream and downstream cds.
     mutate(
       upstream_cds = map(
