@@ -34,7 +34,10 @@ genbank_files_index <-
   tibble(file = Sys.glob('./data/CDD/RIT_gbk_[0-9].rds')) |> 
   mutate(nuc_id = map(file, ~ read_rds(.x) |> pull(nuc_id))) |> 
   unnest(nuc_id) |> 
-  distinct()
+  group_by(nuc_id) |> 
+  filter(row_number() == 1) |> 
+  ungroup()
+
 
 have_genbank <- three_ints |> 
   filter(nuc_id %in% genbank_files_index$nuc_id)
@@ -45,17 +48,12 @@ no_genbank <-
 no_genbank
 
 
-
 create_errors <- c(
-  # ids that seem to be causing parsing errors:
-  # column `locus_tag` doesn't exist...
-  "737980678", "47118329", "339284117", "1980667557", '47118328',
+  # ids that seem to be causing parsing errors
   # R just seems to hang when these are processed
   '56311475', '1008271296', '237624339', '338755570',
   '488453735', '227337254', '255767010', '184198282',
-  '186474323', '1190193351', 
-  
-  '116222307'
+  '186474323', '1190193351', '116222307'
   )
 
 ## ERRORS
@@ -104,7 +102,7 @@ rit_list1 <- three_ints_filter |>
     .f = ~{
       pb$tick()
       print(.x)
-      rit_finder(x = .x, genbank_library = .y)
+      rit_finder(x = .x, genbank_lib = .y)
       }
     ))
 beep()
@@ -121,7 +119,7 @@ rit_list2 <- three_ints_filter |>
     .f = ~{
       pb$tick()
       print(.x)
-      rit_finder(x = .x, genbank_library = .y)
+      rit_finder(x = .x, genbank_lib = .y)
     }
   ))
 beep()

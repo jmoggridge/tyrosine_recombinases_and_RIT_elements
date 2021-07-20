@@ -37,9 +37,9 @@ hmmsearch_filler <- read_rds('./data/hmmsearch_filler.rds')
 #     parse_genbank()
 # }
 
-open_genbank <- function(x, file){
+open_genbank <- function(x, genbank_lib){
   # pull the genbank record for id and parse it
-  read_rds(file) |> 
+  read_rds(genbank_lib) |> 
     filter(nuc_id == x) |> 
     unnest(gbk) |> 
     pull(gbk) |> 
@@ -293,10 +293,10 @@ rit_selector <- function(nuc_id, rit_tests, ft_edit){
 # Protein CDSs are classified by classify_proteins. 
 # Then classified proteins scanned for RIT arrangements
 
-rit_finder <- function(x, genbank_library){
+rit_finder <- function(x, genbank_lib){
   
   # open genbank and extract features table for nuc_id x,
-  gbk <- open_genbank(x = x, file = genbank_library)
+  gbk <- open_genbank(x = x, genbank_lib = genbank_lib)
   
   # if no CDS in feature table, return NA
   # TODO use 2ndary parser for downloaded .xml files
@@ -314,6 +314,7 @@ rit_finder <- function(x, genbank_library){
     filter(!is.na(translation)) |> 
     classify_proteins() |>
     select(-acc)
+  
   # join predictions to feature table
   ft_join <- ft |> 
     left_join(ft_class) |> 
@@ -338,4 +339,4 @@ rit_finder <- function(x, genbank_library){
   return(rits)
 }
 
-rm(ft, ft_class, ft_edit, ft_pivot, ft_join, rits, rit_tests)
+# rm(gbk, ft, ft_class, ft_edit, ft_pivot, ft_join, rits, rit_tests)

@@ -64,7 +64,7 @@ glimpse(rits)
 rits |> dplyr::count(strain, ice_name)
 
 # look and guess which are rit elements
-rits |> select(-contains('seq')) |> View()
+rits |> select(-contains('seq'))
 
 # created a table with each Rit element as a row with proteins 1 - 3
 elements <- tribble(
