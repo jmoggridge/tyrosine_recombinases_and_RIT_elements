@@ -2,9 +2,18 @@ library(tidyverse)
 library(rentrez)
 library(xml2)
 library(janitor)
+library(progress)
 
+## progress bar for n iters
+make_pb <- function(n){
+  progress_bar$new(
+    format = "Finding Rits: [:bar] :percent eta: :eta",
+    total = n,
+    clear = FALSE,
+  )
+}
 
-# get genbank record as xml, parse xml
+# get genbank record as xml
 fetch_genbank <- function(nuc_id){
   # get record from entrez
   es <- entrez_search(db = 'nuccore', term = nuc_id, use_history = T)
@@ -13,6 +22,7 @@ fetch_genbank <- function(nuc_id){
 }
 
 # get genbank record as xml, parse xml
+# has completely different formatting. NOT USING YET
 fetch_genbank_native <- function(nuc_id){
   # get record from entrez
   es <- entrez_search(db = 'nuccore', term = nuc_id, use_history = T)
@@ -20,6 +30,16 @@ fetch_genbank_native <- function(nuc_id){
                       db = 'nuccore', rettype = 'native', retmode = 'xml')
 }
 
+# get genbank WITH PARTS record as xml, parse xml
+fetch_genbank_with_parts <- function(nuc_id){
+  # get record from entrez
+  es <- entrez_search(db = 'nuccore', term = nuc_id, use_history = T)
+  gbk <- entrez_fetch(web_history = es$web_history,
+                      db = 'nuccore', rettype = 'gbwithparts', retmode = 'xml')
+}
+
+
+# parse vanilla 'gb' type from mode 'xml'
 parse_genbank <- function(gbk){
   gbk <- read_xml(gbk) |> as_list()
   # start extraction
@@ -71,10 +91,12 @@ parse_genbank <- function(gbk){
     hoist(GBFeature_quals, 'GBQualifier_value') |> 
     unnest(c(GBQualifier_name, GBQualifier_value)) |> 
     select(-feature_table) |> 
-    pivot_wider(names_from = GBQualifier_name, values_from = GBQualifier_value) |> 
+    pivot_wider(names_from = GBQualifier_name, 
+                values_from = GBQualifier_value,
+                values_fn = list) |> 
     clean_names() 
   ft <- ft |> 
-    select(-contains('pseudo'),
+    select(
            -contains('ribosomal_slippage'),
            -contains('inference'),
            -contains('function'),
@@ -85,8 +107,7 @@ parse_genbank <- function(gbk){
            -contains('ec_number'), 
            -contains('gene'), 
            -contains('transl_except'),
-           -contains('artificial_location'),
-           -contains('pseudo')
+           -contains('artificial_location')
            )
   ft_unnest <- ft |> 
     unnest(names(ft)[2:ncol(ft)]) |> 
