@@ -1,0 +1,143 @@
+---
+title: "Tyrosine Recombinase Classification and Finding Recombinase-in-Trio Elements"
+subtitle: "BINF6999 Research Project"
+author: 
+- "**Jason A Moggridge**<br/>Advisors: <br/>&nbsp;&nbsp;&nbsp;&nbsp;Dr Nicole Ricker, Pathobiology (biology) <br/>&nbsp;&nbsp;&nbsp;&nbsp;Dr Dan Tulpan, Animal biosciences (informatics)"
+date: "`r Sys.Date()`"
+bibliography: example.bib
+output:
+  ioslides_presentation
+---
+<style>
+h2 { 
+ color: #3399ff;		
+}
+h3 { 
+ color: #3399ff;		
+}
+</style>
+
+# Introduction {.build}
+
+<br>
+
+- **Tyrosine recombinases**    
+- **Mobile genetic elements**    
+- **RIT elements**    
+    
+
+## Mobile genetic elements
+
+MGEs play a role in:
+
+- Gene rearrangement 
+  - Integron cassettes
+- Horizontal gene transfer 
+  - phages, integrative and conjugative elements
+- Enable means of adaption to physiological stress.
+
+<div class="notes">
+Say something general about mobile genetic elements (MGEs).
+
+</div>
+
+
+## Tyrosine Recombinases
+
+**Site-specific tyrosine recombinases (YR)** are a diverse family of proteins that are involved in multiple cellular functions in bacteria.
+
+For example, Xer-subfamily YRs are involved in dimer-resolution in DNA replication. Other subfamilies are involved in excision & integration of **mobile genetic elements**
+
+<div class="notes">
+Say something like YRs carry out the cut and paste mechanism of some MGEs.
+</div>
+
+## 20 subfamilies of YRs
+
+Groups that have potentially different function.
+
+Subfamily type be useful to determine their function in putative MGE.
+
+Identification using HMMs
+
+- Smyshlaev *et al* (2021)
+
+## Recombinase-in-Trio elements
+
+ - Arrangement of three YRs in series, same orientation.
+
+
+# Research Objective 1
+
+#### To create a classifier for YRs to the subfamily level and discrimination from non-YRs.
+
+## Classifier dataset
+
+#### SMART 
+
+- A set of integrases identified by Smyshaelev et al's HMMs.
+- Only a couple proteins represented in multiple subfamilies.
+
+#### Decoys
+
+Collection of 
+
+- Serine recombinases
+- Transposases
+- Other DNA-binding proteins and nucleases
+- Sample of eukaryotic proteins from human, yeast, and *A. thaliana* proteomes
+
+## Profile Hidden-Markov Models (HMM)
+
+I used `HMMERv3.2` to create HMMs and to score profile alignments.
+
+1. Align protein C' catalytic domain sequences belonging to each subfamily
+2. Create an HMM for each subfamily
+3. Score new proteins by profile alignment to each HMM.
+4. Generally a 'gathering threshold' is used to decide on membership.
+  - naïve: lowest score of HMM-building sequences.
+
+While HMMs are very powerful models for protein homology, setting the decision boundaries seems a task for an ML classifier.
+
+
+## A Classifier to decide which subfamily
+
+Train set:    
+
+ - Alignment of YR domains
+ - HMM-building for each subfamily
+ - Generate sequence scores across 20 HMMs
+ - Normalization
+ - ML classifier training
+ 
+Test set:
+- Generate scores `hmmsearch`
+- Normalized
+- Prediction
+- Performance evaluation
+  
+
+## Resampling by nested-CV
+
+I performed a 3-fold nested cross-validation, repeated 3 times. 
+- 81 Inner folds
+- 9 outer folds
+
+*nested CV slide*
+
+
+
+
+# Research Objective 2
+
+#### To identify RIT elements hiding in the NCBI database using the classifier.
+
+
+
+----
+
+
+
+
+
+## References
