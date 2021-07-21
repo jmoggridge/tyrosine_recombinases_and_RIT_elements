@@ -106,8 +106,7 @@ rit_list1 <- three_ints_filter |>
       }
     ))
 beep()
-write_rds(rit_list1,
-          './data/CDD/rit_finder_rs/RIT_finder_rs_1_250.rds')
+write_rds(rit_list1, './data/CDD/rit_finder_rs/RIT_finder_rs_1_250.rds')
 
 pb <- make_pb(n = nrow(three_ints_filter) - 251 + 1)
 rit_list2 <- three_ints_filter |>
@@ -123,11 +122,7 @@ rit_list2 <- three_ints_filter |>
     }
   ))
 beep()
-
-write_rds(rit_list2,
-          './data/CDD/rit_finder_rs/RIT_finder_rs_251_517.rds')
-rm(rit_list2)
-
+write_rds(rit_list2, './data/CDD/rit_finder_rs/RIT_finder_rs_251_517.rds')
 
 
 #
