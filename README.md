@@ -391,7 +391,9 @@ Genbank issues for P2_A5 / P2_rit_finder:
   - any three integrases in a row
   - then filter out any with weird distances / orientations in  A6
   
-**Continuing with P2_A6** - looking at putative RIT elements extracted in P2_A5   
+**Continuing with P2_A6**   
+
+ - looking at putative RIT elements extracted in P2_A5   
  - Confirm DNA sequences make sense... BLAST 'em - yes, match GB records
  - Check whether protein sequences are linked (no they aren't.)
    - Get protein sequences from ? gbk again?
@@ -405,6 +407,19 @@ Genbank issues for P2_A5 / P2_rit_finder:
  - Unique DNA sequences... 
  - DNA sequences for alignment & clustering
    
+   \
+   
+#### Weds, July 21st     
+
+**Genbank missing CDS issues**
+
+- wrote a new function to get 'genbank with parts' rettype with `rentrez`.
+- seems to return CDS ... need to check on the ones that were missing CDS last time from `data/CDD/rit_finder/missing_cds.rds`.
+
+- Thinking about how to figure out which sequences are ~90%, 95%, 99% similar?
+- DECIPHER AlignSeqs -> *Distance?* - > IdClusters
+- What sequences to compare for phylogeny (full dna, concatenated genes,
+concatenated proteins, specific domains)?
    
 
 ### TO DO
