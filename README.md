@@ -415,12 +415,20 @@ Genbank issues for P2_A5 / P2_rit_finder:
 
 - wrote a new function to get 'genbank with parts' rettype with `rentrez`.
 - seems to return CDS ... need to check on the ones that were missing CDS last time from `data/CDD/rit_finder/missing_cds.rds`.
+- check parse_genbank and it seemed to work, so rit_finder ought to work too.
+
+**CDD-linked nucleotides with 2 integrases**
+- started downloading ~1450 more genbank records.
+- stuck on 1447004631??
+
+**RIT analysis**
 
 - Thinking about how to figure out which sequences are ~90%, 95%, 99% similar?
 - DECIPHER AlignSeqs -> *Distance?* - > IdClusters
 - What sequences to compare for phylogeny (full dna, concatenated genes,
 concatenated proteins, specific domains)?
    
+
 
 ### TO DO
 
