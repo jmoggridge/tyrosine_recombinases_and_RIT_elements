@@ -381,19 +381,31 @@ Trying to finish RIT finder script. Still finding weird issues:
      - this is causing wrong proteins to be joined by id....    
      - **TODO** need to fix this in script somewhere    
 
-#### Monday, July 19th   
-
-**Continuing with P2_A6** - looking at putative RIT elements extracted in P2_A5    
- 
- - Confirm DNA sequences make sense... BLAST 'em
- - Check whether protein sequences are linked
- - EDA for basic things:
-   - element lengths, overlaps, protein lengths
-   
-   
 Genbank issues for P2_A5 / P2_rit_finder:
   - 20 nuc ids simply didn't return any results `missing_results.rds`
 
+
+#### Monday & Tuesday, July 19-20th   
+
+- Reran rit_finder with looser filters & parser fix:
+  - any three integrases in a row
+  - then filter out any with weird distances / orientations in  A6
+  
+**Continuing with P2_A6** - looking at putative RIT elements extracted in P2_A5   
+ - Confirm DNA sequences make sense... BLAST 'em - yes, match GB records
+ - Check whether protein sequences are linked (no they aren't.)
+   - Get protein sequences from ? gbk again?
+   - orient proteins data to match p1-3
+ 
+ - EDA for basic things:
+   - element lengths, overlaps, protein lengths
+   
+ - Upstream + downstream seq for TR finding.
+ 
+ - Unique DNA sequences... 
+ - DNA sequences for alignment & clustering
+   
+   
 
 ### TO DO
 
