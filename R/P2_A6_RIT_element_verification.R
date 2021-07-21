@@ -329,7 +329,7 @@ rm(CTn_DOT_elements, rit_rs, rit_rs_aligned, overlapping_abc_trios,
 rit_elements <- rit_elements |> 
   select(rit_dna) |> 
   distinct() |> 
-  mutate(rit_unique_seq_id = row_number()) |> 
+  mutate(rit_unique_seq_id = glue('RIT_{row_number()}')) |> 
   right_join(rit_elements, by = 'rit_dna')
 
 rit_elements |>
@@ -350,7 +350,11 @@ distinct_rits <- rit_elements |>
   
 glimpse(distinct_rits)
 
-distinct_rits |> count()
+
+
+## EDA taxonomy ============================================================
+
+
 distinct_rits |>
   dplyr::count(tax_id) |> 
   ggplot(aes(n)) + 
@@ -396,17 +400,33 @@ distinct_rits |>
 # 
 # ## EDA ------------------------------------------------------------
 # 
-# ## Plot frequency histogram of unique RIT sequence
-# # 420 unique sequences; some as many as 16
-# rit_abc_elements |> 
-#   dplyr::count(rit_dna_id) |> arrange(desc(n)) |> 
-#   ggplot(aes(n, fill = rit_dna_id)) +
-#   geom_histogram(position = 'stack', color = 'darkgray', size = 0.15,
-#                  show.legend = F) +
-#   scale_x_continuous(breaks = scales::pretty_breaks()) +
-#   labs(title = 'Frequency of unique RIT elements in dataset of 806 sequences',
-#        x = 'number of unique RITs elements') +
-#   theme_classic() 
+## Plot frequency histogram of unique RIT sequence
+# 420 unique sequences; some as many as 16
+rit_elements |>
+  dplyr::count(tax_id, rit_unique_seq_id) |>
+  arrange(desc(n)) |>
+  ggplot(aes(n, fill = rit_unique_seq_id)) +
+  geom_histogram(position = 'stack', color = 'darkgray', size = 0.15,
+                 show.legend = F) +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(y = 'n distinct RIT elements', x = 'copy number',
+       title = 'Copy number distibution for RIT elements (identical copies)')
+
+
+
+rit_elements |> 
+  unnest(protein_df) |> 
+  gglot(aes(prot_pred)) + 
+  geom_bar() +
+  facet_wrap(~prot_pos)
+
+rit_elements |> 
+  unnest(protein_df) |> 
+  gglot(aes(prot_length)) + 
+  geom_histogram() +
+  facet_wrap(~prot_pos)
+
+
 # 
 # 
 # 
