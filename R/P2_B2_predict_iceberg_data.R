@@ -21,9 +21,8 @@ hmm_folder <- './models/hmm/'
 
 # full dataset
 iceberg <- read_tsv('data/iceberg/ICE_db.tsv') |> 
-  select(-parent_element, -prot_mystery_id)
+  mutate(organism = str_remove_all(parent_element, '^.|.$'))
 glimpse(iceberg)
-
 
 # ice berg proteins for classifying
 ice_proteins <- iceberg |> 
@@ -132,7 +131,7 @@ iceberg_w_preds <- iceberg |>
 
 # write this full, classified dataset to file 
 iceberg_w_preds |> 
-  select(-parent_id, -c(Arch1:Xer)) |> 
+  select(-c(Arch1:Xer)) |> 
   write_rds('./data/iceberg/iceberg_db_classed_proteins.rds')
 
 # see how predictions match
@@ -227,7 +226,9 @@ iceberg_classes <-
 write_csv(iceberg_classes, './results/iceberg_all_integrases.csv')
 
 
-rm(knn_model, glmnet_model, knn_preds, glmnet_preds, knn_prob, glmnet_prob,
-   rf_model, rf_preds, rf_prob, ice_scored, iceberg_classes, iceberg_preds,
-   iceberg_w_preds, pred_table, fasta, fasta_path, hmm_folder, ynames,
+rm(knn_model, glmnet_model, rf_model, knn_preds, 
+   glmnet_preds,  rf_preds, rf_prob, knn_prob, glmnet_prob,
+   ice_scored, iceberg_preds, iceberg_w_preds, 
+   pred_table, fasta, fasta_path, hmm_folder, ynames,
    temp_dir, hmmsearches, ice_proteins)
+
