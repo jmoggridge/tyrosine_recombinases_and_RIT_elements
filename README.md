@@ -428,15 +428,38 @@ Genbank issues for P2_A5 / P2_rit_finder:
 - What sequences to compare for phylogeny (full dna, concatenated genes,
 concatenated proteins, specific domains)?
    
+   
+#### Thurs, July 22nd
+
+Had meetings and then didn't much done. Barely started inverted repeat finder; not sure how to create algorithm yet.
+
+
+#### Fri, July 23rd
+
+P2_TR_finder.R 
+- Repeat finder can find perfect repeats but not sure how to extend yet.
+- Is there not existing tool to use.
+
+Still need to figure out what other analyses to carry out & how.
+
+
+- Sort through RITs somehow to remove different assemblies for same strain. Check if assembly is in the nucleotide summary!!
+- Maybe see about trying to cluster by identity to group RITs that are only different by a SNP.
+
 
 
 ### TO DO
 
-- Find all RITs ~ try for other sequences that failed... what went wrong - patch functions to ameliorate or write 2nd function
-- Retrieve/ parse full genbank for those missing CDS...
-- ICEberg -> locate, check if duplicated...
-- Fix mesorhizobium in ICEberg data in P2_B3 before predictions...
-- Start writing some parts...
+-[x] Find all RITs ~ try for other sequences that failed... what went wrong - patch functions to ameliorate or write 2nd function
+-[x] Retrieve/ parse full genbank for those missing CDS...
+-[later] ICEberg -> locate, check if duplicated...
+-[did it afterwards; not important] Fix mesorhizobium in ICEberg data in P2_B3 before predictions...
+- Start writing some parts... Start making layout for presentation.. put a topic on each slide - start with results and go backwards.
+
+
+
+
+
 
 
 ### Writing

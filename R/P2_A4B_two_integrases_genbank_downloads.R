@@ -14,22 +14,23 @@ dir.create('./data/CDD/genbank_2integrases/')
 ## DL 1: missing CDS ------------------------------------------------------
 
 ## previously missing feature table
-# missing_cds <- read_rds('./data/CDD/rit_finder/missing_cds.rds') |> 
-#   select(nuc_id)
-# 
-# ## fetch genbank records to see if CDS now present
-# pb <- make_pb(nrow(missing_cds))
-# missing_cds_fixed <- missing_cds |> 
-#   mutate(gbk = map(nuc_id, ~{
-#     print(.x)
-#     gb <- fetch_genbank_with_parts(.x)
-#     pb$tick()
-#     return(gb)
-#   }))
-# beep()
-# missing_cds_fixed
-# write_rds(missing_cds_fixed, 'data/CDD/RIT_gbk_noCDS_fixed.rds')
-# rm(missing_cds_fixed)
+## gets missing data from P2_A5  - to P2_A6  "RIT_gbk_noCDS_fixed.rds"
+missing_cds <- read_rds('./data/CDD/rit_finder/missing_cds.rds') |>
+  select(nuc_id)
+
+## fetch genbank records to see if CDS now present
+pb <- make_pb(nrow(missing_cds))
+missing_cds_fixed <- missing_cds |>
+  mutate(gbk = map(nuc_id, ~{
+    print(.x)
+    gb <- fetch_genbank_with_parts(.x)
+    pb$tick()
+    return(gb)
+  }))
+beep()
+missing_cds_fixed
+write_rds(missing_cds_fixed, 'data/CDD/genbank/RIT_gbk_noCDS_fixed.rds')
+rm(missing_cds_fixed)
 
 ## DL 2: two integrases ------------------------------------------------------
 
@@ -149,11 +150,11 @@ purrr::walk(
   .f = ~fetch_gb_set(
     df = to_retrieve1, 
     start = .x, stop = .x + 99,
-    folder = 'data/CDD/genbank_2integrases'
+    folder = 'data/CDD/genbank'
     )
 )
 
 ## files look like:
-# data/CDD/genbank_2integrases/GB_w_parts_401_500.rds
+# data/CDD/genbank/genbank_2integrases/GB_w_parts_401_500.rds
 
 

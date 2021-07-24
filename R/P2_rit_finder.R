@@ -339,4 +339,53 @@ rit_finder <- function(x, genbank_lib){
   return(rits)
 }
 
+
+# same as rit funder one but directly from the genbank containing tibble
+# parse genbank xml string gbk_xml and extract features table for nuc_id x
+rit_finder2 <- function(x, gbk_xml){
+  
+  # parse genbank xml string to tibble
+  gbk <- parse_genbank(gbk_xml)
+  
+  # if no CDS in feature table, return NA
+  # TODO use 2ndary parser for downloaded .xml files
+  if(any(class(gbk) == 'logical')) {
+    ## try alternate parser??
+    # ft <- open_genbank2(x)
+    return(tibble(nuc_id_fail = x, rits = list(NA), success = F))
+  }
+  # extract CDS features
+  ft <- extract_features_table(gbk) 
+  
+  # predict integrase classes for all protein CDSs
+  ft_class <- ft |>
+    filter(!is.na(translation)) |> 
+    classify_proteins() |>
+    select(-acc)
+  
+  # join predictions to feature table
+  ft_join <- ft |> 
+    left_join(ft_class) |> 
+    mutate(pseudo_or_partial = ifelse(is.na(protein_id), T, F))
+  
+  # determine protein orientations and start/stop; drop some data 
+  ft_edit <- edit_feature_table(ft = ft_join)
+  
+  # for each feature (besides the first and last)
+  # take info from previous and next features.
+  ft_pivot <- pivot_feature_table(ft_edit = ft_edit)
+  rit_tests <- rit_tester(ft_pivot = ft_pivot)
+  
+  # rit selector: check tests, filter candidates,
+  # package up upstream and downstream cds.
+  rits <- rit_selector(
+    rit_tests = rit_tests, 
+    ft_edit = ft_edit, 
+    nuc_id = x
+  )
+  
+  return(rits)
+}
+
+
 # rm(gbk, ft, ft_class, ft_edit, ft_pivot, ft_join, rits, rit_tests)

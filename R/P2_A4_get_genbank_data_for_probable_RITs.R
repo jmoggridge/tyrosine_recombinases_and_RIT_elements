@@ -7,7 +7,7 @@ library(rentrez)
 source('./R/P2_parse_genbank_xml.R')
 set_entrez_key('889fdb9786a14019a0a1257196a09ba4ba08')
 Sys.getenv('ENTREZ_KEY')
-
+dir.create('data/CDD/genbank')
 #
 id_data <- read_rds('./data/CDD/id_data_fixed.rds')
 nuc_summary <- read_rds('./data/CDD/nuc_summary_fixed.rds')
@@ -97,7 +97,7 @@ gb_records1 <- to_retrieve |> slice(1:100) |>
     fetch_genbank(.x)
     }))
 beepr::beep()
-write_rds(gb_records1, './data/CDD/RIT_gbk_1.rds')
+write_rds(gb_records1, './data/CDD/genbank/RIT_gbk_1.rds')
 rm(gb_records1)
 
 # second 100
@@ -108,7 +108,7 @@ gb_records2 <- to_retrieve |> slice(101:200) |>
     fetch_genbank(.x)
   }))
 beepr::beep()
-write_rds(gb_records2, './data/CDD/RIT_gbk_2.rds')
+write_rds(gb_records2, './data/CDD/genbank/RIT_gbk_2.rds')
 rm(gb_records2)
 
 # 3rd 100
@@ -119,7 +119,7 @@ gb_records3 <- to_retrieve |> slice(201:300) |>
     fetch_genbank(.x)
   }))
 beepr::beep()
-write_rds(gb_records3, './data/CDD/RIT_gbk_3.rds')
+write_rds(gb_records3, './data/CDD/genbank/RIT_gbk_3.rds')
 rm(gb_records3)
 
 # 4th 100
@@ -130,7 +130,7 @@ gb_records4 <- to_retrieve |> slice(301:400) |>
     fetch_genbank(.x)
   }))
 beepr::beep()
-write_rds(gb_records4, './data/CDD/RIT_gbk_4.rds')
+write_rds(gb_records4, './data/CDD/genbank/RIT_gbk_4.rds')
 rm(gb_records4)
 
 # 5th 100
@@ -141,7 +141,7 @@ gb_records5 <- to_retrieve |> slice(401:500) |>
     fetch_genbank(.x)
   }))
 beepr::beep()
-write_rds(gb_records5, './data/CDD/RIT_gbk_5.rds')
+write_rds(gb_records5, './data/CDD/genbank/RIT_gbk_5.rds')
 rm(gb_records5)
 
 # last few records 100
@@ -152,6 +152,6 @@ gb_records6 <- to_retrieve |> slice(500:nrow(to_retrieve)) |>
     fetch_genbank(.x)
   }))
 beepr::beep()
-write_rds(gb_records6, './data/CDD/RIT_gbk_6.rds')
+write_rds(gb_records6, './data/CDD/genbank/RIT_gbk_6.rds')
 rm(gb_records6)
 

@@ -31,7 +31,7 @@ glimpse(three_ints)
 
 # create an index for nuc ids to their genbank records
 genbank_files_index <- 
-  tibble(file = Sys.glob('./data/CDD/RIT_gbk_[0-9].rds')) |> 
+  tibble(file = Sys.glob('./data/CDD/genbank/RIT_gbk_[0-9].rds')) |> 
   mutate(nuc_id = map(file, ~ read_rds(.x) |> pull(nuc_id))) |> 
   unnest(nuc_id) |> 
   group_by(nuc_id) |> 
@@ -128,5 +128,5 @@ write_rds(rit_list2, './data/CDD/rit_finder_rs/RIT_finder_rs_251_517.rds')
 #
 # TODO issue with many ids.... records too large? 
 # need genbank records that actually contain CDS, some missing CDS
-# seem to have cds when browsing but gives error with my code
-# some have no column 'locus tag' which causes an error...
+# seem to have cds when browsing but gives error with my code...FIXED in P@_A4B
+# some have no column 'locus tag' which causes an error...FIXED

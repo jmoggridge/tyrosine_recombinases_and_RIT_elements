@@ -1,3 +1,8 @@
+## P2_A6 -
+# Clean up results from rit_finder table in P2_A5.
+
+# join dna sequences, + upstream & downstream 200bp to 
+#
 
 library(tidyverse)
 library(janitor)
@@ -17,7 +22,9 @@ revcomp <- function(dna){
 }
 
 ## Tidy up data =========================================================
-## and figure out which ids didn't work out...
+## and results for certsin ids didn't work out...
+# These are labelled with success=FAIL tag
+# others just have no data, which could be a parsing failure somewhere or that there is just no RIT element in the nucleotide.
 
 # Dataset - 07/20 Results from rit_finder
 rits <- Sys.glob('./data/CDD/rit_finder_rs/*rs*.rds') |>
@@ -27,6 +34,7 @@ rits <- Sys.glob('./data/CDD/rit_finder_rs/*rs*.rds') |>
 glimpse(rits)
 # all 521 nuc ids unique
 length(unique(rits$nuc_id))
+
 
 # 98 are missing CDS
 missing_cds <- 
@@ -71,6 +79,11 @@ rit_rs <- rits |>
 glimpse(rit_rs)
 
 rm(rits, missing_cds, missing_results, gb_files)
+
+# ## Join missing results ====================================
+# 
+# fixed_cds <- read_rds('data/CDD/RIT_gbk_noCDS_fixed.rds')
+# glimpse(fixed_cds)
 
 ## Taxon links =======================================================
 
@@ -145,21 +158,21 @@ rit_dna <-
   rowwise() |> 
   mutate(
     # can't try to substring past (1:length) range
-    pl_upstream_bgn = max(1, rit_start - 200),
-    pl_downstream_end = min(nuc_length, rit_stop + 200),
-    min_upstream_bgn = min(nuc_length, rit_stop + 200),
+    pl_upstream_bgn = max(1, rit_start - 199),
+    pl_downstream_end = min(nuc_length, rit_stop + 199),
+    min_upstream_bgn = min(nuc_length, rit_stop + 199),
     min_downstream_end = max(1, rit_start - 200),
     # extract upstream seq
     rit_dna_upstream = ifelse(
       test = rit_strand == 'minus',
-      yes = revcomp(str_sub(nuc_seq, rit_stop, min_upstream_bgn)),
-      no = str_sub(nuc_seq, pl_upstream_bgn, rit_start)
+      yes = revcomp(str_sub(nuc_seq, rit_stop+1, min_upstream_bgn)),
+      no = str_sub(nuc_seq, pl_upstream_bgn, rit_start-1)
     ),
     # extract downstream seq
     rit_dna_downstream = ifelse(
       test = rit_strand == 'minus',
-      yes = revcomp(str_sub(nuc_seq, min_downstream_end, rit_start)),
-      no = str_sub(nuc_seq, rit_stop, pl_downstream_end)
+      yes = revcomp(str_sub(nuc_seq, min_downstream_end, rit_start-1)),
+      no = str_sub(nuc_seq, rit_stop+1, pl_downstream_end)
     )
   ) |> 
   ungroup() |> 
@@ -252,7 +265,8 @@ xer_elements
 # mostly degraded RIT elements, have alot of no-consensus predictiions...
 # probably partial domains with low scores across many subfamilies
 # have unusual overlaps, suggestion degradation too.
-rit_abc_proteins <- c(rit_abc_elements |> select(p1_id, p3_id) |> unlist())
+rit_abc_proteins <- c(rit_abc_elements |> select(p1_id, p3_id) |> 
+                        unlist())
 non_overlapping_trios <- oriented_trios |>
   filter(!trio_id %in% rit_abc_elements$trio_id) |>   
   filter(!trio_id %in% xer_elements$trio_id) |> 
@@ -317,12 +331,13 @@ rit_elements <-
   relocate(ends_with('id'), starts_with('rit'))
 
 glimpse(rit_elements)
-
 write_rds(rit_elements, './results/rit_elements.rds')
 
 # tidy up
 rm(CTn_DOT_elements, rit_rs, rit_rs_aligned, overlapping_abc_trios,
    oriented_trios, xer_elements, rit_abc_proteins, rem)
+
+
 
 ## Which are distinct elements? ==============================================
 
@@ -384,7 +399,7 @@ distinct_rits |>
 
 distinct_rits |>
   dplyr::count(phylum, class) |> 
-  ggplot(aes(x = n, y = fct_reorder(class, n))) + 
+  ggplot(aes(x = n, y = fct_reorder(class, n), fill = phylum)) + 
   geom_col(show.legend = F) +
   scale_y_discrete(position = 'left') +
   facet_grid(phylum~., scales = 'free_y', space = 'free')   +
@@ -401,7 +416,7 @@ distinct_rits |>
 # ## EDA ------------------------------------------------------------
 # 
 ## Plot frequency histogram of unique RIT sequence
-# 420 unique sequences; some as many as 16
+# 420 unique sequences; some as many as 16 copies within a strain
 rit_elements |>
   dplyr::count(tax_id, rit_unique_seq_id) |>
   arrange(desc(n)) |>
@@ -413,51 +428,78 @@ rit_elements |>
        title = 'Copy number distibution for RIT elements (identical copies)')
 
 
-
+# how large are RIT ABC proteins
 rit_elements |> 
+  select(protein_df) |> 
   unnest(protein_df) |> 
-  gglot(aes(prot_pred)) + 
-  geom_bar() +
-  facet_wrap(~prot_pos)
-
-rit_elements |> 
-  unnest(protein_df) |> 
-  gglot(aes(prot_length)) + 
+  filter(str_detect(prot_pos, 'p')) |>
+  mutate(prot_length = (prot_stop - prot_start +1)/3) |> 
+  ggplot(aes(prot_length, fill = prot_pred)) + 
   geom_histogram() +
-  facet_wrap(~prot_pos)
+  facet_wrap(~prot_pos, ncol = 1, scales = 'free_y') +
+  rcartocolor::scale_fill_carto_d() +
+  theme_minimal()
 
+# what are the predictions for the flanking genes?
+rit_elements |> 
+  select(protein_df) |> 
+  unnest(protein_df) |> 
+  filter(!str_detect(prot_pos, 'p')) |>
+  mutate(
+    prot_pos = ifelse(prot_pos == 'lflank', 'Left flank', 'Right flank'),
+    prot_pred = case_when(
+      is.na(prot_pred) ~ 'Pseudogene',
+      prot_pred == 'Other' ~ 'Non-integrase',
+      TRUE ~ prot_pred),
+    prot_pred = fct_rev(fct_relevel(prot_pred, 
+                            c('Non-integrase', 'Pseudogene'), 
+                            after = 0L))
+    ) |>
+  ggplot(aes(y = prot_pred)) + 
+  geom_bar() +
+  facet_wrap(~prot_pos, ncol = 1) +
+  labs(y = NULL, 
+       title = 'What are the genes are adjacent to RIT elements?')+
+  theme_minimal()
 
-# 
-# 
-# 
-# # get lengths of RitA,B,C
-# rit_candidates <- rit_dna |> 
-#   relocate(contains('rit'), contains('nuc')) |> 
-#   mutate(
-#     strand = ifelse(rit_orientation == 'all forward', '+', '-'),
-#     rit_A_length = ifelse(strand == '+', p1_length, p3_length),
-#     rit_B_length = p2_length,
-#     rit_C_length = ifelse(strand == '+', p3_length, p1_length)
-#   ) |> 
-#   select(-c(p1_length, p2_length, p3_length))
-# 
-# rit_candidates |> 
-#   ggplot(aes(nchar(rit_dna))) +
-#   geom_histogram() +
-#   labs(x = 'length (bp)', 
-#        title = 'RIT element size distribution')
-# # 
-# # rit_candidates |> 
-# #   pivot_longer(cols = c(rit_A_length, rit_B_length, rit_C_length)) |> 
-# #   mutate(name = str_remove(name, '_length') |> str_replace('r', 'R')) |> 
-# #   ggplot(aes(x = value)) +
-# #   geom_histogram(show.legend = F) +
-# #   facet_grid(.~name) +
-# #   labs(x = 'length (AA)')
-# 
-# 
-# 
-# 
+##
+rit_elements |> 
+  select(protein_df) |> 
+  unnest(protein_df) |> 
+  filter(!str_detect(prot_pos, 'p')) |>
+  filter(prot_pred == 'Other') |> 
+  mutate(prot_product = 
+           str_to_lower(prot_product) |> 
+           str_remove(' protein$') |> 
+           str_remove('^putative ') |> 
+           str_remove(' family$') |> 
+           str_remove(' domain-containing$') |> 
+           str_remove('-like$') |> 
+           str_remove('site-specific dna ') |> 
+           str_replace_all('(conserved )?hypothetical.*?|uncharacterised|protein of unknown function', 'unannotated') |> 
+           str_replace_all('[Uu]ncharcterised ', 'unannotated') |> 
+           str_remove('-containing') |> 
+           str_to_lower(),
+         prot_product = case_when(
+           str_detect(prot_product, 'duf[0-9]+') ~
+             str_extract(prot_product, 'duf[0-9]+') |> str_to_upper(),
+           str_detect(prot_product, '^dde') ~ 'DDE transposase',
+           TRUE ~ prot_product
+           )
+         ) |> 
+  dplyr::count(prot_pos, prot_product) |> 
+  mutate(prot_pos = ifelse(prot_pos == 'lflank', 
+                    'Left flank', 'Right flank')) |> 
+  arrange(desc(n)) |> 
+  slice(1:70) |> 
+  ggplot(aes(y = fct_reorder(prot_product, n), x = n, fill = prot_pos)) + 
+  geom_col() +
+  scale_x_log10() +
+  rcartocolor::scale_fill_carto_d(palette = 1) +
+  labs(y = NULL, fill = NULL, 
+       title = 'How are the adjacent genes annotated?') +
+  theme_bw()
+
 # 
 # 
 #   

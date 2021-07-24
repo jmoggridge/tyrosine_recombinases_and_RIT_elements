@@ -1,3 +1,2 @@
 # P2_C2 Try RIT finder on genbank with parts to ensure no error...
 
-purrr::wal
