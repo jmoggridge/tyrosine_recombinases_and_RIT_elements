@@ -446,6 +446,13 @@ Still need to figure out what other analyses to carry out & how.
 - Sort through RITs somehow to remove different assemblies for same strain. Check if assembly is in the nucleotide summary!!
 - Maybe see about trying to cluster by identity to group RITs that are only different by a SNP.
 
+#### Sat 24th
+
+Filtered redundant records for same strain - often insd and refseq assemblies for same tax_id/  organsim / strain - even have very similar accession codes.
+
+ A back to back dimer RIT
+https://www.ncbi.nlm.nih.gov/nuccore/UGYX01000003.1?report=genbank&log$=seqview&from=734712&to=742000
+
 
 
 ### TO DO
@@ -455,6 +462,7 @@ Still need to figure out what other analyses to carry out & how.
 -[later] ICEberg -> locate, check if duplicated...
 -[did it afterwards; not important] Fix mesorhizobium in ICEberg data in P2_B3 before predictions...
 - Start writing some parts... Start making layout for presentation.. put a topic on each slide - start with results and go backwards.
+
 
 
 
