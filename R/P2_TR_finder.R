@@ -46,31 +46,46 @@ seed_locate <- function(seed, down){
 rowAny <- function(x) rowSums(x) > 0 
 
 
+
+
 #### Data --------------------------------------------------------
 
-## my data
-nr_rits <- read_rds('results/non_redundant_rits.rds')
-glimpse(nr_rits)
+# Active elements!
+# multiple copies and not missing upstream or downstream
+multiple_rit_copies <- 
+  read_rds('./data/multiple_rit_copies.rds') |> 
+  filter(nchar(head_tail) == 400) |> 
+  ungroup() |> 
+  arrange(rit_id)
 
-rit_flanks <- 
-  rit_elements |> 
-  select(rit_id, matches('dna')) |> 
-  rename_with(~str_remove_all(.x, 'rit_|dna_')) |> 
-  transmute(id, dna, dna_up = upstream, dna_down = downstream) |> 
-  filter(rowAny(across(.cols = contains('dna_'), ~!is.na(.x)))) |> 
-  mutate(rc_down = map_chr(dna_down, revcomp)) |> 
-  mutate(across(.cols = contains('dna_'), 
-                .fns = ~map_dbl(.x, nchar), 
-                .names = '{.col}_len')) |> 
-  filter(dna_up_len > 100 & dna_down_len >100)
+fasta <- Biostrings::DNAStringSet(multiple_rit_copies$head_tail)
+names(fasta) <- multiple_rit_copies$head_tail_name
+DECIPHER::BrowseSeqs(fasta)
 
-rit_flanks  |> 
-  select(contains('len')) |> 
-  summary()
+# ## my data
+# nr_rits <- read_rds('results/non_redundant_rits.rds')
+# glimpse(nr_rits)
+# 
+# rit_flanks <- 
+#   nr_rits |> 
+#   transmute(rit_id, nuc_id, rit_dna, 
+#             dna_up = rit_dna_upstream,
+#             dna_down = rit_dna_downstream) |> 
+#   distinct() |> 
+#   filter(rowAny(across(.cols = contains('dna_'), ~!is.na(.x)))) |> 
+#   mutate(rc_down = map_chr(dna_down, revcomp)) |> 
+#   mutate(across(.cols = contains('dna_'), 
+#                 .fns = ~map_dbl(.x, nchar), 
+#                 .names = '{.col}_len')) |> 
+#   filter(dna_up_len > 100 & dna_down_len >100)
+# 
+# rit_flanks  |> 
+#   select(contains('len')) |> 
+#   summary()
+# 
+# rm(rit_elements)
 
-rm(rit_elements)
 
-# find active elements!
 
 
 
@@ -182,6 +197,8 @@ get_seed_matches <- function(x, y, seed_size){
 }
 
 
+
+# TODO fix extension
 extend_perfect_match <- function(up, down, pos_x, pos_y){
   up_ls <- up |> str_sub(pos_x, -1L) |> str_split('') |> unlist()
   down_ls <- down |> str_sub(pos_y, -1L) |> str_split('') |> unlist()
@@ -215,8 +232,10 @@ perfect_matches <- function(x, y, seed_size){
   #   ))
 }
 
-rit_flanks |> 
-  mutate(inverted_rep_perf = map2(dna_up, rc_down, ~perfect_matches(.x,.y, 10)))
+
+
+multiple_rit_copies |> 
+  mutate(inverted_rep_perf = map2(rit_dna_up, rc_down, ~perfect_matches(.x,.y, 10)))
   
 
 

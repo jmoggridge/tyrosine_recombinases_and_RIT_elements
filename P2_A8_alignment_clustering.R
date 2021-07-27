@@ -3,6 +3,7 @@ library(Biostrings)
 library(DECIPHER)
 library(tidyverse)
 library(ape)
+library(glue)
 
 # filtered rits data from P2-A7;
 nr_rits <- 
@@ -22,10 +23,8 @@ uniq_rit_dna <- nr_rits |>
 # the Nitrospirae sequence seems short and one in the PVC group
 # bimodal @ ~3100 & ~3500
 nr_rits |> 
-  ggplot(aes(rit_length)) + 
-  geom_histogram(show.legend = F) +
-  facet_wrap(~phylum, scales = 'free_y')
-
+  ggplot(aes(rit_length, fill = phylum)) + 
+  geom_histogram(show.legend = T) 
 
 # investigate base composition:
 # need to fix non-IUPAC bases? no.
@@ -103,7 +102,8 @@ dist_df |>
   arrange(distance) |> 
   print(n = 200)
 
-## Ones that are 0 distance can be just a subsequence - misleading.
+## Ones that are 0 distance can be just a subsequence of larger sequence - this is generally misleading for similarity.
+
 # reduced_groups <- dist_df |> 
 #   filter(distance == 0) |> 
 #   rowwise() |> 
@@ -137,8 +137,9 @@ dist_n_df |>
   arrange(distance) |> 
   print(n = 200)
 
-distance_matrix <- DECIPHER::DistanceMatrix(dna_aligned, type='dist', includeTerminalGaps = T)
-class(distance_matrix)
+distance_matrix <- DECIPHER::DistanceMatrix(dna_aligned, type='dist', correction = 'none', includeTerminalGaps = T)
+
+
 
 # Cluster seqs ------
 
@@ -146,7 +147,7 @@ clusters_upgma <- DECIPHER::IdClusters(
   myXStringSet = dna_aligned,
   myDistMatrix = distance_matrix,
   method = 'UPGMA',  
-  cutoff = c(0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
+  cutoff = c(0.5, 0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
   type = "clusters", 
   showPlot = F, 
   verbose = TRUE
@@ -157,7 +158,7 @@ clusters_nj <- DECIPHER::IdClusters(
   myXStringSet = dna_aligned,
   myDistMatrix = distance_matrix,
   method = 'NJ',  
-  cutoff = c(0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
+  cutoff = c(0.5, 0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
   type = "clusters", 
   showPlot = F, 
   verbose = TRUE
@@ -173,6 +174,7 @@ nj <- clusters <- DECIPHER::IdClusters(
   type = "dendrogram", 
   verbose = TRUE
 )
+
 # upgma_tree 
 upgma <- DECIPHER::IdClusters(
   myXStringSet = dna_aligned,
@@ -181,6 +183,7 @@ upgma <- DECIPHER::IdClusters(
   type = "dendrogram", 
   verbose = TRUE
 )
+
 par(cex=1, mar=c(5, 8, 4, 1))
 plot(upgma,
      leaflab = 'none',
@@ -193,55 +196,56 @@ plot(nj,
      horiz = T)
 
 
-
-## cluster based on protein sequences...
-
 # this rit is unusually long! and aligns relatively poorly 
 # nr_rits |> 
 #   filter(rit_id == 'RIT_171') |> 
 #   View()
 
 
-rits_clustered <- 
-  tibble(clusters_upgma) |> 
-  mutate(rit_id = rownames(clusters_upgma)) |> 
-  right_join(nr_rits, by = 'rit_id')
+## Join NJ clusters to nr_rits dataset ------------------------------------
 
-rits_clustered |> 
-  group_by(cluster0_005UPGMA) |> 
+rits_nj_clustered <- 
+  tibble(clusters_nj) |> 
+  mutate(rit_id = rownames(clusters_nj)) |> 
+  right_join(nr_rits, by = 'rit_id') |> 
+  relocate(-contains('cluster'))
+
+rits_nj_clustered
+
+write_rds(rits_nj_clustered, 'results/non_redund_rits_NJ_clustered.rds')
+
+# 747 clusters @ 0.005 distance
+rits_nj_clustered |> 
+  group_by(cluster0_005NJ) |> 
   count(nuc_id) |> 
   arrange(desc(n))
 
-
-nr_rits |> filter(rit_id %in% c('RIT_208', 'RIT_709')) 
-
-tibble(rits_clustered)
-rits_clustered |> count(cluster0_3UPGMA) |> nrow()
-clusters_upgma |> count(cluster0_15UPGMA) |> nrow()
-clusters_upgma |> count(cluster0_1UPGMA) |> nrow()
-clusters_upgma |> count(cluster0_05UPGMA) |> nrow()
-clusters_upgma |> count(cluster0_01UPGMA) |> nrow()
-clusters_upgma |> count(cluster0_005UPGMA) |> nrow()
-clusters_upgma |> count(cluster0_001UPGMA) |> nrow()
-
-clusters_nj |> count(cluster0_3NJ) |> nrow()
-clusters_nj |> count(cluster0_15NJ) |> nrow()
-clusters_nj |> count(cluster0_1NJ) |> nrow()
-clusters_nj |> count(cluster0_05NJ) |> nrow()
-clusters_nj |> count(cluster0_01NJ) |> nrow()
-clusters_nj |> count(cluster0_005NJ) |> nrow()
-clusters_nj |> count(cluster0_001NJ) |> nrow()
-
-
-length(dna_ss)
+# 
+tribble(
+  ~distance, ~n_clusters,
+  0.5, rits_nj_clustered |> count(cluster0_5NJ) |> nrow(),
+  0.3, rits_nj_clustered |> count(cluster0_3NJ) |> nrow(),
+  0.15, rits_nj_clustered |> count(cluster0_15NJ) |> nrow(),
+  0.1, rits_nj_clustered |> count(cluster0_1NJ) |> nrow(),
+  0.05, rits_nj_clustered |> count(cluster0_05NJ) |> nrow(),
+  0.01, rits_nj_clustered |> count(cluster0_01NJ) |> nrow(),
+  0.005, rits_nj_clustered |> count(cluster0_005NJ) |> nrow(),
+  0.001, rits_nj_clustered |> count(cluster0_001NJ) |> nrow(),
+) |> 
+  ggplot(aes(distance, n_clusters)) +
+  geom_point() + geom_path() +
+  labs(x = 'distance', y = 'n clusters',
+       title = 'number of NJ clusters as a function of distance threshold')
+# 
+# rits_nj_clustered |> 
+#   filter(nuc_id %in% c('1840186009', '1840194776')) |> 
+#   View()
 
 
+## Active elements for terminal repeats ------------------------------------
 
-
-## Active elements for terminal repeats -----
 
 # select nucleotides with > 1 copy; easiest and will have enough diversity of examples?
-
 nr_rits |> 
   group_by(nuc_id, rit_id) |>  # identical sequences 
   mutate(rit_count = length(rit_dna)) |> 
@@ -249,6 +253,16 @@ nr_rits |>
   count(rit_count) |> 
   arrange(desc(n))
 
+# gets reverse complement of dna sequence
+revcomp <- function(dna){
+  map_chr(dna, ~{
+    .x |> str_split('', simplify = T) |>
+      seqinr::comp(ambiguous = T, forceToLower = F) |> 
+      rev() |> 
+      str_c(collapse = '') })
+}
+
+# keep rits with multiple copies within sequence record.
 multiple_rit_copies <- nr_rits |> 
   group_by(nuc_id, rit_id) |>  # identical coding sequences could have different upstream and downstream regions?
   mutate(rit_count = length(rit_dna)) |> 
@@ -257,12 +271,12 @@ multiple_rit_copies <- nr_rits |>
   distinct() |> 
   mutate(
     head_tail = glue('{rit_dna_upstream}{revcomp(rit_dna_downstream)}'),
+    head_tail_fwd = glue('{rit_dna_upstream}{rit_dna_downstream}'),
     head_tail_name = glue('{rit_id}_{nuc_id}')
     )
   
+## apply terminal inverted repeat finder to these
+write_rds(multiple_rit_copies, './data/multiple_rit_copies.rds')
 
 
-head_tail <- DNAStringSet(multiple_rit_copies$head_tail)
-names(head_tail) <- multiple_rit_copies$head_tail_name
-DECIPHER::DetectRepeats(head_tail, type = 'both')
 

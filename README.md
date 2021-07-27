@@ -456,7 +456,12 @@ https://www.ncbi.nlm.nih.gov/nuccore/UGYX01000003.1?report=genbank&log$=seqview&
 #### Sun 25th
 
 Filtered redundant records again including a bunch of newer data from 2nd set through rit_finder
-- Check out decipher's DetectRepeats
+- Check out decipher's DetectRepeats: doesn't work
+
+#### Mon 26th...
+
+Not even sure what I accomplished. Nothing.
+
 
 
 
