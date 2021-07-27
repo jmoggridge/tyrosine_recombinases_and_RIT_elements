@@ -76,7 +76,7 @@ dna_aligned <- DECIPHER::AlignSeqs(
   verbose = T, 
   iterations = 5)
 beepr::beep()
-Biostrings::writeXStringSet(dna_aligned, 'data/rits_alignged.fasta')
+Biostrings::writeXStringSet(dna_aligned, 'data/rits_aligned.fasta')
 
 # DECIPHER::BrowseSeqs(dna_aligned)
 dna_bin <- ape::as.DNAbin(dna_aligned)
