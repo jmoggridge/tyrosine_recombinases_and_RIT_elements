@@ -1,62 +1,7 @@
 
 library(tidyverse)
 
-## my data
-rit_elements <- read_rds('./results/rit_elements.rds')
-glimpse(rit_elements)
-
-rit_flanks <- 
-  rit_elements |> 
-  select(rit_id, matches('dna')) |> 
-  rename_with(~str_remove_all(.x, 'rit_|dna_')) |> 
-  transmute(id, dna, dna_up = upstream, dna_down = downstream) |> 
-  filter(rowAny(across(.cols = contains('dna_'), ~!is.na(.x)))) |> 
-  mutate(rc_down = map_chr(dna_down, revcomp)) |> 
-  mutate(across(.cols = contains('dna_'), 
-                .fns = ~map_dbl(.x, nchar), 
-                .names = '{.col}_len')) |> 
-  filter(dna_up_len > 100 & dna_down_len >100)
-
-rit_flanks  |> 
-  select(contains('len')) |> 
-  summary()
-
-rm(rit_elements)
-
-
-# 'imperfect palindromic repeats'
-
-## NICOLE's data from paper
-
-# Bolded bases are direct repeats contained within the terminal inverted repeats and for which there is an inverted copy at a precise distance in the direction of the recombinase genes.
-strain_reps <- tribble(
-  ~strain, ~five_prime_sequence,
-  "Burkholderia phytofirmans Olga172",
-  "TTATGCCGATTCCCGGATTATGCCG",
-  "Cupriavidus metallidurans CH34", 
-  "TTATGCCGACTCCCCGATTATGCCG",
-  "Burkholderia sp. Ch1-1",
-  "TTATGCCGACTTCCCGATTATGCCG",
-  "Caulobacter sp. K31",
-  "TAATGCCGCGATCCGGATTATGCCG",
-  "Acidiphillium multivorum AIU301",
-  "TAATGCCGAGATCCGGATTATGCCG",
-  "Bifidobacterium longum NCC2705",
-  "TTAAGCCGGGTTTGTTGTTAAGCCG",
-  "Frankia sp. EANpec1",
-  "TTATGCCGAGGGCCGGGTTATGCCG",
-  "Novosphingobium sp. PP1Y",
-  "TAATGCCGTGACCCGGATTATGCCG",
-  "Candidatus S. usitatus Ellin6076",
-  "ACTATGCCGCGTCCCGGACTATGCCGCGT",
-  "Gramella forsetii KT0803 5’ Sequence",
-  "ATTATGTAAAGTAAATTATTATGTAAAGT"
-)
-
-#### --------------------------------------------------------
-
-# filtering function for filter(rowAny(across(...)))
-rowAny <- function(x) rowSums(x) > 0 
+#### Functions --------------------------------------------------------
 
 # gets reverse complement of dna sequence
 revcomp <- function(dna){
@@ -96,6 +41,68 @@ seed_locate <- function(seed, down){
   if(!any(locations)) return(NA)
   else return(locations)
 }
+
+# filtering function for filter(rowAny(across(...)))
+rowAny <- function(x) rowSums(x) > 0 
+
+
+#### Data --------------------------------------------------------
+
+## my data
+nr_rits <- read_rds('results/non_redundant_rits.rds')
+glimpse(nr_rits)
+
+rit_flanks <- 
+  rit_elements |> 
+  select(rit_id, matches('dna')) |> 
+  rename_with(~str_remove_all(.x, 'rit_|dna_')) |> 
+  transmute(id, dna, dna_up = upstream, dna_down = downstream) |> 
+  filter(rowAny(across(.cols = contains('dna_'), ~!is.na(.x)))) |> 
+  mutate(rc_down = map_chr(dna_down, revcomp)) |> 
+  mutate(across(.cols = contains('dna_'), 
+                .fns = ~map_dbl(.x, nchar), 
+                .names = '{.col}_len')) |> 
+  filter(dna_up_len > 100 & dna_down_len >100)
+
+rit_flanks  |> 
+  select(contains('len')) |> 
+  summary()
+
+rm(rit_elements)
+
+# find active elements!
+
+
+
+
+# 'imperfect palindromic repeats'
+
+## NICOLE's data from paper
+
+# Bolded bases are direct repeats contained within the terminal inverted repeats and for which there is an inverted copy at a precise distance in the direction of the recombinase genes.
+strain_reps <- tribble(
+  ~strain, ~five_prime_sequence,
+  "Burkholderia phytofirmans Olga172",
+  "TTATGCCGATTCCCGGATTATGCCG",
+  "Cupriavidus metallidurans CH34", 
+  "TTATGCCGACTCCCCGATTATGCCG",
+  "Burkholderia sp. Ch1-1",
+  "TTATGCCGACTTCCCGATTATGCCG",
+  "Caulobacter sp. K31",
+  "TAATGCCGCGATCCGGATTATGCCG",
+  "Acidiphillium multivorum AIU301",
+  "TAATGCCGAGATCCGGATTATGCCG",
+  "Bifidobacterium longum NCC2705",
+  "TTAAGCCGGGTTTGTTGTTAAGCCG",
+  "Frankia sp. EANpec1",
+  "TTATGCCGAGGGCCGGGTTATGCCG",
+  "Novosphingobium sp. PP1Y",
+  "TAATGCCGTGACCCGGATTATGCCG",
+  "Candidatus S. usitatus Ellin6076",
+  "ACTATGCCGCGTCCCGGACTATGCCGCGT",
+  "Gramella forsetii KT0803 5’ Sequence",
+  "ATTATGTAAAGTAAATTATTATGTAAAGT"
+)
 
 #### --------------------------------------------------------
 

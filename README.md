@@ -453,16 +453,21 @@ Filtered redundant records for same strain - often insd and refseq assemblies fo
  A back to back dimer RIT
 https://www.ncbi.nlm.nih.gov/nuccore/UGYX01000003.1?report=genbank&log$=seqview&from=734712&to=742000
 
+#### Sun 25th
+
+Filtered redundant records again including a bunch of newer data from 2nd set through rit_finder
+- Check out decipher's DetectRepeats
+
+
+
+
 
 
 ### TO DO
 
--[x] Find all RITs ~ try for other sequences that failed... what went wrong - patch functions to ameliorate or write 2nd function
--[x] Retrieve/ parse full genbank for those missing CDS...
--[later] ICEberg -> locate, check if duplicated...
--[did it afterwards; not important] Fix mesorhizobium in ICEberg data in P2_B3 before predictions...
-- Start writing some parts... Start making layout for presentation.. put a topic on each slide - start with results and go backwards.
-
+Detect inverted repeats
+Reduce set of sequence down - keep only representative at strain level where many strains
+Reduce set of sequences down - distinct sequences at 0.005 level? 700ish?
 
 
 

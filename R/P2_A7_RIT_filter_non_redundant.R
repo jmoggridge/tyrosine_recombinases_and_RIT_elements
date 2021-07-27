@@ -1,11 +1,3 @@
-## RIT distinct results EDA and grouping by similarity to filter results
-# which to keep when removing unnecessary duplicates from multiple assemblies??
-# which are complete sequence / contig / other?
-# complete vs partial?
-# missing contigs in final assemblies?
-
-
-## setup ====
 library(tidyverse)
 library(glue)
 library(lubridate)
@@ -18,40 +10,14 @@ for_viewing <- function(rits){
     View()
 }
 
-## 1 Data ---------------------------------------------
+### ----
 
-# full ungrouped data; 835 RITs after filtering redundant records
-rit_elements <- read_rds('./results/rit_elements.rds') |> 
-  filter(!nuc_id %in% redundant_records) |> 
-  select(-trio_id)
-glimpse(rit_elements)
+## RIT distinct results EDA and grouping by similarity to filter results
+# which to keep when removing unnecessary duplicates from multiple assemblies??
+# which are complete sequence / contig / other?
+# complete vs partial?
+# missing contigs in final assemblies?
 
-# distinct_rits -> obs grouped by RIT seq. from start p1 to end p3 and taxon id.
-# try to make this dataset non-redundant as much as possible in this script
-distinct_rits <- read_rds('results/distinct_RITs.rds')
-glimpse(distinct_rits)
-
-# records summary data
-nuc_summary <- read_rds('data/CDD/nuc_summary_fixed.rds') |> 
-  select(-c(replacedby, segsetsize, tech, moltype, oslt, status, strand,
-            subtype, subname, statistics, properties, accessionversion,
-            caption, geneticcode, extra, idgiclass, comment)) |> 
-  mutate(slen = as.numeric(slen),
-         across(contains('date'), ~lubridate::ymd(.x))) 
-
-# glimpse(nuc_summary)
-nuc_summary
-
-# 670 distinct taxa
-distinct_rits |> count(tax_id) |> nrow()
-# 1471 genbank records - includes many redundant entries in both refseq & insd
-rit_elements |> count(nuc_id) |> nrow()
-# 995 unique RIT sequences from p1-p3
-distinct_rits |> count(rit_unique_seq_id) |> nrow()
-
-## 2 Filter -------------------------------------------
-
-## preferably keep only the refseq records for duplicated (seq, taxon) pairs.
 
 ## identify any assemblies represented in insd and refseq where refseq is missing a rit.
 #  INSD sequences for taxa not represented in Refseq subset.
@@ -63,6 +29,38 @@ distinct_rits |> count(rit_unique_seq_id) |> nrow()
 # A back to back dimer RIT
 # https://www.ncbi.nlm.nih.gov/nuccore/UGYX01000003.1?report=genbank&log$=seqview&from=734712&to=742000
 
+
+# BROKEN ASSEMBLY: ---- strain names for assemblies
+# Rit removed from Refseq assembly - present in INSD assembly
+
+# "Bacteroides finegoldii DSM 17565"
+# 238852439 240114316 242353479
+
+# 'Bacteroides sp. 4_1_36' refseq is missing insd contig
+# 316902394 318103433 319430555
+
+# Caballeronia sordidicola strain ES_PA_B12
+# Caballeronia sordidicola strain ES_PA-B12 Ga0193686_11 - not in refseq?
+# 1534957005 1534954659 1537750292 1534944218
+
+# Johnsonella ignava ATCC 51276,
+# Marinobacter sp. ELB17 1101232001194,
+# Prevotella buccae ATCC 33574 contig00043 is missing from RefSeq?
+
+# Acidovorax facilis isolate 7, whole genome shotgun sequence - has 2 different assemblies, with different RITs.
+
+# Cupriavidus taiwanensis isolate Cupriavidus taiwanensis mpp 1.1 plasmid CBM2626_p
+# has a plasmid RIT that is absent in assembly NZ_LT976998.1; 
+
+# RECENT MOBILITY NOTES -----
+# multiple copies of identical element. 
+# Croceicoccus marinus strain OT19 chromosome and plasmid plas1 (3 copies + another RIT)
+# Rhizobium leguminosarum strain ATCC 14479 chromosome and plasmids x 6.
+# Sphingobium herbicidovorans strain MH - chromosome and plasmids
+# Sphingobium sp. TKS 
+
+
+## Id lists ----
 
 ## redundant ids to remove, already have a different assembly.
 # Prefer refseq to insd where similar record is given by both;
@@ -162,36 +160,73 @@ redundant_records <- c(
   '1537602337', '1537599012', '1537610293', '1537618519' , '1537619749', '1537657706',
   '1537643148', '1537632099', '1537166756', '1537630491', '1537647300', '1537671529',
   '1537658515', '1537222108', '1537644841', '1537661137', '1537237467', '1537218261',
-  '1537247517','1537305031'
-  
+  '1537247517','1537305031', '1730169111', '1631418225', '1253817562', '1588658013', 
+  '1072721238', '1072722420' , '821158070', '1691230684', '1024470410', '1024466825',
+  '1484222692', '995259649','962388704', '962340824', '962321783' , '962378348', 
+  '962337292', '962354456', '962322963', '962347846', '962316371', '962356313',
+  '1417744410', '1133385480', '1537203256', '946135381', '945815692' , '469481440', 
+  '1700681327', '1537469923', '384039839', '1174162640', '1019513169', '1019513283',
+  '1019514939', '1019395847', '1253857670', '25168258', 
+  '356692854'
+)
 
-  
-  )
-
-# BROKEN ASSEMBLY: ---- strain names for assemblies
-# Rit removed from Refseq assembly - present in INSD assembly
-
-# "Bacteroides finegoldii DSM 17565"
-# 238852439 240114316 242353479
-
-# 'Bacteroides sp. 4_1_36' refseq is missing insd contig
-# 316902394 318103433 319430555
-
-# Caballeronia sordidicola strain ES_PA_B12
-# Caballeronia sordidicola strain ES_PA-B12 Ga0193686_11 - not in refseq?
-# 1534957005 1534954659 1537750292 1534944218
-
-# Johnsonella ignava ATCC 51276,
-# Marinobacter sp. ELB17 1101232001194,
-# Prevotella buccae ATCC 33574 contig00043 is missing from RefSeq?
+# after filtering those, I found these ids were from a different assembly of another sequence. Again I kept the refseq where possible, unless there was an assembly that was newer with more Rits, or if there was a scaffold-level assembly found, rather than contig-level.
 
 
-# RECENT MOBILITY NOTES -----
-# multiple copies of identical element. 
-# Croceicoccus marinus strain OT19 chromosome and plasmid plas1 (3 copies + another RIT)
-# Rhizobium leguminosarum strain ATCC 14479 chromosome and plasmids x 6.
-# Sphingobium herbicidovorans strain MH - chromosome and plasmids
-# Sphingobium sp. TKS 
+redundant_assemblies <- c(
+  '942698728', '1777945395', '392627216', '966499388', '966499399', '1280123531',
+  '1213754548', '821179869', '754936391', '918697158'
+)
+
+
+strains <- tribble(
+  ~nuc_id, ~strain,
+  '1899015', 'MES1',
+  '1262767', 'CAG:290',
+  '1371401794', 'AMDSBA3'
+)
+
+
+
+## 1 Data ---------------------------------------------
+
+# 2,262 records from rit_finder
+rit_elements <- read_rds('./results/rit_elements.rds') |> 
+  select(-trio_id)
+glimpse(rit_elements)
+
+# 1560  RITs after filtering redundant records
+rit_elements <- rit_elements |> 
+  filter(!nuc_id %in% c(redundant_records, redundant_assemblies)) 
+glimpse(rit_elements)
+
+# distinct_rits -> obs grouped by RIT seq. from start p1 to end p3 and taxon id
+
+# rits grouped by exact dna sequence over coding region
+distinct_rits <- read_rds('results/distinct_RITs.rds')
+glimpse(distinct_rits)
+
+# records summary data to join to filtered rits
+nuc_summary <- read_rds('data/CDD/nuc_summary_fixed.rds') |> 
+  select(-c(replacedby, segsetsize, tech, moltype, oslt, status, strand,
+            subtype, subname, statistics, properties, accessionversion,
+            caption, geneticcode, extra, idgiclass, comment)) |> 
+  mutate(slen = as.numeric(slen),
+         across(contains('date'), ~lubridate::ymd(.x))) 
+
+# glimpse(nuc_summary)
+nuc_summary
+
+# 667 distinct taxa
+rit_elements |> count(tax_id) |> nrow()
+# 1097 nr records
+rit_elements |> count(nuc_id) |> nrow()
+# 916 unique RIT sequences from p1-p3
+rit_elements |> count(rit_dna) |> nrow()
+
+## 2 Filter -------------------------------------------
+
+## preferably keep only the refseq records for duplicated (seq, taxon) pairs.
 
 
 # unnest rit elements' occurrences in all records
@@ -201,19 +236,28 @@ redundant_records <- c(
 rits_with_nuc_details <-  distinct_rits |> 
   unnest(cols = c(rit_occurrences)) |> 
   left_join(nuc_summary, by = 'nuc_id') |> 
-  mutate(seq_type = str_extract(nuc_name, 'contig|complete genome'),
+  mutate(seq_type = str_extract_all(tolower(nuc_name),
+                                    'contig|scaffold|complete genome'),
          strain = coalesce(strain.y, strain.x))  |> 
   mutate(rit_id = rit_unique_seq_id) |> 
   select(-c(rit_unique_seq_id, trio_id, tax_genetic_code, 
             superkingdom, strain.x, strain.y))
+glimpse(rits_with_nuc_details)
 
-# these are the records that were removed...
-redundant_rits <-  rits_with_nuc_details |> 
-  filter(nuc_id %in% redundant_records) 
+# these are the 702 records that were removed...
+redundant_rec <-  rits_with_nuc_details |> 
+  filter(nuc_id %in% c(redundant_records))
+redundant_rits
+redundant_asm <-  rits_with_nuc_details |> 
+  filter(nuc_id %in% c(redundant_assemblies))
+redundant_asm
 
-# rit results from nr records
-nr_rits <- rits_with_nuc_details |> 
-  filter(!nuc_id %in% redundant_records) 
+# 1560 rit results across 1087 nr records
+ rits <- rits_with_nuc_details |> 
+  filter(!nuc_id %in% c(redundant_records, redundant_assemblies)) 
+rits |> count(nuc_id) |> nrow()
+
+## visually inspect sequence records included in data w list of RITs
 # nr_rits |> for_viewing()
 
 
@@ -245,98 +289,83 @@ rits |>
   arrange(desc(n)) |> 
   print()
 
+glimpse(rits)
+
+write_rds(rits, 'results/non_redundant_rits.rds')
 
 
-View(
-  nr_rits |> 
-    group_by(tax_id, tax_name, strain, nuc_id, title, sourcedb, 
-             slen, completeness, seq_type, assemblygi, assemblyacc, projectid) |> 
-    summarize(rits = paste0(rit_id, collapse = ', ')) |> 
-    distinct() |> 
-    arrange(tax_id, sourcedb)
-)
+# hard to figure out what is partial or complete / contigs v scaffolds
+# finished vs draft
+rits |> 
+  select(nuc_id, completeness, sourcedb, genome, nuc_name) |> 
+  distinct() |> 
+  mutate(
+    st = map_chr(
+      nuc_name,
+      ~{
+        tolower(.x) |> 
+          str_extract_all(
+            'draft|complete genome|wgs|contig|scaffold|complete plasmid'
+            ) |> 
+          unique() |> 
+          paste0(collapse = ' ')
+      }),
+    st2 = glue('{st}_{completeness}_{genome}_{sourcedb}')
+    ) |> 
+  # View()
+  count(st2) |> 
+  print(n=30)
 
 
+rits |> 
+  select(nuc_id, completeness, sourcedb, slen, genome, nuc_name) |> 
+  distinct() |> 
+  pull(slen) |> 
+  summary()
 
+# can see that 'chromosome' mostly genomes but there are far more contigs ~3kb
+rits |> 
+  select(nuc_id, completeness, sourcedb, slen, genome, nuc_name) |> 
+  distinct() |> 
+  ggplot(aes(slen, fill = genome)) +
+  geom_histogram() +
+  scale_x_log10() +
+  labs(
+    fill = 'ncbi label',
+    title = 'how long are the contigs or scaffolds scaffolds?')
+  
 
-
-
-
-
-# 
-# View(rits_with_nuc_details |>
-#        select(-contains('dna'), -matches('_df|_cds'), -nuc_name, -nuc_accession,
-#               )
-#      )
-
-
-
-
-# Evidence of contigs being dropped in assemblies -----
-# try looking at these...
-# organisms <- c('Burkholderia sp. D7','Caballeronia udeis')
-
-# rits_with_nuc_details |> 
-#   select(-contains('dna')) |> 
-#   for_viewing()
-#   
-# redundant_rits |>
-#   bind_rows(rits_with_nuc_details |> filter(tax_id %in% redundant_rits$tax_id)) |> 
-#   select(-contains('dna')) |> 
-#   View()
-
-
-
-
-# 
-# # 1287 are INSD; 975 are refseq
-# rits_with_nuc_details |> count(sourcedb)
-# 
-# # can probably tell which are genomes by looking at 'slen' field
-# 
-# rits_with_nuc_details |> 
-#   select(nuc_id, slen) |> 
-#   distinct() |> 
-#   arrange(slen)
-# 
-# # records with short sequences.
-# short_contigs <- 
-#   rits_with_nuc_details |> 
-#   filter(slen < 1e4)
-# short_contigs |> count(sourcedb)
-# 
-# # 283/910 records are flagged as 'complete' under completeness field
-# complete_records <- rits_with_nuc_details |> 
-#   filter(completeness == 'complete')
-# 
-# # min size is 20k; max 8 Mbp; median is 3 Mbp
-# complete_records$slen |> summary()
-#   
-# # for 144 taxa/seq pairs - 62 records at least 2 copies of identical RIT
-# complete_records |> 
-#   count(rit_unique_seq_id, nuc_id, tax_id, slen) |>
-#   arrange(desc(n)) |> 
-#   filter(n>=2)
-# 
-# # 136 distinct sequences.
-# complete_records |> count(rit_unique_seq_id) |> arrange(desc(n))
+# View(
+#   nr_rits |>
+#     group_by(tax_id, tax_name, strain, nuc_id, title, sourcedb,
+#              slen, completeness, seq_type, assemblygi, assemblyacc, projectid) |>
+#     summarize(rits = paste0(rit_id, collapse = ', ')) |>
+#     distinct() |>
+#     arrange(tax_id, sourcedb)
+# )
 # 
 # 
-# complete_records |> 
-#   select(-contains('dna')) |> 
-#   View()
-# 
-# refseq_rits <- rits_with_nuc_details |> 
-#   filter(sourcedb == 'refseq')
-# 
-# refseq_rits |> 
-#   arrange(tax_id, rit_unique_seq_id) |> 
-#   select(-contains('dna'), rit_id, trio_id) |> 
-#   View()
-# 
-# sum(rit_elements$nuc_id %in% nuc_summary$nuc_id)
-# 
 
 
-# distinct_rits |> unnest(rit_occurrences) |> View()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
