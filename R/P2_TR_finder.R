@@ -1,5 +1,7 @@
 
+library(seqinr)
 library(tidyverse)
+library(glue)
 
 #### Functions --------------------------------------------------------
 
@@ -50,14 +52,85 @@ rowAny <- function(x) rowSums(x) > 0
 
 #### Data --------------------------------------------------------
 
-# Active elements!
-# multiple copies and not missing upstream or downstream
-multiple_rit_copies <- 
-  read_rds('./data/multiple_rit_copies.rds') |> 
-  filter(nchar(head_tail) == 400) |> 
-  ungroup() |> 
-  arrange(rit_id)
 
+
+## Active elements for terminal repeats ------------------------------------
+
+nr_rits <- read_rds('results/non_redund_rits_NJ_clustered.rds')
+
+# What is the copy number of distinct RIT coding sequences within a sequence record?
+# Select nucleotides with > 1 copy; easiest and will have enough diversity of examples?
+nr_rits |> 
+  group_by(nuc_id, rit_id) |>  # identical sequences 
+  mutate(rit_count = length(rit_dna)) |> 
+  ungroup() |> 
+  dplyr::count(rit_count) |> 
+  arrange(desc(n))
+
+
+# 1243 RIT dna sequences are distinct.
+# There are 310 copies of 122 distinct (RIT dna, nucleotide record) pairs with >1 copies.
+# Within this, there are 102 distinct RIT dna coding sequences.
+# keep rits with multiple copies within sequence record.
+multiple_rit_copies <- 
+  nr_rits |> 
+  # get first and last 100 bp of coding dna seq
+  mutate(
+    dna_first100 = map_chr(rit_dna, ~str_sub(.x, 1, 100)),
+    dna_last100 = map2_chr(rit_dna, rit_length, ~str_sub(.x, .y-99, .y))
+         ) |> 
+  group_by(nuc_id, rit_id) |> 
+  # identical coding sequences could have different upstream and downstream regions?
+  mutate(rit_count = length(rit_dna)) |> 
+  filter(rit_count > 1) |> 
+  select(rit_count, rit_id, nuc_id, rit_dna_upstream, rit_dna_downstream,
+         dna_first100, dna_last100) |> 
+  distinct() |> 
+  mutate(
+    head = glue('{rit_dna_upstream}{dna_first100}'),
+    tail = glue('{revcomp(rit_dna_downstream)}{revcomp(dna_last100)}'),
+    head_tail = glue('{head}{tail}'),
+    head_tail_name = glue('{rit_id}_{nuc_id}')
+  ) |> 
+  ungroup() |> 
+  filter(nchar(head_tail) == 600) |> 
+  arrange(rit_id, nuc_id)
+
+## apply terminal inverted repeat finder to these active RITs
+write_rds(multiple_rit_copies, './data/multiple_rit_copies.rds')
+
+
+# Multiple copies of same RIT coding sequence within a single sequence record (contig, scaffold, or genome - depending on assembly).
+# Removed any missing upstream or downstream sequence (4).
+multiple_rit_copies <- 
+  read_rds('./data/multiple_rit_copies.rds')
+glimpse(multiple_rit_copies)
+
+
+## ** The active elements aren't all the same clusters! ** -----
+## 102 active elements from 94 clusters @ dist 0.005; 
+multiple_rit_copies |> dplyr::count(rit_id) |> nrow()
+
+multiple_rit_copies |> 
+  left_join(nr_rits |> select(rit_id, cluster0_005NJ) |> distinct()) |> 
+  dplyr::count(cluster0_005NJ) |> 
+  arrange(desc(n))
+# 93 clusters @ 0.01
+multiple_rit_copies |> 
+  left_join(nr_rits |> select(rit_id, cluster0_01NJ) |> distinct()) |> 
+  dplyr::count(cluster0_01NJ) |> 
+  arrange(desc(n))
+# 72 @ 0.3
+multiple_rit_copies |> 
+  left_join(nr_rits |> select(rit_id, cluster0_3NJ) |> distinct()) |> 
+  dplyr::count(cluster0_3NJ) |> 
+  arrange(desc(n))
+
+# multiple_rit_copies |> View()
+
+
+## examine sequences - can see where repeats stop and sequence isn't within some larger
+# element
 fasta <- Biostrings::DNAStringSet(multiple_rit_copies$head_tail)
 names(fasta) <- multiple_rit_copies$head_tail_name
 DECIPHER::BrowseSeqs(fasta)

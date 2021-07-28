@@ -171,10 +171,10 @@ rit_dna <-
   rowwise() |> 
   mutate(
     # can't try to substring past (1:length) range
-    pl_upstream_bgn = max(1, rit_start - 200),
-    pl_downstream_end = min(nuc_length, rit_stop + 200),
-    min_upstream_bgn = min(nuc_length, rit_stop + 200),
-    min_downstream_end = max(1, rit_start - 200),
+    pl_upstream_bgn = max(1, rit_start - 500),
+    pl_downstream_end = min(nuc_length, rit_stop + 500),
+    min_upstream_bgn = min(nuc_length, rit_stop + 500),
+    min_downstream_end = max(1, rit_start - 500),
     # extract upstream seq
     rit_dna_upstream = ifelse(
       test = rit_strand == 'minus',
@@ -316,18 +316,18 @@ overlapping_abc_trios
 
 ### account for triaged integrase trios ====================================
 
-# 1260 integrase trios with consistent orientation
+#  integrase trios with consistent orientation
 nrow(oriented_trios)
-# 1113 good rit elements
+#  good rit elements
 nrow(rit_abc_elements)
-# 1 weird Xer trio, to exclude from RITs results set
+# 3 weird Xer trio, to exclude from RITs results set
 nrow(xer_elements)
-# 146 left
+# leftover
 rem <- nrow(oriented_trios) - nrow(rit_abc_elements) - nrow(xer_elements)
 rem
-# 121 are trios that overlap a rit ABC element
+# 158 are trios that overlap a rit ABC element
 nrow(overlapping_abc_trios)
-# 25 are not overlapping rit ABC elements - mostly degraded
+# 36 are not overlapping rit ABC elements - mostly degraded
 nrow(non_overlapping_trios)
 # All accounted for!
 rem - nrow(non_overlapping_trios) - nrow(overlapping_abc_trios)

@@ -7,9 +7,11 @@ rit_elements <- read_rds('./results/rit_elements.rds')
 distinct_rits <- read_rds('results/distinct_RITs.rds')
 
 
+# TODO **redo with clustered RITs ***
+
 ## EDA taxonomy ============================================================
 
-# 187 distinct taxon ids; one taxon has 35! distinct RITs.
+# 670 distinct taxon ids; one taxon has 35! distinct RITs.
 distinct_rits |> dplyr::count(tax_id) |> arrange(desc(n))
 
 distinct_rits |>

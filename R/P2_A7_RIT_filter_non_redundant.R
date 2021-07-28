@@ -218,11 +218,11 @@ nuc_summary <- read_rds('data/CDD/nuc_summary_fixed.rds') |>
 nuc_summary
 
 # 667 distinct taxa
-rit_elements |> count(tax_id) |> nrow()
+rit_elements |> dplyr::count(tax_id) |> nrow()
 # 1097 nr records
-rit_elements |> count(nuc_id) |> nrow()
+rit_elements |> dplyr::count(nuc_id) |> nrow()
 # 916 unique RIT sequences from p1-p3
-rit_elements |> count(rit_dna) |> nrow()
+rit_elements |> dplyr::count(rit_dna) |> nrow()
 
 ## 2 Filter -------------------------------------------
 
@@ -255,7 +255,7 @@ redundant_asm
 # 1560 rit results across 1087 nr records
 nr_rits <- rits_with_nuc_details |> 
   filter(!nuc_id %in% c(redundant_records, redundant_assemblies)) 
-nr_rits |> count(nuc_id) |> nrow()
+nr_rits |> dplyr::count(nuc_id) |> nrow()
 
 ## visually inspect sequence records included in data w list of RITs
 # nr_rits |> for_viewing()
@@ -285,7 +285,7 @@ rits <- nr_rits |>
 rits |> 
   select(tax_id, clade, phylum, class, order, family, genus, species) |> 
   distinct() |> 
-  count(clade, phylum, class, order, family, genus, species) |> 
+  dplyr::count(clade, phylum, class, order, family, genus, species) |> 
   arrange(desc(n)) |> 
   print(n=100)
 

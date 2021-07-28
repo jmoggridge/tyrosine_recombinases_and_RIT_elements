@@ -242,41 +242,4 @@ tribble(
 #   View()
 
 
-## Active elements for terminal repeats ------------------------------------
-
-
-# select nucleotides with > 1 copy; easiest and will have enough diversity of examples?
-nr_rits |> 
-  group_by(nuc_id, rit_id) |>  # identical sequences 
-  mutate(rit_count = length(rit_dna)) |> 
-  ungroup() |> 
-  count(rit_count) |> 
-  arrange(desc(n))
-
-# gets reverse complement of dna sequence
-revcomp <- function(dna){
-  map_chr(dna, ~{
-    .x |> str_split('', simplify = T) |>
-      seqinr::comp(ambiguous = T, forceToLower = F) |> 
-      rev() |> 
-      str_c(collapse = '') })
-}
-
-# keep rits with multiple copies within sequence record.
-multiple_rit_copies <- nr_rits |> 
-  group_by(nuc_id, rit_id) |>  # identical coding sequences could have different upstream and downstream regions?
-  mutate(rit_count = length(rit_dna)) |> 
-  filter(rit_count > 1) |> 
-  select(rit_count, rit_id, nuc_id, rit_dna_upstream, rit_dna_downstream) |> 
-  distinct() |> 
-  mutate(
-    head_tail = glue('{rit_dna_upstream}{revcomp(rit_dna_downstream)}'),
-    head_tail_fwd = glue('{rit_dna_upstream}{rit_dna_downstream}'),
-    head_tail_name = glue('{rit_id}_{nuc_id}')
-    )
-  
-## apply terminal inverted repeat finder to these
-write_rds(multiple_rit_copies, './data/multiple_rit_copies.rds')
-
-
 
