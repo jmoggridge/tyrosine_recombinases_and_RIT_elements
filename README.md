@@ -424,7 +424,7 @@ Genbank issues for P2_A5 / P2_rit_finder:
 **RIT analysis**
 
 - Thinking about how to figure out which sequences are ~90%, 95%, 99% similar?
-- DECIPHER AlignSeqs -> *Distance?* - > IdClusters
+- DECIPHER AlignSeqs -> DistanceMatrix - > IdClusters (NJ, UPGMA; ML isn't running)
 - What sequences to compare for phylogeny (full dna, concatenated genes,
 concatenated proteins, specific domains)?
    
@@ -460,11 +460,21 @@ Filtered redundant records again including a bunch of newer data from 2nd set th
 
 #### Mon 26th...
 
-Not even sure what I accomplished. Nothing.
+Not even sure what I am doing. 
+Ran alignment & clustering. Added NJ clusters at many thresholds to nr_rit dataset.
+Got active elements for repeat finding...
+Looked at sequences. Most seem to be independently mobile. A couple seem to move as part of larger unit.
 
+#### Tues 27th
 
+Trying to finish repeat finder.
+Went be through P2_A6 to A8 to include 500 bp flanking sequence.
+Removed one RIT > 4000bp long; RitA protein was a fusion protein.
 
+Looking at upstream + 100 bp coding // last 100 bp coding + 500 bp downstream
+Setup local alignment Inverted repeat finder.
 
+#### Weds 28th
 
 
 

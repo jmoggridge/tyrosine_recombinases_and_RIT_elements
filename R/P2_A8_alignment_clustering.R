@@ -19,14 +19,28 @@ uniq_rit_dna <- nr_rits |>
   select(rit_dna, rit_id) |> 
   distinct()
 
-# any sequences unusually long or short? 
+# any sequences unusually long or short? --------------------------------------
 # the Nitrospirae sequence seems short and one in the PVC group
 # bimodal @ ~3100 & ~3500
 nr_rits |> 
   ggplot(aes(rit_length, fill = phylum)) + 
   geom_histogram(show.legend = T) 
 
-# investigate base composition:
+summary(nr_rits$rit_length)
+
+# RIT 171 in nucl. 32527006 has unusually long RIT A protein
+# annotation says it is fused with other protein!
+nr_rits |> filter(rit_length > 3950) |> unnest(protein_df)
+
+# Removing this element as it seems degraded - no other elements have similar length or extremely long RitA protein
+# Now 1559 RIT elements with 915 distinct coding sequences
+nr_rits <- nr_rits |> 
+  filter(rit_length < 4000)
+nr_rits |> count(rit_id) |> nrow()
+
+
+
+# investigate base composition ---------------------------------------------
 # need to fix non-IUPAC bases? no.
 str_split('ACGTNUDBSYRWKMV-', '', simplify = T) |>
   c('[^ACGTNUDBSYRWKMV\\-]') |> 
@@ -74,7 +88,7 @@ Biostrings::writeXStringSet(dna_ss, 'data/rit_dna.fasta')
 dna_aligned <- DECIPHER::AlignSeqs(
   myXStringSet = dna_ss, 
   verbose = T, 
-  iterations = 5)
+  iterations = 3)
 beepr::beep()
 Biostrings::writeXStringSet(dna_aligned, 'data/rits_aligned.fasta')
 
@@ -129,15 +143,24 @@ dist_n_df <-
   mutate(rit1 = min(rit_id, name),
          rit2 = max(name, rit_id)) |>
   select(rit1, rit2, distance) |>
+  filter(rit1 != rit2) |> 
   distinct()
+# max raw distance is 572 substitutions
 dist_n_df |> 
   arrange(desc(distance)) |> 
-  print(n = 200)
+  print(n = 50)
+# min is 0 - so many are substrings of a larger seq
 dist_n_df |> 
   arrange(distance) |> 
-  print(n = 200)
+  print(n = 50)
 
-distance_matrix <- DECIPHER::DistanceMatrix(dna_aligned, type='dist', correction = 'none', includeTerminalGaps = T)
+## distance matrix, no correction 
+distance_matrix <- DECIPHER::DistanceMatrix(
+  myXStringSet = dna_aligned,
+  type='dist', 
+  correction = 'none', 
+  includeTerminalGaps = T
+  )
 
 
 
@@ -162,7 +185,7 @@ clusters_nj <- DECIPHER::IdClusters(
   type = "clusters", 
   showPlot = F, 
   verbose = TRUE
-) 
+)
 clusters_nj
 
 
