@@ -25,6 +25,7 @@ refseq <-
 
 glimpse(refseq)
 
+refseq |> count(group) |> nrow()
 ## Pfam and Proteomes --------------------------------------------------
 
 # Eukaryotic proteomes from Uniprot (non-integrases) and Pfam families 
@@ -127,7 +128,9 @@ non_integrases |>
   geom_jitter(alpha = 0.2, size = 0.2) +
   scale_x_log10() +
   theme_bw() +
-  labs(y = '', x = 'length (residues)', subtitle = 'Non-integrase protein lengths')
+  labs(y = '', 
+       x = 'length (residues)', 
+       subtitle = 'Non-integrase protein lengths')
 
 non_integrases |> 
   mutate(length = nchar(prot_seq)) |> 
@@ -135,7 +138,9 @@ non_integrases |>
   geom_jitter(alpha = 0.2, size = 0.2) +
   scale_x_log10() +
   theme_bw() +
-  labs(y = '', x = 'length (residues)', subtitle = 'Non-integrase protein lengths')
+  labs(y = '', 
+       x = 'length (residues)', 
+       subtitle = 'Non-integrase protein lengths')
 
 # what sequence is 6k residues long?
 non_integrases |> 
@@ -145,5 +150,15 @@ non_integrases |>
 
 # verify no duplicate sequences
 length(unique(non_integrases$prot_seq)) == nrow(non_integrases)
+
+
+
+##
+non_integrases |> 
+  ggplot(aes(fct_rev(group))) +
+  geom_bar() +
+  coord_flip() +
+  labs(title = "Non-integrase dataset for 'Other' class", x = NULL) +
+  theme_classic()
 
 

@@ -476,6 +476,20 @@ Setup local alignment Inverted repeat finder.
 
 #### Weds 28th
 
+Meeting. 
+Did some stuff for Mike.
+Too tired to work; too 
+
+#### Weds 29th
+
+2 meetings with Mike. Probably have some part time work for me. Nothing certain yet..
+
+#### Thurs 30th
+
+Called the police on my horrible neighbors
+
+
+
 
 
 ### TO DO

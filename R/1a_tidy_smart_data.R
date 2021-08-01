@@ -36,6 +36,11 @@ domains <-
 domains
 
 
+domains |> pull(dom_n) |> sum()
+
+domains |> pull(dom_n) |> median()
+
+
 # Unnest subfamilies and parse header information
 domains <- domains |> 
   select(subfamily, dom_name, dom_seq) |>
@@ -57,6 +62,8 @@ nrow(domains)                     # 120552
 length(unique(domains$dom_seq))   # 119694, some shared domain seqs
 length(unique(domains$acc))       # 117692, even fewer unique ids
 length(unique(domains$acc_alt))   # same # of ids
+
+# nrow(domains)  - 
 
 # list of accessions with > 1 annotation to discard
 garbage_annotations <- domains |> 
@@ -157,4 +164,12 @@ sum(is.na(smart_df))
 
 
 ## End. Proceed to alignment script.... ----
+
+
+ggplot(smart_df, aes(fct_rev(subfamily))) +
+  geom_bar() +
+  theme_classic() +
+  coord_flip() +
+  labs(x = NULL)
+
 

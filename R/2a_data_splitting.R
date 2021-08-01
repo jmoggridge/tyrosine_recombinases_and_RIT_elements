@@ -26,8 +26,7 @@ smart_df <-
   mutate(subfamily = as_factor(subfamily)) 
 
 smart_downsampled <- smart_df |> 
-  # TODO decide on downsample...
-  # 10k per subfamily
+  # downsample to max of 10k per subfamily
   group_by(subfamily) |> 
   slice_sample(n = 10000, replace = F) |>
   ungroup()

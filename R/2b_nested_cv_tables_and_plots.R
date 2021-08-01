@@ -6,11 +6,15 @@ library(glue)
 run_name <- '3x3-fold_07-08'
 
 models <- read_rds('./data/unfitted_parsnip_model_set.rds')
-nest_cv_results <- read_rds('./results/3x3-fold_07-08_nest_cv_results.rds')
-final_summary <- read_rds('./results/3x3-fold_07-08_nest_cv_summary.rds')
+glimpse(models)
+nest_cv_results <- read_rds('./results/3x3-fold_07-08_nest_cv_results.rds') |> 
+  select(-train, -test)
+glimpse(nest_cv_results)
+nest_cv_summary <- read_rds('./results/3x3-fold_07-08_nest_cv_summary.rds')
+glimpse(nest_cv_summary)
 
 # compare models by metrics
-final_summary |>
+nest_cv_summary |>
   select(-values, -n_folds) |> 
   mutate(across(.cols = c(mean, err), .fns = ~round(x = .x, digits = 5))) |> 
   transmute(
@@ -69,6 +73,7 @@ knn_pooled_scores <-
   group_by(outer_id, neighbors) |> 
   mutate(fold = as_factor(row_number())) |> 
   ungroup()
+knn_pooled_scores
 
 # best_scores_on_fold <- knn_scores |> 
 #   group_by(fold) |> 
@@ -79,6 +84,7 @@ knn_folds_scores <-
   mutate(fold = glue('{outer_id} fold {fold}')) |> 
   split(~fold) |> 
   map(~select(.x, values, neighbors))
+str(knn_folds_scores)
 
 library(ggtext)
 
@@ -143,15 +149,27 @@ glmnet_plot <-
 
 glmnet_plot
 
-# final_summary |> pull(model_type) |> unique()
+# nest_cv_summary |> pull(model_type) |> unique()
 
+
+## Perfomance Summary ------------------------------------------------
 ## outer folds results
 df <- 
-  final_summary |> 
+  nest_cv_summary |> 
   filter(model_type !=  "decision tree") |> 
-  filter(!.metric %in% c('npv', 'ppv')) |> 
-  mutate(min = map_dbl(values, min),
-         max = map_dbl(values, max))
+  filter(!.metric %in% c('precision', 'recall', 'accuracy', 'npv', 'ppv')) |> 
+  mutate(
+    .metric = as.character(.metric),
+    .metric = as_factor(case_when(
+      .metric == 'sens' ~ 'sensitivity',
+      .metric == 'spec' ~ 'specificity',
+      TRUE ~ .metric
+    ))) |> 
+  mutate(
+    min = map_dbl(values, min),
+    max = map_dbl(values, max),
+    .metric = fct_relevel(.metric, 'specificity', 'sensitivity', 'mcc')
+    )
 
 # performance metrics across outer folds with models tuned by the inner cv
 all_metrics_plot <- df  |> 
@@ -170,15 +188,20 @@ all_metrics_plot <- df  |>
   ) +
   # geom_errorbarh(color = 'blue1', alpha = 0.5) +
   geom_pointrange(color = 'red2', alpha = 0.6, size = 1, fatten = 1.2) +
-  facet_wrap(~.metric, nrow = 3) +
-  labs(y = NULL, x = NULL, 
+  facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
+  labs(y = NULL, 
+       x = NULL, 
        title = '3-fold nested cross-validation repeated 3 times',
-       subtitle = 'Performance estimates for the hyperparameter tuning process') +
-  theme_bw()
+       subtitle = 
+       'Performance estimates for the hyperparameter tuning process\npointranges shows mean +/- sd; point show outer fold performance') +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 10))
 
 all_metrics_plot
 
 
+## MCC scores for RF model
 rf_scores <- 
   inner_cv_mcc |> 
   filter(str_detect(model_type, 'forest')) |> 
@@ -198,22 +221,25 @@ rf_summary <- rf_scores |>
     .groups = 'drop'
   ) 
 
+grouped_scores <- rf_scores |> 
+  mutate(values = round(values, 4)) |> 
+  count(mtry, values)
+  
+grouped_scores |> View()
 
 rf_plot <- rf_scores |> 
   ggplot(aes(x = mtry, y = values)) +
-  geom_path(aes(group = inner_fold), stat = 'smooth',
-            size = 0.5, alpha = 0.25, color = 'black') +
-  geom_jitter(height = 15e-6,  width = 0,
-              size = 0.7, alpha = 0.5, shape = 1) +
+  geom_point(data = grouped_scores, shape = 1,
+             aes(x = mtry, y = values, size = n)) +
   geom_path(data = rf_summary, 
             aes(x = mtry, y = mean), stat = 'smooth',
-            color = 'blue1',
+            color = 'blue1', span = 1.2,
             se = F, size = 1.5, alpha  = 0.7,
             ) +
   theme_bw() +
-  labs(x = 'mtry', y = 'MCC', 
+  labs(x = 'mtry', y = 'MCC', size = 'folds',
        title = "MCC as a function of random forest hyperparameter *mtry*",
-       subtitle = 'Gray traces and points represent the results for 81 individual inner CV folds;\nthe blue trace shows the average across all inner folds.') +
+       subtitle = 'Points show 81 inner folds; line shows Loess fit over all inner folds.') +
   theme(plot.title = element_markdown())
   
 rf_plot

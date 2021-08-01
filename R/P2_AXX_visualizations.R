@@ -1,6 +1,6 @@
 # P2_AXX Visualizations
 
-rits <- read_rds('results/non_redundant_rits.rds')
+rits <- read_rds('results/non_redund_rits_NJ_clustered.rds')
 
 # From 1087 nucleotide records,
 # hard to figure out what is partial or complete / contigs v scaffolds
@@ -46,6 +46,8 @@ rits |>
     fill = 'ncbi label',
     title = 'how long are the contigs or scaffolds scaffolds?')
 
+
+rits
 
 
 

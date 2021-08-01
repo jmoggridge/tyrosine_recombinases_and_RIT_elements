@@ -1,11 +1,32 @@
 ## RIT distinct results EDA and grouping by similarity
 library(tidyverse)
 
-# full ungrouped data
-rit_elements <- read_rds('./results/rit_elements.rds')
-# grouped by tax_id & rit_dna sequence
-distinct_rits <- read_rds('results/distinct_RITs.rds')
 
+rits <- read_rds('results/non_redund_rits_NJ_clustered.rds') |> 
+  mutate(obs_id = row_number())
+
+taxonomy <- read_rds('data/CDD/tax_data.rds') |> 
+  unnest(cols = c(tax_lineage)) |> 
+  select(tax_id, tax_name, clade, phylum, class, order, family, genus, species, strain) |> 
+  rename_with(~ifelse(str_detect(.x, 'tax_'), .x, paste0('tax_', .x)))
+
+rits |> 
+  left_join(taxonomy) |> 
+  select(obs_id, tax_id, nuc_name, clade, phylum, class, order, family, genus, species, strain, contains('tax')) |> 
+  View()
+
+distinct_rits <- 
+  rits |> 
+  group_by(tax_id, rit_id) |> 
+  nest(rit_occurrences = c(
+    nuc_id, nuc_accession, nuc_name, rit_id,
+    rit_length, protein_df, matches('rit_st|upstream|downstream')
+    )
+  ) |> 
+  ungroup() |> 
+  mutate(copies = map_int(rit_occurrences, ~nrow(.x))) 
+
+distinct_rits |> View()
 
 # TODO **redo with clustered RITs ***
 
@@ -13,28 +34,35 @@ distinct_rits <- read_rds('results/distinct_RITs.rds')
 
 # 670 distinct taxon ids; one taxon has 35! distinct RITs.
 distinct_rits |> dplyr::count(tax_id) |> arrange(desc(n))
+distinct_rits |> dplyr::count(tax_id, organism) |> print(n=200)
 
 distinct_rits |>
-  dplyr::count(tax_id) |> 
+  dplyr::count(genus, species, strain) |> 
+  arrange(desc(n)) |> 
+  filter(!is.na(strain)) |> 
   ggplot(aes(n)) + 
   geom_histogram() + 
   labs(
     x = 'number of distinct elements',
     y = 'number of taxa',
-    title = 'Distribution of the number of distinct elements per strain')
+    title = 'Distribution of the number of distinct elements per strain'
+    )
 
 # one strain has 32 RITs. -> probably just SNPs??
 distinct_rits |>
-  dplyr::count(tax_name) |> 
+  dplyr::count(phylum, tax_name) |> 
   filter(n > 2) |> 
-  ggplot(aes(x = n, y = fct_reorder(tax_name, n))) + 
+  ggplot(aes(x = n, 
+             y = fct_reorder(tax_name, n), 
+             color = phylum,
+             fill = phylum)) + 
   geom_col() +
   labs(x = 'n distinct RIT elements', y = 'Taxon name',
        title = 'RITs elements by taxon')
 
 distinct_rits |>
   dplyr::count(phylum, class) |> 
-  ggplot(aes(x = n, y = fct_reorder(class, n))) + 
+  ggplot(aes(x = n, y = fct_rev(class), fill = phylum)) + 
   geom_col(show.legend = F) +
   scale_y_discrete(position = 'left') +
   facet_grid(phylum~., scales = 'free_y', space = 'free')   +
@@ -42,15 +70,6 @@ distinct_rits |>
   labs(x = 'n distinct RIT elements', y = NULL,
        title = 'RITs elements by phylum, class')
 
-distinct_rits |>
-  dplyr::count(phylum, class) |> 
-  ggplot(aes(x = n, y = fct_reorder(class, n), fill = phylum)) + 
-  geom_col(show.legend = F) +
-  scale_y_discrete(position = 'left') +
-  facet_grid(phylum~., scales = 'free_y', space = 'free')   +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x = 'n distinct RIT elements', y = NULL,
-       title = 'RITs elements by phylum, class')
 
 
 ## Plot frequency histogram of unique RIT sequences
