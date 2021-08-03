@@ -1,8 +1,19 @@
 ## P2_A6 -
-# Clean up results from rit_finder table in P2_A5.
+# This script cleans up results from rit_finder table in P2_A5.
+# Some genbank files couldn't be parsed (too big for xml package),
+# others just didn't have a full RIT element, possibly.
 
-# join dna sequences, + upstream & downstream 200bp to 
-#
+# Taxonomy data downloaded earlier is attached to each nucleotide id
+# DNA coding sequences, upstream 500bp, and downstream 500 bp are joined to each RIT.
+# P1 and P3 are switched if RIT is on the minus strand to get A-B-C orientation.
+
+# Trios are checked to see which are legitimate RIT elements.
+# Only good RITs are kept. Degraded RITs are ignored.
+
+# Finally, RIT data is pivoted such that the RIT proteins aren't across multiple columns
+# Saved as ./results/rit_elements.rds
+# Observations are grouped by taxon id and RIT coding sequence, there are 1186 distinct sequence, taxon id combinations.
+
 
 library(tidyverse)
 library(janitor)
@@ -36,8 +47,7 @@ rits <-
   unnest(rit_output, keep_empty = T) |> 
   select(-gbk, -size, -tax_id)
 
-# 1887 rits
-# 1842 nuc ids 
+# 1887 raw RITs from 1842 nuc ids 
 glimpse(rits)
 length(unique(rits$nuc_id))
 
@@ -48,25 +58,26 @@ missing_cds <-
   mutate(ISSUE = 'missing CDS')
 glimpse(missing_cds)
 
-# keep only searches that worked -> 423 nuc ids w success = T
-# unnesting: there are 1076 integrase trios in those 419 nucleotide records 
+# keep only searches that worked -> 1,789 nuc ids w success = T
+# unnesting: there are 2,762 integrase trios in those 1,789 nucleotide records 
 rits <- rits |> 
   anti_join(missing_cds, by = c("nuc_id", "file")) |> 
   unnest(cols = c(rits), keep_empty = T)
 glimpse(rits)
+length(unique(rits$nuc_id))
 
-# remove the ones that have been replaced from the missing list.
+# remove the ones in the 'missing' list that have been replaced with another record.
 missing_cds <- missing_cds |> anti_join(rits, by = 'nuc_id')
 write_rds(missing_cds, './data/CDD/missing_cds.rds')
 
-# managed to fix 27...
+# managed to fix 27 of the missing ones by redoing - see P2_A5b script...
 # sum(missing_cds$nuc_id %in% rits$nuc_id)
 
 # files where genbank records came from
 gb_files <- rits |> select(nuc_id, file)
 
 # These 166 nuc ids simply didn't return any results...
-# just a tibble full of NAs - but 'success' flag not appropriate!
+# just a tibble full of NAs - but 'success' flag not appropriate here!
 # some issue in parsing genbank data
 missing_results <- rits |> 
   filter(is.na(p1_id) | is.na(p2_id) | is.na(p3_id)) |> 
@@ -78,6 +89,7 @@ write_rds(missing_results, './data/CDD/missing_results.rds')
 
 # Results from nucleotides that worked -> 2596 possible elements
 # add unique 'trio_id' to each row to track
+# remove logical check variables
 rit_rs <- rits |> 
   anti_join(missing_results,  by = "nuc_id") |> 
   select(-c(file, success, nuc_id_fail, element_CDS_length, 
@@ -92,12 +104,8 @@ glimpse(rit_rs)
 
 rm(rits, missing_cds, missing_results, gb_files)
 
-# ## Join missing results ====================================
-# 
-# fixed_cds <- read_rds('data/CDD/RIT_gbk_noCDS_fixed.rds')
-# glimpse(fixed_cds)
-
 ## Taxon links =======================================================
+# adding taxonomy data for each RIT by nuc id
 
 # create taxonomy table for 1623 associated tax_ids
 rit_taxa <- 
@@ -111,7 +119,7 @@ rit_taxa <-
   select(-no_rank)
 glimpse(rit_taxa)
 
-# count trios by taxa, not sure about which elements are copied yet
+# Quick count of trios by taxa, not sure about which elements are copied yet
 # (not by unique elements, but by total elements)
 rit_rs |> 
   left_join(rit_taxa) |> 
@@ -135,7 +143,7 @@ glimpse(rit_rs)
 
 ##
 
-# for all nuc_data_fixed files, read in genbank sequence and join to rit results.
+# for all nuc_data_fixed files, read in genbank dna sequence and join to rit results.
 rit_dna <- 
   Sys.glob('./data/CDD/nuc_data_fixed/*') |> 
   map(~{read_rds(.x) |> filter(nuc_id %in% rit_rs$nuc_id)}) |> 
@@ -149,11 +157,10 @@ rit_dna <-
         rit_orientation),
     by = 'nuc_id'
     )
-
-
 glimpse(rit_dna)
 
-# Generate sequence features
+# Generate sequence features: length, strand, seq, up + downstream
+# the genbank dna complement is used for the sequences on the minus strand
 rit_dna <- 
   rit_dna |> 
   mutate(
@@ -197,7 +204,7 @@ glimpse(rit_dna)
 
 
 # join sequences data to main results data
-# add protein lengths in AAs from nucleotide ranges
+# compute protein lengths in AAs from nucleotide ranges
 rit_rs <- rit_rs |> 
   left_join(rit_dna) |> 
   mutate(
@@ -246,40 +253,42 @@ rm(proteins_set)
 # 1. remove incorrect orientations
 
 # orientations of RitA,B,C; some have not all same orientation
+# 137 are mixed fwd + rev strand proteins
 rit_rs_aligned |> dplyr::count(rit_orientation)
-# may the rit_finder is getting messed up by overlapping RIT elements... never frf or rfr, only fff, rrr, ffr, rff
+# may the rit_finder is getting messed up by overlapping RIT elements...
+# never find frf or rfr, only fff, rrr, ffr, rff
 rit_rs_aligned |> dplyr::count(p1_orientation, p2_orientation, p3_orientation)
 
-# from all integrase trios, keep only trios with three integrases
-# with consistent orientation
+# from all integrase trios, keep only trios with three integrases & consistent orientation
 oriented_trios <- rit_rs_aligned |> 
   filter(rit_orientation %in% c('all forward', 'all reverse'))
 glimpse(oriented_trios)
 
 # View(oriented_trios |> select(-matches('dna')) |> relocate(contains('_pred')))
 
-# Most have  A-B-C arrangement
+# 2,262 have correct A-B-C arrangement
 rit_abc_elements <- oriented_trios |>
   filter(p1_pred == 'RitA' & p2_pred == 'RitB' & p3_pred == 'RitC')
 rit_abc_elements
 
-# CTnDOT proteins upstream of a rit element in two nuc from a strain,
+# These have CTnDOT proteins upstream of a rit element in two nuc from a strain,
 # annotated slightly differently
 CTn_DOT_elements <-  oriented_trios |>
   rowwise() |> 
   filter(sum(c(p1_pred,p2_pred,p3_pred) == 'Int_CTnDOT') ==2)
 CTn_DOT_elements
 
-# some 'XIT element' with overlaps!
+# 1x Xer in quartet 1x Xer in trio
 xer_elements <-  oriented_trios |>
   rowwise() |> 
   filter(sum(c(p1_pred,p2_pred,p3_pred) == 'Xer') >1)
 xer_elements
 
-# other trios with no protein already present in ABC elements
-# mostly degraded RIT elements, have a lot of no-consensus predictions...
-# these are probably partial domains with low scores across many subfamilies
-# have unusual overlaps, suggestion degradation too.
+# 27 other trios with no protein already present in ABC elements, some overlapping each other
+# most seem to be degraded RIT elements, but have a lot of no-consensus predictions...
+# these are probably partial domains with low scores across subfamilies
+# have unusual overlaps, suggesting degradation too.
+# alot of the flanking genes are IS transposases!
 rit_abc_proteins <- c(rit_abc_elements |> select(p1_id, p3_id) |> 
                         unlist())
 non_overlapping_trios <- oriented_trios |>
@@ -299,11 +308,11 @@ non_overlapping_trios |>
   select(matches('pred|id')) |> 
   rowwise() |> 
   filter(!any('no consensus' %in% c(p1_pred, p2_pred, p3_pred))) 
-# Neither has RitABC
-# Another is just degraded
+# None have RitABC; Another is just degraded; some have integron as P3.
 # trio_2_1719553555 has a gap of 429 bp between RitA - RitB
 
-## overlapping rit_abc element -> remove from results and ignore
+## 158 Int trios that overlapping good rit_abc elements -> remove from results and ignore
+## these trios generally have a different integrase flanking a RIT ABC trio
 overlapping_abc_trios <- oriented_trios |>
   filter(!trio_id %in% rit_abc_elements$trio_id) |>   
   filter(!trio_id %in% xer_elements$trio_id) |> 
@@ -369,6 +378,7 @@ rit_elements <- rit_elements |>
   mutate(rit_unique_seq_id = glue('RIT_{row_number()}')) |> 
   right_join(rit_elements, by = 'rit_dna')
 
+# what is the copy number of RITs across all data (including redundant records)?
 rit_elements |>
   dplyr::count(rit_unique_seq_id) |> 
   ggplot(aes(n)) +
@@ -376,7 +386,7 @@ rit_elements |>
   labs(x = 'Exact copies found in results', y = 'n distinct RIT elements',
        title = 'Distribution of the number of identical RIT sequences across all records')
 
-# distinct elements by tax id, RIT sequence... 485.
+# 1,186 distinct elements by tax id, RIT sequence groupings
 distinct_rits <- rit_elements |> 
   group_by(tax_id, rit_unique_seq_id) |> 
   nest(rit_occurrences = c(
