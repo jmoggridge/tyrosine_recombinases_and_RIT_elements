@@ -1,11 +1,6 @@
 library(tidyverse)
 library(tidymodels)
 
-# TODO need to make it so that the models don't change if rerun!
-# set.seed(123)
-
-options(tibble.print_max = 50, tibble.print_min = 20)
-
 ### Models  -------------------------------------------------------------------
 
 # update model specifications using parameters grid
