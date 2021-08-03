@@ -1,9 +1,19 @@
+## P2_A8 alignment & clustering
+
+# This script does:
+# Checks out RIT element lengths: found a couple truncated elements,
+# removes one very long element that has a RitA fusion (not sure what it is)
+# 
+
+## Setup --------------------------------------------------------------------
 
 library(Biostrings)
 library(DECIPHER)
 library(tidyverse)
 library(ape)
 library(glue)
+
+## Data --------------------------------------------------------------------
 
 # filtered rits data from P2-A7;
 nr_rits <- 
@@ -14,12 +24,12 @@ nr_rits <-
   ) 
 glimpse(nr_rits)  
 
-# set of distinct sequences
+# set of distinct sequences for fasta file to align or whatever
 uniq_rit_dna <- nr_rits |> 
   select(rit_dna, rit_id) |> 
   distinct()
 
-# any sequences unusually long or short? --------------------------------------
+# Are any sequences unusually long or short? --------------------------------------
 # the Nitrospirae sequence seems short and one in the PVC group
 # bimodal @ ~3100 & ~3500
 nr_rits |> 
@@ -27,10 +37,21 @@ nr_rits |>
   geom_histogram(show.legend = T) 
 
 summary(nr_rits$rit_length)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 2335    3163    3214    3231    3258    4564 
+
 
 # RIT 171 in nucl. 32527006 has unusually long RIT A protein
 # annotation says it is fused with other protein!
 nr_rits |> filter(rit_length > 3950) |> unnest(protein_df)
+
+# 9 unusually short RITs
+short <- nr_rits |> filter(rit_length < 2500)
+# often P1 is truncated...
+nr_rits |> filter(rit_length < 2500) |>
+  unnest(protein_df) |> 
+  relocate(prot_pos, prot_length) |> 
+  print(n=50)
 
 # Removing this element as it seems degraded - no other elements have similar length or extremely long RitA protein
 # Now 1559 RIT elements with 915 distinct coding sequences
@@ -78,13 +99,14 @@ str_split('ACGTNUDBSYRWKMV-', '', simplify = T) |>
 
 # Alignment and distance for unique RIT seqs ------
 
+# create a DNAstringset and a fasta file
 dna_ss <- uniq_rit_dna$rit_dna |> 
   set_names(nm = uniq_rit_dna$rit_id) |> 
   Biostrings::DNAStringSet(use.names = T)
 dna_ss
- 
 Biostrings::writeXStringSet(dna_ss, 'data/rit_dna.fasta')
 
+# align sequences with 3 iterations; write aligned fasta
 dna_aligned <- DECIPHER::AlignSeqs(
   myXStringSet = dna_ss, 
   verbose = T, 
@@ -93,10 +115,12 @@ beepr::beep()
 Biostrings::writeXStringSet(dna_aligned, 'data/rits_aligned.fasta')
 
 # DECIPHER::BrowseSeqs(dna_aligned)
+
+# convert alignment to a DNAbin object
 dna_bin <- ape::as.DNAbin(dna_aligned)
 
 # get 'raw' distance matrix
-dist_df <- 
+dist_raw <- 
   ape::dist.dna(x = dna_bin, 
                 model = 'raw', 
                 pairwise.deletion = T, 
@@ -107,44 +131,26 @@ dist_df <-
   filter(rit_id != name)
 
 # see furthest pairs ~ 0.7
-dist_df |> 
+dist_raw |> 
   arrange(desc(distance)) |> 
   print(n = 200)
 
-# see closest pairs; many 0's
-dist_df |> 
+# see closest pairs; many 0's but I just don't understand why unless they are exactly the same sequence. Head scratcher/
+dist_raw |> 
   arrange(distance) |> 
   print(n = 200)
 
-## Ones that are 0 distance can be just a subsequence of larger sequence - this is generally misleading for similarity.
 
-# reduced_groups <- dist_df |> 
-#   filter(distance == 0) |> 
-#   rowwise() |> 
-#   mutate(rit1 = min(rit_id, name),
-#          rit2 = max(name, rit_id)) |> 
-#   select(rit1, rit2) |> 
-#   distinct() |> 
-#   group_by(rit1) |> 
-#   summarize(same_group = list(rit2)) |> 
-#   mutate(n = map_int(same_group, length)) |> 
-#   arrange(desc(n)) |> unnest(same_group)
-# 
-# reduced_groups[which(reduced_groups$same_group %in% reduced_groups$rit1),]
-
-# get 'raw' distance
+# table of raw distances
 dist_n_df <- 
-  ape::dist.dna(x = dna_bin, model = 'N') |> 
-  as.matrix() |> 
-  as_tibble() |> 
-  mutate(rit_id = names(dna_bin)) |> 
-  pivot_longer(cols = -rit_id, values_to = 'distance') |> 
+  dist_raw |> 
   rowwise() |>
   mutate(rit1 = min(rit_id, name),
          rit2 = max(name, rit_id)) |>
   select(rit1, rit2, distance) |>
   filter(rit1 != rit2) |> 
   distinct()
+
 # max raw distance is 572 substitutions
 dist_n_df |> 
   arrange(desc(distance)) |> 
@@ -154,15 +160,38 @@ dist_n_df |>
   arrange(distance) |> 
   print(n = 50)
 
+
+# Jukes-Cantor distances matrix
+dist_jc <-   
+  ape::dist.dna(x = dna_bin, 
+                model = 'JC69', 
+                pairwise.deletion = T, 
+                as.matrix = T)
+
+# JC dist tibble
+dist_jc_tbl <- dist_jc |> 
+  as_tibble() |> 
+  mutate(rit_id = names(dna_bin)) |> 
+  pivot_longer(cols = -rit_id, values_to = 'distance') |> 
+  filter(rit_id != name)
+dist_jc_tbl
+summary(dist_jc_tbl$distance)
+
 ## distance matrix, no correction 
 distance_matrix <- DECIPHER::DistanceMatrix(
   myXStringSet = dna_aligned,
   type='dist', 
   correction = 'none', 
+  penalizeGapLetterMatches = T, 
   includeTerminalGaps = T
   )
 
-
+distance_matrix |> 
+  as.matrix() |> 
+  as_tibble() |> 
+  mutate(rit_id = names(dna_bin)) |> 
+  pivot_longer(cols = -rit_id, values_to = 'distance') |> 
+  filter(rit_id != name)
 
 # Cluster seqs ------
 
@@ -172,10 +201,19 @@ clusters_upgma <- DECIPHER::IdClusters(
   method = 'UPGMA',  
   cutoff = c(0.5, 0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
   type = "clusters", 
-  showPlot = F, 
+  showPlot = T, 
   verbose = TRUE
   )
 clusters_upgma
+
+# upgma_tree 
+upgma <- DECIPHER::IdClusters(
+  myXStringSet = dna_aligned,
+  myDistMatrix = distance_matrix,
+  method = 'UPGMA',  
+  type = "dendrogram", 
+  verbose = TRUE
+)
 
 clusters_nj <- DECIPHER::IdClusters(
   myXStringSet = dna_aligned,
@@ -183,11 +221,10 @@ clusters_nj <- DECIPHER::IdClusters(
   method = 'NJ',  
   cutoff = c(0.5, 0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
   type = "clusters", 
-  showPlot = F, 
+  showPlot = T, 
   verbose = TRUE
 )
 clusters_nj
-
 
 # NJ tree
 nj <- clusters <- DECIPHER::IdClusters(
@@ -198,14 +235,6 @@ nj <- clusters <- DECIPHER::IdClusters(
   verbose = TRUE
 )
 
-# upgma_tree 
-upgma <- DECIPHER::IdClusters(
-  myXStringSet = dna_aligned,
-  myDistMatrix = distance_matrix,
-  method = 'UPGMA',  
-  type = "dendrogram", 
-  verbose = TRUE
-)
 
 par(cex=1, mar=c(5, 8, 4, 1))
 plot(upgma,
@@ -223,6 +252,22 @@ plot(nj,
 # nr_rits |> 
 #   filter(rit_id == 'RIT_171') |> 
 #   View()
+
+
+## Also try the ape dist.dna results
+clusters_upgma_JC <- DECIPHER::IdClusters(
+  myXStringSet = dna_aligned,
+  myDistMatrix = dist_jc,
+  method = 'UPGMA',  
+  cutoff = c(0.5, 0.3, 0.15, 0.1, 0.05, 0.01,  0.005, 0.001), 
+  type = "clusters", 
+  showPlot = T, 
+  verbose = TRUE
+)
+clusters_upgma_JC
+
+
+
 
 
 ## Join NJ clusters to nr_rits dataset ------------------------------------
@@ -259,10 +304,8 @@ tribble(
   geom_point() + geom_path() +
   labs(x = 'distance', y = 'n clusters',
        title = 'number of NJ clusters as a function of distance threshold')
-# 
-# rits_nj_clustered |> 
-#   filter(nuc_id %in% c('1840186009', '1840194776')) |> 
-#   View()
 
+
+# really not sure what to do with the giant trees? They only have the 916 unique sequences, but need to reduce the number of highly similar sequences somehow to reduce the tree complexity for human consumption...
 
 
