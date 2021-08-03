@@ -118,7 +118,7 @@ best_mods
 write_rds(best_mods, glue('{out_path}/best_models.rds'))
 
 
-## TODO t-test
+## TODO t-test to check if differences are significant??
 # 
 # ## t-test for best models?
 # t_test_df <- 
