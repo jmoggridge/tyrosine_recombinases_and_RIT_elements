@@ -271,7 +271,8 @@ thresh_res <-
 thresh_res
 rm(prepped_data)
 
-## TODO juice recip and test classifier *
+## old_TODO juice recip and test classifier *
+## taken care of in 4b_plots
 
 normalized_smoted <- recip
 normalized_threshold_res <- 
