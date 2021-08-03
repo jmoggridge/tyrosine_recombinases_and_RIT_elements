@@ -1,7 +1,5 @@
 ## 3 Final validation on holdout set
 
-# TODO rerun everything together, make sure it works
-
 library(tidyverse)
 library(tidymodels)
 library(Biostrings)
