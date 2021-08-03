@@ -5,8 +5,6 @@ library(furrr)
 library(tictoc)
 
 source('./R/00_functions.R')
-
-# TODO FINAL CLASSIFIER FITTING STEP
 dir.create('./models/')
 
 combined_dataset <- 
@@ -15,11 +13,11 @@ combined_dataset
 combined_dataset |> count(subfamily) |> print(n=25)
 skimr::skim(combined_dataset)
 
-# TODO full align
+# TODO full align from earlier script
 
 # combined dataset |> align domains
 
-# TODO full hmmm
+# TODO full hmmms from earlier script
 # combined dataset |> build hmms
 
 
@@ -71,7 +69,7 @@ write_rds(combined_prepped, './data/classif_combined_prepped_dataset.rds',
 rm(combined_dataset, hmm_scores)
 
 
-# FIT MODEL -----
+# FIT MODELS -----
 
 # fit final model: 10-NN trained on combined dataset
 # specify modelling workflow with scaling and ignore seqs and id
@@ -93,7 +91,7 @@ best_models <-
   left_join(read_rds('./data/unfitted_parsnip_model_set.rds'))
 best_models
 
-# Model specifications to finalize ----
+## Model specifications to finalize ----
 
 glmnet_spec <- best_models |> 
   filter(model_type == 'multinomial regression') |> 
@@ -117,7 +115,7 @@ rf_spec
 
 rm(best_models)
 
-## model workflows
+## fit model workflowss -------
 
 glmnet_classifier <- 
   workflow() |> 
@@ -147,7 +145,7 @@ write_rds(rf_classifier, './models/rf_classifier.rds')
 rm(rf_classifier)
 
 
-##-----
+## rule-based model -----
 
 # unnormalized threshold
 thresholds <-
@@ -182,7 +180,7 @@ normalized_smoted_thresholds |> ggplot(aes(threshold, HMM)) + geom_col()
 write_rds(normalized_smoted_thresholds,
           './models/hmm_normalized_smoted_thresholds.rds')
 
-scaled_and_smoted |> 
+normalized_and_smoted |> 
   relocate(subfamily) |> 
   filter(round(Int_Tn916,3) > -0.210) |> 
   count(subfamily) |> 

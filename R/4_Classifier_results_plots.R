@@ -4,6 +4,9 @@ library(ggrepel)
 library(glue)
 library(gt)
 library(ggtext)
+library(tidymodels)
+library(themis)
+library(patchwork)
 
 
 # 0 DATASET PlOTS ------------------------------------------------------------
@@ -86,14 +89,13 @@ combo |>
   mutate(len = nchar(prot_seq)) |> 
   ggplot(aes(len, fct_rev(subfamily))) +
   geom_jitter(size = 0.05, shape = 1, alpha = 0.2) +
-  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), size = 0.67, alpha = 0.5,
-              trim = T, scale = 'width', fill = NA,
-              colour = 'red') +
+  geom_boxplot(color = 'red', fill = NA, outlier.alpha = 0) +
+  # geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), size = 0.67, alpha = 0.5,
+  #             trim = T, scale = 'width', fill = NA,
+  #             colour = 'red') +
   theme_bw() +
   labs(x = 'n residues', y = NULL,
        title = 'Sequence lengths in the SMART dataset')
-
-
 
 rm(combo, smart, non_int, train, test)
 
@@ -106,21 +108,19 @@ rm(combo, smart, non_int, train, test)
 
 run_name <- '3x3-fold_07-08'
 
-models <- read_rds('./data/unfitted_parsnip_model_set.rds')
+models <- read_rds('./data/unfitted_parsnip_model_set.rds') |> 
+  filter(!model_type == 'decision tree')
 glimpse(models)
 
 nest_cv_results <- read_rds('./results/3x3-fold_07-08_nest_cv_results.rds') |> 
   select(-test, -train)
 glimpse(nest_cv_results)
 
-
 nest_cv_summary <- read_rds('./results/3x3-fold_07-08_nest_cv_summary.rds') |> 
   filter(!model_type == 'decision tree')
 glimpse(nest_cv_summary)
 
-#### models selected by inner CV
-
-# best tunings
+#### models selected by inner CV -----
 best_tunes <- nest_cv_results |> 
   select(outer_id, best_tune) |> 
   unnest(best_tune) |> 
@@ -128,20 +128,11 @@ best_tunes <- nest_cv_results |>
   split(~model_type) |> 
   map(~unnest(.x, params)) 
 
-best_tunes |> 
-  map(~select(.x, model_type, model_id)) |> 
-  bind_rows() |> 
-  ggplot(aes(x = as_factor(model_id))) +
-  geom_bar() +
-  facet_wrap(~model_type, nrow = 3) +
-  theme_bw() +
-  scale_y_continuous(breaks = scales::pretty_breaks()) +
-  labs(title = 'Which model tunings were selected most often?',
-       x = 'model id')
+best_tunes
 
 #### table 1 -------
 
-# compare models by metrics
+# compare models by performance metrics for Outer CV
 nest_cv_summary |>
   select(-values, -n_folds) |> 
   mutate(model_type = ifelse(model_type == 'multinomial regression',
@@ -153,10 +144,59 @@ nest_cv_summary |>
     mean_sd = glue('{mean} ± {err}')
     ) |> 
   filter(metric %in% c('mcc', 'bal accuracy', 'f meas', 'sens', 'spec')) |> 
-  
   pivot_wider(id_cols = model, names_from = metric, values_from = mean_sd) |> 
   gt() |> 
   tab_header(title = "Performance estimate from nested 3-fold cross-validation repeated 3 times") 
+
+
+#### NestCV summary ----------------------
+
+## outer folds results
+outer_scores_df <- 
+  nest_cv_summary |> 
+  filter(model_type !=  "decision tree") |> 
+  filter(!.metric %in% c('precision', 'recall', 'kap', 'f_meas', 
+                         'accuracy', 'npv', 'ppv')) |> 
+  mutate(
+    .metric = as.character(.metric),
+    .metric = as_factor(case_when(
+      .metric == 'sens' ~ 'sensitivity',
+      .metric == 'spec' ~ 'specificity',
+      TRUE ~ .metric
+    ))) |> 
+  mutate(
+    min = map_dbl(values, min),
+    max = map_dbl(values, max),
+    .metric = fct_relevel(.metric, 'specificity', 'sensitivity', 'mcc'),
+    model_type = ifelse(model_type == 'multinomial regression', 'logistic regression', model_type)
+  )
+
+
+# performance metrics across outer folds with models tuned by the inner cv
+all_metrics_plot <- outer_scores_df  |> 
+  ggplot(aes(
+    y = fct_rev(model_type), 
+    x = mean, 
+    xmax = mean + err, 
+    xmin = mean - err
+  )) +
+  geom_vline(aes(xintercept = 1), alpha = 0.25) +
+  ggbeeswarm::geom_quasirandom(
+    data = outer_scores_df |> unnest(values),groupOnX = F,
+    aes(x = values), shape = 16, alpha = 0.33
+  ) +
+  geom_pointrange(color = 'red2', alpha = 0.6, size = 1, fatten = 1.2) +
+  facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
+  labs(y = NULL, 
+       x = NULL, 
+       title = '3-fold nested cross-validation repeated 3 times',
+       subtitle = 
+         'Performance estimates for the hyperparameter tuning process.\nPoint-ranges shows mean +/- sd; points show outer-fold performance') +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 10))
+
+all_metrics_plot
 
 
 #### Inner CV results for plots ----------------------------------------
@@ -170,8 +210,6 @@ inner_cv_mcc <-
   left_join(models, by = c("model_type", "model_id"))
 
 inner_cv_mcc
-
-
 
 #### knn  --------------------------------------------------------
 
@@ -299,59 +337,9 @@ rf_plot <- rf_plot +
 
 rm(grouped_rf_scores, rf_summary, rf_scores)
 
-
-#### NestCV summary ----------------------
-
-## outer folds results
-outer_scores_df <- 
-  nest_cv_summary |> 
-  filter(model_type !=  "decision tree") |> 
-  filter(!.metric %in% c('precision', 'recall', 'kap', 'f_meas', 
-                         'accuracy', 'npv', 'ppv')) |> 
-  mutate(
-    .metric = as.character(.metric),
-    .metric = as_factor(case_when(
-      .metric == 'sens' ~ 'sensitivity',
-      .metric == 'spec' ~ 'specificity',
-      TRUE ~ .metric
-    ))) |> 
-  mutate(
-    min = map_dbl(values, min),
-    max = map_dbl(values, max),
-    .metric = fct_relevel(.metric, 'specificity', 'sensitivity', 'mcc'),
-    model_type = ifelse(model_type == 'multinomial regression', 'logistic regression', model_type)
-  )
-
-
-# performance metrics across outer folds with models tuned by the inner cv
-all_metrics_plot <- outer_scores_df  |> 
-  ggplot(aes(
-    y = fct_rev(model_type), 
-    x = mean, 
-    xmax = mean + err, 
-    xmin = mean - err
-  )) +
-  geom_vline(aes(xintercept = 1), alpha = 0.25) +
-  ggbeeswarm::geom_quasirandom(
-    data = outer_scores_df |> unnest(values),groupOnX = F,
-    aes(x = values), shape = 16, alpha = 0.33
-  ) +
-  geom_pointrange(color = 'red2', alpha = 0.6, size = 1, fatten = 1.2) +
-  facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
-  labs(y = NULL, 
-       x = NULL, 
-       title = '3-fold nested cross-validation repeated 3 times',
-       subtitle = 
-         'Performance estimates for the hyperparameter tuning process.\nPoint-ranges shows mean +/- sd; points show outer-fold performance') +
-  theme_bw() +
-  theme(axis.text.x = element_text(size = 8),
-        axis.text.y = element_text(size = 10))
-
-all_metrics_plot
+#### end of Nested CV ------
 
 save(knn_plot, rf_plot, glmnet_plot, all_metrics_plot, file = './results/3x3-fold-07-08-nested_cv_plots.rda')
-
-
 
 rm(all_metrics_plot, best_tunes, outer_scores_df, knn_plot, rf_plot, glmnet_plot,
    nest_cv_results, nest_cv_summary, inner_cv_mcc)
@@ -359,10 +347,10 @@ rm(all_metrics_plot, best_tunes, outer_scores_df, knn_plot, rf_plot, glmnet_plot
 
 # 2 CV PLOTS ---------------------------------------------------------------
 
+models <- read_rds('data/unfitted_parsnip_model_set.rds')
 # summary of CV results
 cv_res <- read_rds('results/regular_cv_07-10/cv_res.rds') |> 
   filter(!model_type == 'decision tree')
-
 glimpse(cv_res)
 
 # results for each fold
@@ -370,16 +358,18 @@ fold_res <- read_rds('results/regular_cv_07-10/fold_res.rds') |>
   select(outer_id, res) |> 
   unnest(res) |> 
   filter(!model_type == 'decision tree')
-
 glimpse(fold_res)
 
+# best models by MCC
 best_models <- cv_res |>
   filter(.metric == 'mcc') |>
   group_by(model_type) |>
   filter(mean == max(mean, na.rm = T))
+best_models
 
+# select model params
 best_models |>
-  left_join(models) |>
+  full_join(models) |>
   split(~model_type) |>
   map(~unnest(.x, params))
 
@@ -395,7 +385,6 @@ mcc <- cv_res |>
 mcc
 
 # TODO fit thresholds
-
 
 ## knn results
 cv_res |>
@@ -423,7 +412,7 @@ glmnet_mod_labels <-
 
 cv_res |>
   filter(.metric == 'mcc', str_detect(model_type, 'regression')) |>
-  filter(mean>0.9) |> 
+  filter(mean>0.999) |> 
   left_join(models) |>
   select(-c(.metric, n_folds, spec)) |>
   unnest(params) |>
@@ -432,7 +421,11 @@ cv_res |>
   geom_point(aes(size = err)) +
   scale_fill_viridis_c(begin = 0.2) +
   scale_x_log10() +
-  theme_bw() 
+  theme_classic() +
+  labs(
+    size = 'SD',
+    title = 'MCC as a function of mixture (alpha) and penalty (lambda) in CV',
+    subtitle = 'Tile color indicates mean MCC; points show SD') +
 
 rm(glmnet_mod_labels)
 
@@ -477,7 +470,67 @@ glimpse(final_res)
 fitted_models <- read_rds('results/final_model_07-11/fit_models.rds') |> 
   select(-fitted_wkfl, -reg_cv_res)
   
-glimpse(fit_models)
+prepped_data <- read_rds('./results/final_model_07-11/prepped_data.rds') 
+
+## Threshold rule classifier -----
+train_prep <- prepped_data |>  
+  pull(train_prep) |>
+  pluck(1) |> 
+  select(-contains('seq'))
+test_prep <-prepped_data |>  
+  pull(test_prep) |>
+  pluck(1) |> 
+  select(-contains('seq'))
+
+# data preprocessing
+# specify modelling workflow with scaling and ignore seqs and id
+recip <- 
+  recipe(subfamily ~ ., data = train_prep) |> 
+  update_role(acc, new_role = "id") |> 
+  step_smote(subfamily, over_ratio = 0.25) |> 
+  step_normalize(all_predictors())
+
+# normalized + smoted thresholds
+normalized_and_smoted <- recip |> prep() |> juice()
+
+# eg. a training set with SMOTE done
+normalized_and_smoted |> 
+  count(subfamily) |> 
+  ggplot(aes(n, subfamily)) + geom_col() +
+  labs(title = 'Training set with SMOTE') +
+  theme_bw()
+
+# set thresholds
+normalized_smoted_thresholds <-
+  normalized_and_smoted |> 
+  select(subfamily, Arch1:Xer) |> 
+  pivot_longer(Arch1:Xer, names_to = 'HMM', values_to = 'score') |> 
+  filter(HMM == subfamily) |> 
+  group_by(HMM) |> 
+  filter(score == min(score)) |> 
+  transmute(HMM, threshold = score)
+
+normalized_smoted_thresholds
+normalized_smoted_thresholds |> ggplot(aes(threshold, HMM)) + geom_col()
+write_rds(normalized_smoted_thresholds,
+          './models/hmm_normalized_smoted_thresholds.rds')
+
+normalized_and_smoted |> 
+  relocate(subfamily) |> 
+  filter(round(Int_Tn916,3) > -0.210) |> 
+  count(subfamily) |> 
+  ggplot(aes(n, subfamily)) +
+  geom_col()
+
+source('R/00_functions.R')
+thresholds <- set_thresholds(train_prep)
+classed_test <- hmm_threshold_class(test = test_prep, thresholds = thresholds)
+# collect metrics
+class_metrics <- metric_set(yardstick::mcc, kap, sens, spec, 
+                            f_meas, ppv, npv, accuracy, bal_accuracy)
+classed_test |>
+  class_metrics(subfamily, estimate = .pred_class)
+
 
 
 ## CONFUSION MATRICES ----------------------------------------------------
@@ -492,45 +545,29 @@ knn_conf_mat <-
   unnest(preds) |> 
   # add true labels from test dataset
   bind_cols(read_rds('./data/classif_test_set.rds') |> 
-              select(subfamily)) |> 
-  count(subfamily, .pred_class) 
-
-knn_conf_mat |> 
-  ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
-  geom_point(alpha = 0.4, show.legend = F) +
-  ggrepel::geom_text_repel(size = 4) +
-  scale_size(trans = 'log10') +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
-  labs(x = 'Truth', y = 'Estimate', 
-       title = '7-nearest neighbors')
+              select(subfamily, acc)) |> 
+  group_by(subfamily, .pred_class) |> 
+  summarize(n = length(acc),
+            acc_list = list(acc)) |> 
+  ungroup() |> 
+  mutate(model = 'knn')
   
-
-
 ## glmnet confusion matrix
 glmnet_conf_mat <- 
   fitted_models |> 
   filter(model_type == 'multinomial regression') |> 
   unnest(params) |> 
-  filter(model_id == 39) |>
+  filter(model_id == 30) |>
   select(preds) |> 
   unnest(preds) |> 
   # add true labels from test dataset
   bind_cols(read_rds('./data/classif_test_set.rds') |> 
-              select(subfamily)) |> 
-  count(subfamily, .pred_class) 
-
-glmnet_conf_mat |> 
-  ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
-  geom_point(alpha = 0.4, show.legend = F) +
-  ggrepel::geom_text_repel(size = 4) +
-  # scale_size(trans = 'log2') +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
-  labs(x = 'Truth', y = 'Estimate', 
-       title = 'Logistic regression')
-
-
+              select(subfamily, acc)) |> 
+  group_by(subfamily, .pred_class) |> 
+  summarize(n = length(acc),
+            acc_list = list(acc)) |> 
+  ungroup() |> 
+  mutate(model = 'logistic regression')
 
 ## rf confusion matrix
 rf_conf_mat <- 
@@ -541,71 +578,72 @@ rf_conf_mat <-
   unnest(preds) |> 
   # add true labels from test dataset
   bind_cols(read_rds('./data/classif_test_set.rds') |> 
-              select(subfamily)) |> 
-  count(subfamily, .pred_class) 
+              select(subfamily, acc)) |> 
+  group_by(subfamily, .pred_class) |> 
+  summarize(n = length(acc),
+            acc_list = list(acc)) |> 
+  ungroup() |> 
+  mutate(model = 'random forest')
 
-rf_conf_mat |> 
+# are the errors all the same sequences?
+bind_rows(
+  knn = knn_conf_mat |> 
+    filter(subfamily != .pred_class) |> 
+    unnest(acc_list),
+  glmnet = glmnet_conf_mat |> 
+    filter(subfamily != .pred_class) |> 
+    unnest(acc_list),
+  rf = rf_conf_mat |> 
+    filter(subfamily != .pred_class) |> 
+    unnest(acc_list)) |> 
+  arrange(subfamily, .pred_class)
+
+# the xer/integron one is the same
+# the in tn916/p2 preds are the same in all
+# the 916/BPP is found in knn and glmnet
+
+
+
+## four confusion matrix plots
+conf_rules <- classed_test |> 
+  count(subfamily, .pred_class) |> 
+  ggplot(aes(subfamily, fct_rev(.pred_class), size = n, label = n)) +
+  geom_point(alpha = 0.4, show.legend = F) +
+  ggrepel::geom_text_repel(size = 3) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  labs(x = NULL, y = 'Estimate', 
+       subtitle = 'Max. score & threshold rule')
+
+conf_knn <- knn_conf_mat |> 
   ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
   geom_point(alpha = 0.4, show.legend = F) +
-  ggrepel::geom_text_repel(size = 4) +
-  # scale_size(trans = 'log2') +
+  ggrepel::geom_text_repel(size = 3) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  labs(x = NULL, y = NULL, 
+       subtitle = '7-nearest neighbors')
+
+conf_glmnet <- glmnet_conf_mat |> 
+  ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
+  geom_point(alpha = 0.4, show.legend = F) +
+  ggrepel::geom_text_repel(size = 3) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
   labs(x = 'Truth', y = 'Estimate', 
-       title = 'Random forest')
+       subtitle = 'Logistic regression (alpha = 0.25, lambda = 1e-5)')
+
+conf_rf <- rf_conf_mat |> 
+  ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
+  geom_point(alpha = 0.4, show.legend = F) +
+  ggrepel::geom_text_repel(size = 3) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  labs(x = 'Truth', y = NULL, 
+       subtitle = 'Random forest (mtry = 7)')
+
+conf_rules + conf_knn + conf_glmnet + conf_rf
 
 
 
-
-
-
-
-
-# 
-# ## Perfomance Summary ------------------------------------------------
-# ## outer folds results
-# df <- 
-#   nest_cv_summary |> 
-#   filter(model_type !=  "decision tree") |> 
-#   filter(!.metric %in% c('precision', 'recall', 'f_meas', 'kap', 'accuracy')) |> 
-#   mutate(
-#     .metric = as.character(.metric),
-#     .metric = as_factor(case_when(
-#       .metric == 'sens' ~ 'sensitivity',
-#       .metric == 'spec' ~ 'specificity',
-#       TRUE ~ .metric
-#     ))) |> 
-#   mutate(
-#     min = map_dbl(values, min),
-#     max = map_dbl(values, max),
-#     .metric = fct_relevel(.metric, 'specificity', 'sensitivity', 'mcc')
-#   )
-# 
-# # performance metrics across outer folds with models tuned by the inner cv
-# all_metrics_plot <- df  |> 
-#   ggplot(aes(
-#     y = fct_rev(model_type), 
-#     x = mean, 
-#     xmax = mean + err, 
-#     xmin = mean - err
-#   )) +
-#   geom_vline(aes(xintercept = 1), alpha = 0.25) +
-#   # geom_jitter(data = df |> unnest(values),
-#   #             aes(x = values), shape = 1, alpha = 0.7) +
-#   ggbeeswarm::geom_quasirandom(
-#     data = df |> unnest(values),groupOnX = F,
-#     aes(x = values), shape = 16, alpha = 0.33
-#   ) +
-#   # geom_errorbarh(color = 'blue1', alpha = 0.5) +
-#   geom_pointrange(color = 'red2', alpha = 0.6, size = 1, fatten = 1.2) +
-#   facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
-#   labs(y = NULL, 
-#        x = NULL, 
-#        title = '3-fold nested cross-validation repeated 3 times',
-#        subtitle = 'Performance estimates for the hyperparameter tuning process') +
-#   theme_bw() +
-#   theme(axis.text.x = element_text(size = 8),
-#         axis.text.y = element_text(size = 10))
-# 
-# all_metrics_plot
 
