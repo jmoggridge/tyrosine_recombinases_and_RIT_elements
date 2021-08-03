@@ -1,3 +1,50 @@
+### P2_A7 --------------------------------------------------------------------
+
+## This script does:
+## Removing redundant INSD records for which there is already a RefSeq record
+## Fixing taxonomy labels where missing.
+
+### NOTES ----------------------------------------------------------------
+
+## Nucleotide summaries are missing too many assembly GIs and accessions to use those for filtering.
+
+## Checking:
+# I checked all the records by hand and made a giant list of duplicated records where both INSD and RefSeq had records for the same genome for a given strain.
+
+## Tried identify any assemblies represented in insd and refseq where refseq is missing a rit.
+# INSD sequences for taxa not represented in Refseq subset.
+# tax_id 169430
+# 997885, RIT_14, Bacteroides ovatus CL02T12C04
+
+## Other notes:
+# A back to back dimer RIT
+# https://www.ncbi.nlm.nih.gov/nuccore/UGYX01000003.1?report=genbank&log$=seqview&from=734712&to=742000
+
+# BROKEN ASSEMBLY: ---- strain names for assemblies
+# Rit removed from Refseq assembly - present in INSD assembly
+# Could just be missing corresponding RefSeq records though - not necessarily missing from the RefSeq assembly:
+# "Bacteroides finegoldii DSM 17565" ids:
+# 238852439 240114316 242353479
+# 'Bacteroides sp. 4_1_36' refseq is missing insd contig:
+# 316902394 318103433 319430555
+# Caballeronia sordidicola strain ES_PA-B12 Ga0193686_11 - not in refseq?
+# 1534957005 1534954659 1537750292 1534944218
+# Johnsonella ignava ATCC 51276,
+# Marinobacter sp. ELB17 1101232001194,
+# Prevotella buccae ATCC 33574 contig00043 is missing from RefSeq?
+# Acidovorax facilis isolate 7, whole genome shotgun sequence - has 2 different assemblies, with different RITs.
+# Cupriavidus taiwanensis isolate Cupriavidus taiwanensis mpp 1.1 plasmid CBM2626_p
+# has a plasmid RIT that is absent in assembly NZ_LT976998.1; 
+
+# RECENT MOBILITY NOTES -----
+# multiple copies of identical element. 
+# Croceicoccus marinus strain OT19 chromosome and plasmid plas1 (3 copies + another RIT)
+# Rhizobium leguminosarum strain ATCC 14479 chromosome and plasmids x 6.
+# Sphingobium herbicidovorans strain MH - chromosome and plasmids
+# Sphingobium sp. TKS 
+
+# Setup =================================================================
+
 library(tidyverse)
 library(glue)
 library(lubridate)
@@ -10,61 +57,13 @@ for_viewing <- function(rits){
     View()
 }
 
-### ----
 
-## RIT distinct results EDA and grouping by similarity to filter results
-# which to keep when removing unnecessary duplicates from multiple assemblies??
-# which are complete sequence / contig / other?
-# complete vs partial?
-# missing contigs in final assemblies?
+# Id lists =================================================================
 
-
-## identify any assemblies represented in insd and refseq where refseq is missing a rit.
-#  INSD sequences for taxa not represented in Refseq subset.
-# tax_id 169430
-#  997885, RIT_14, Bacteroides ovatus CL02T12C04
-
-## Other notes:
-
-# A back to back dimer RIT
-# https://www.ncbi.nlm.nih.gov/nuccore/UGYX01000003.1?report=genbank&log$=seqview&from=734712&to=742000
-
-
-# BROKEN ASSEMBLY: ---- strain names for assemblies
-# Rit removed from Refseq assembly - present in INSD assembly
-
-# "Bacteroides finegoldii DSM 17565"
-# 238852439 240114316 242353479
-
-# 'Bacteroides sp. 4_1_36' refseq is missing insd contig
-# 316902394 318103433 319430555
-
-# Caballeronia sordidicola strain ES_PA_B12
-# Caballeronia sordidicola strain ES_PA-B12 Ga0193686_11 - not in refseq?
-# 1534957005 1534954659 1537750292 1534944218
-
-# Johnsonella ignava ATCC 51276,
-# Marinobacter sp. ELB17 1101232001194,
-# Prevotella buccae ATCC 33574 contig00043 is missing from RefSeq?
-
-# Acidovorax facilis isolate 7, whole genome shotgun sequence - has 2 different assemblies, with different RITs.
-
-# Cupriavidus taiwanensis isolate Cupriavidus taiwanensis mpp 1.1 plasmid CBM2626_p
-# has a plasmid RIT that is absent in assembly NZ_LT976998.1; 
-
-# RECENT MOBILITY NOTES -----
-# multiple copies of identical element. 
-# Croceicoccus marinus strain OT19 chromosome and plasmid plas1 (3 copies + another RIT)
-# Rhizobium leguminosarum strain ATCC 14479 chromosome and plasmids x 6.
-# Sphingobium herbicidovorans strain MH - chromosome and plasmids
-# Sphingobium sp. TKS 
-
-
-## Id lists ----
-
-## redundant ids to remove, already have a different assembly.
-# Prefer refseq to insd where similar record is given by both;
-# Notice that often where insd and refseq have same assemblies - insd has extra contigs that also contain rits - have left these in place.
+# This is a list of redundant ids to remove, already have a different assembly.
+# Prefer refseq to insd where similar record is given by both; prefer scaffold to contig-level assembly
+# I noticed that sometimes where insd and refseq have same assemblies - insd has extra contigs that also contain rits - have left these in place.
+# This could just be because I didn't get ALL the possible genbank records
 
 redundant_records <- c(
   '400374209', '654778780', '918160129', '355544533', '1044497026',
@@ -167,18 +166,11 @@ redundant_records <- c(
   '1417744410', '1133385480', '1537203256', '946135381', '945815692' , '469481440', 
   '1700681327', '1537469923', '384039839', '1174162640', '1019513169', '1019513283',
   '1019514939', '1019395847', '1253857670', '25168258', 
-  '356692854'
+  '356692854', '942698728', '1777945395', '392627216', '966499388', '966499399', 
+  '1213754548', '821179869', '754936391', '918697158', '1280123531', '507781804'
 )
 
-# after filtering those, I found these ids were from a different assembly of another sequence. Again I kept the refseq where possible, unless there was an assembly that was newer with more Rits, or if there was a scaffold-level assembly found, rather than contig-level.
-
-
-redundant_assemblies <- c(
-  '942698728', '1777945395', '392627216', '966499388', '966499399', '1280123531',
-  '1213754548', '821179869', '754936391', '918697158'
-)
-
-
+# Was starting to add strain info where present in title but not in proper column for strain from the taxonomy records. Gave up. Too many to fix by hand.
 strains <- tribble(
   ~nuc_id, ~strain,
   '1899015', 'MES1',
@@ -195,13 +187,13 @@ rit_elements <- read_rds('./results/rit_elements.rds') |>
   select(-trio_id)
 glimpse(rit_elements)
 
-# 1560  RITs after filtering redundant records
+## Keep only the refseq records for duplicated (seq, taxon) pairs.
+# 1,558  RITs after filtering redundant records
 rit_elements <- rit_elements |> 
-  filter(!nuc_id %in% c(redundant_records, redundant_assemblies)) 
+  filter(!nuc_id %in% c(redundant_records)) 
 glimpse(rit_elements)
 
 # distinct_rits -> obs grouped by RIT seq. from start p1 to end p3 and taxon id
-
 # rits grouped by exact dna sequence over coding region
 distinct_rits <- read_rds('results/distinct_RITs.rds')
 glimpse(distinct_rits)
@@ -213,21 +205,17 @@ nuc_summary <- read_rds('data/CDD/nuc_summary_fixed.rds') |>
             caption, geneticcode, extra, idgiclass, comment)) |> 
   mutate(slen = as.numeric(slen),
          across(contains('date'), ~lubridate::ymd(.x))) 
+glimpse(nuc_summary)
 
-# glimpse(nuc_summary)
-nuc_summary
 
-# 667 distinct taxa
+# 666 distinct taxa
 rit_elements |> dplyr::count(tax_id) |> nrow()
-# 1097 nr records
+# 1086 nr records
 rit_elements |> dplyr::count(nuc_id) |> nrow()
 # 916 unique RIT sequences from p1-p3
 rit_elements |> dplyr::count(rit_dna) |> nrow()
 
 ## 2 Filter -------------------------------------------
-
-## preferably keep only the refseq records for duplicated (seq, taxon) pairs.
-
 
 # unnest rit elements' occurrences in all records
 # keep non-redundant records
@@ -244,21 +232,25 @@ rits_with_nuc_details <-  distinct_rits |>
             superkingdom, strain.x, strain.y))
 glimpse(rits_with_nuc_details)
 
-# these are the 702 records that were removed...
+# these are the 704 records that were removed...
 redundant_rec <-  rits_with_nuc_details |> 
   filter(nuc_id %in% c(redundant_records))
 redundant_rec
-redundant_asm <-  rits_with_nuc_details |> 
-  filter(nuc_id %in% c(redundant_assemblies))
-redundant_asm
+write_rds(redundant_rec, 'data/redundant_records_rits.rds')
 
-# 1560 rit results across 1087 nr records
+# 17 that are redundant assemblies...
+# redundant_asm <-  rits_with_nuc_details |> 
+#   filter(nuc_id %in% c(redundant_assemblies))
+# redundant_asm
+# write_rds(redundant_asm, 'data/redundant_assembly_rits.rds')
+
+# 1558 rit results across 1086 nr records
 nr_rits <- rits_with_nuc_details |> 
-  filter(!nuc_id %in% c(redundant_records, redundant_assemblies)) 
+  filter(!nuc_id %in% c(redundant_records)) 
 nr_rits |> dplyr::count(nuc_id) |> nrow()
 
 ## visually inspect sequence records included in data w list of RITs
-# nr_rits |> for_viewing()
+## for_viewing(nr_rits)
 
 
 # fix missing taxonomy labels
@@ -291,6 +283,7 @@ rits |>
 
 glimpse(rits)
 
+# write to file for analysis: finding active RITs, finding IRs
 write_rds(rits, 'results/non_redundant_rits.rds')
 
 
@@ -304,27 +297,4 @@ write_rds(rits, 'results/non_redundant_rits.rds')
 # )
 # 
 # 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
