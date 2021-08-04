@@ -267,12 +267,8 @@ rits <- nr_rits |>
     phylum = str_to_title(phylum),
     class = ifelse(is.na(class), glue('unclassified {phylum}'), class),
     class = str_replace(class, 'Betaproteobacteria incertae sedis',
-                        'unclassified Betaproteobacteria'),
-    order = ifelse(is.na(order), class, order),
-    family = ifelse(is.na(family), class, family),
-    genus = ifelse(is.na(genus), class, genus),
-    species = ifelse(is.na(species), 'sp.', species),
-    )
+                        'unclassified Betaproteobacteria')
+    ) 
 
 rits |> 
   select(tax_id, clade, phylum, class, order, family, genus, species) |> 
