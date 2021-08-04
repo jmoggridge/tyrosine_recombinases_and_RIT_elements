@@ -282,6 +282,7 @@ glimpse(rits)
 # write to file for analysis: finding active RITs, finding IRs
 write_rds(rits, 'results/non_redundant_rits.rds')
 
+beepr::beep()
 
 # View(
 #   nr_rits |>
@@ -293,4 +294,3 @@ write_rds(rits, 'results/non_redundant_rits.rds')
 # )
 # 
 # 
-

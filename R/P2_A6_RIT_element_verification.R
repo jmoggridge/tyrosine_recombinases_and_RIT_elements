@@ -14,6 +14,7 @@
 # Saved as ./results/rit_elements.rds
 # Observations are grouped by taxon id and RIT coding sequence, there are 1186 distinct sequence, taxon id combinations.
 
+# TODO rerun with more upstream and downstream to see if the RIT is contained within a larger element...
 
 library(tidyverse)
 library(janitor)
@@ -178,10 +179,10 @@ rit_dna <-
   rowwise() |> 
   mutate(
     # can't try to substring past (1:length) range
-    pl_upstream_bgn = max(1, rit_start - 500),
-    pl_downstream_end = min(nuc_length, rit_stop + 500),
-    min_upstream_bgn = min(nuc_length, rit_stop + 500),
-    min_downstream_end = max(1, rit_start - 500),
+    pl_upstream_bgn = max(1, rit_start - 1000),
+    pl_downstream_end = min(nuc_length, rit_stop + 1000),
+    min_upstream_bgn = min(nuc_length, rit_stop + 1000),
+    min_downstream_end = max(1, rit_start - 1000),
     # extract upstream seq
     rit_dna_upstream = ifelse(
       test = rit_strand == 'minus',

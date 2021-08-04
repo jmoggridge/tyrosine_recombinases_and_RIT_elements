@@ -57,7 +57,7 @@ nr_rits |> filter(rit_length < 2500) |>
 # Now 1559 RIT elements with 915 distinct coding sequences
 nr_rits <- nr_rits |> 
   filter(rit_length < 4000)
-nr_rits |> count(rit_id) |> nrow()
+nr_rits |> dplyr::count(rit_id) |> nrow()
 
 
 
@@ -285,20 +285,20 @@ write_rds(rits_nj_clustered, 'results/non_redund_rits_NJ_clustered.rds')
 # 747 clusters @ 0.005 distance
 rits_nj_clustered |> 
   group_by(cluster0_005NJ) |> 
-  count(nuc_id) |> 
+  dplyr::count(nuc_id) |> 
   arrange(desc(n))
 
-# 
+# pointless graph to show how many clusters at a given distance
 tribble(
   ~distance, ~n_clusters,
-  0.5, rits_nj_clustered |> count(cluster0_5NJ) |> nrow(),
-  0.3, rits_nj_clustered |> count(cluster0_3NJ) |> nrow(),
-  0.15, rits_nj_clustered |> count(cluster0_15NJ) |> nrow(),
-  0.1, rits_nj_clustered |> count(cluster0_1NJ) |> nrow(),
-  0.05, rits_nj_clustered |> count(cluster0_05NJ) |> nrow(),
-  0.01, rits_nj_clustered |> count(cluster0_01NJ) |> nrow(),
-  0.005, rits_nj_clustered |> count(cluster0_005NJ) |> nrow(),
-  0.001, rits_nj_clustered |> count(cluster0_001NJ) |> nrow(),
+  0.5, rits_nj_clustered |> dplyr::count(cluster0_5NJ) |> nrow(),
+  0.3, rits_nj_clustered |> dplyr::count(cluster0_3NJ) |> nrow(),
+  0.15, rits_nj_clustered |> dplyr::count(cluster0_15NJ) |> nrow(),
+  0.1, rits_nj_clustered |> dplyr::count(cluster0_1NJ) |> nrow(),
+  0.05, rits_nj_clustered |> dplyr::count(cluster0_05NJ) |> nrow(),
+  0.01, rits_nj_clustered |> dplyr::count(cluster0_01NJ) |> nrow(),
+  0.005, rits_nj_clustered |> dplyr::count(cluster0_005NJ) |> nrow(),
+  0.001, rits_nj_clustered |> dplyr::count(cluster0_001NJ) |> nrow(),
 ) |> 
   ggplot(aes(distance, n_clusters)) +
   geom_point() + geom_path() +
@@ -308,4 +308,4 @@ tribble(
 
 # really not sure what to do with the giant trees? They only have the 916 unique sequences, but need to reduce the number of highly similar sequences somehow to reduce the tree complexity for human consumption...
 
-
+beepr::beep()
