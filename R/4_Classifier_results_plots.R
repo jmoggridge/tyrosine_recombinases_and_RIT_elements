@@ -160,20 +160,23 @@ outer_scores_df <-
   mutate(
     .metric = as.character(.metric),
     .metric = as_factor(case_when(
-      .metric == 'sens' ~ 'sensitivity',
-      .metric == 'spec' ~ 'specificity',
+      .metric == 'sens' ~ 'Sensitivity',
+      .metric == 'spec' ~ 'Specificity',
+      .metric == 'mcc' ~ 'MCC',
+      .metric == 'bal_accuracy' ~ 'Balanced Accuracy',
       TRUE ~ .metric
-    ))) |> 
-  mutate(
+    )),
+    model_type = ifelse(model_type == 'multinomial regression', 'logistic regression', model_type),
+    model_type = str_to_title(model_type),
     min = map_dbl(values, min),
     max = map_dbl(values, max),
-    .metric = fct_relevel(.metric, 'specificity', 'sensitivity', 'mcc'),
-    model_type = ifelse(model_type == 'multinomial regression', 'logistic regression', model_type)
+    .metric = fct_relevel(.metric, 'Specificity', 'Sensitivity', 'MCC'),
   )
 
 
 # performance metrics across outer folds with models tuned by the inner cv
 all_metrics_plot <- outer_scores_df  |> 
+  # mutate() |> 
   ggplot(aes(
     y = fct_rev(model_type), 
     x = mean, 
@@ -183,7 +186,7 @@ all_metrics_plot <- outer_scores_df  |>
   geom_vline(aes(xintercept = 1), alpha = 0.25) +
   ggbeeswarm::geom_quasirandom(
     data = outer_scores_df |> unnest(values),groupOnX = F,
-    aes(x = values), shape = 16, alpha = 0.33
+    aes(x = values), shape = 1, alpha = 0.5
   ) +
   geom_pointrange(color = 'red2', alpha = 0.6, size = 1, fatten = 1.2) +
   facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
@@ -193,8 +196,10 @@ all_metrics_plot <- outer_scores_df  |>
        subtitle = 
          'Performance estimates for the hyperparameter tuning process.\nPoint-ranges shows mean +/- sd; points show outer-fold performance') +
   theme_bw() +
-  theme(axis.text.x = element_text(size = 8),
-        axis.text.y = element_text(size = 10))
+  theme(axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 12), 
+        strip.text = element_text(size = 12)
+        )
 
 all_metrics_plot
 
