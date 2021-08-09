@@ -99,6 +99,13 @@ multiple_rit_copies |>
   left_join(nr_rits |> select(rit_id, cluster0_01NJ) |> distinct()) |> 
   dplyr::count(cluster0_01NJ) |> 
   arrange(desc(n))
+
+# 93 clusters @ 0.05
+multiple_rit_copies |> 
+  left_join(nr_rits |> select(rit_id, cluster0_05NJ) |> distinct()) |> 
+  dplyr::count(cluster0_05NJ) |> 
+  arrange(desc(n))
+
 # 72 @ 0.3
 multiple_rit_copies |> 
   left_join(nr_rits |> select(rit_id, cluster0_3NJ) |> distinct()) |> 
@@ -155,10 +162,10 @@ do_local_alignment <- function(x, y){
       al_rc_end = str_locate(y, subject)[1,2],
       al_align = list(aligned),
       # get position relative to start (5') and end (3') of coding sequence
-      ir_5p_start =  -500 + al_fwd_start,
-      ir_5p_end = -500 + al_fwd_end,
-      ir_3p_start =  500 - al_rc_start,
-      ir_3p_end = 500 - al_rc_end,
+      ir_5p_start =  -1000 + al_fwd_start,
+      ir_5p_end = -1000 + al_fwd_end,
+      ir_3p_start =  1000 - al_rc_start,
+      ir_3p_end = 1000 - al_rc_end,
     ))
 }
 
@@ -172,7 +179,6 @@ rit_IRs <- multiple_rit_copies |>
 rit_IRs |> 
   select(-c(matches('head|tail|first|last|dna|upstream|downstream'))) |> 
   relocate(contains('rit'), contains('nuc')) |> 
-  
   View()
 
 sum(is.na(rit_IRs))
@@ -180,21 +186,56 @@ sum(is.na(rit_IRs))
 beepr::beep()
 glimpse(rit_IRs)
 
+# there are 4 unusually long alignments -> RITs w/in larger element?
 rit_IRs_df <- nr_rits |> 
   right_join(rit_IRs) |> 
   filter(al_length < 200)
+
+  
 write_rds(rit_IRs_df, 'results/nr_rits_clustered_IRs.rds')
 
 glimpse(rit_IRs_df)
 
 # length, matches
 rit_IRs_df |> 
-  pivot_longer(c(al_match, al_percent_id, al_length)) |> 
+  pivot_longer(c(al_length, al_percent_id,), names_to = 'name') |> 
+  mutate(name = case_when(
+    # str_detect(name,'al_match') ~ 'Matching positions',
+    name == 'al_length' ~ 'Alignment length',
+    name == 'al_percent_id' ~ '% Identity',
+    # name == 'al_score' ~ 'Alignment score',
+    TRUE ~ 'NA'
+  )) |> 
   ggplot(aes(value)) +
   geom_histogram() +
-  facet_wrap(~name, scales = 'free') +
-  theme_light() +
-  labs(title = 'Inverted repeat alignments for active RITs (multiple-copy per contig)')
+  facet_wrap(~name, scales = 'free', nrow = 1) +
+  theme_bw() +
+  labs(
+    x = NULL,
+    title = 'Inverted repeat alignments for active RITs (multiple-copy per contig)')
+
+# length, matches
+rit_IRs_df |> 
+  filter(ir_5p_start > -400) |> 
+  filter(ir_3p_start < 400) |> 
+  ggplot(aes(al_length)) +
+  geom_histogram() +
+  theme_bw() +
+  labs(
+    x = 'bp',
+    title = 'IR aligned length')
+
+# length, matches
+rit_IRs_df |> 
+  filter(ir_5p_start > -400) |> 
+  filter(ir_3p_start < 400) |> 
+  ggplot(aes(al_percent_id)) +
+  geom_histogram() +
+  theme_bw() +
+  labs(
+    x = 'percent',
+    title = 'IR complementarity')
+
 
 rit_IRs_df |> 
   pivot_longer(ir_5p_start:ir_3p_end) |> 
@@ -207,6 +248,7 @@ rit_IRs_df |>
   facet_wrap(~fct_rev(side), scales = 'free') +
   theme_light() +
   labs(
+    x = 'bp',
     subtitle =
       'Where are the aligned inverted repeats located relative to beginning and end \
 of the coding sequence?', 
@@ -232,16 +274,40 @@ B <- rit_IRs_df |>
   geom_segment() +
   scale_color_viridis_c(option = 'D', direction = -1) +
   theme_bw() +
-  labs(y = NULL, x = 'Downstream position')
+  labs(y = NULL, x = 'Downstream position', color = "% Complementarity")
 
 library(patchwork)
 A + B & plot_layout(guides = 'collect')
 
 
 
+rit_IRs_df |> 
+  ggplot(aes(al_length, al_percent_id, color = al_score)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  theme_bw()
+  
+
 # show some sample alignments....
 
 rit_IRs_df$al_align[[1]]
 rit_IRs_df$al_align[[25]]
 rit_IRs_df$al_align[[46]]
+
+rit_IRs_df |> 
+  filter(al_score == max(al_score))
+
+
+
+rits_long_IR <- nr_rits |> 
+  right_join(rit_IRs) |> 
+  filter(al_length > 200)
+
+rits_long_IR |> 
+  mutate(row = row_number()) |> 
+  ggplot(aes(y = row, yend = row, x = ir_5p_start, xend = ir_5p_end, color = al_percent_id)) +
+  geom_segment(show.legend = F) +
+  scale_color_viridis_c(option = 'D', direction = -1) +
+  theme_bw() +
+  labs(y = 'RIT element', x = 'Upstream position')
 
