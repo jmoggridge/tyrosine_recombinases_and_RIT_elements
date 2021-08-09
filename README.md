@@ -21,7 +21,7 @@
 **1 **. Create a tool to **classify 'phage integrase' proteins** by their catalytic domains, in line with the **20 subfamilies** described by Smyshlaev *et al.* (2021).
 
 
-**2**. Apply classifier to known integrases in sequenced genomes and mobile element databases. For **RitA, RitB, and RitC** domains, map their genomic coordinates and check whether there are multiple tyrosine recombinases constituting a **RIT element**. Characterize the arrangement of subfamilies, flanking inverted repeats, and their insertion sites in terms of flanking genes.
+**2**. Apply classifier to sequenced genomes and mobile element databases. For **RitA, RitB, and RitC** domains, map their genomic coordinates and check whether there are multiple tyrosine recombinases constituting a **RIT element**. Characterize the arrangement of subfamilies, flanking inverted repeats, and their insertion sites in terms of flanking genes.
 
 
 ------------------------------------------------------------------------
@@ -478,29 +478,62 @@ Setup local alignment Inverted repeat finder.
 
 Meeting. 
 Did some stuff for Mike.
-Too tired to work; too 
+Too tired to work; too stressed to chill
 
-#### Weds 29th
+#### Thurs 29th
 
 2 meetings with Mike. Probably have some part time work for me. Nothing certain yet..
 
-#### Thurs 30th
+#### Fri 30th
 
-Called the police on my horrible neighbors
+Personal day
 
+#### Sat-Mon 31st - 2nd Aug
 
-
-
-
-### TO DO
-
-Detect inverted repeats
-Reduce set of sequence down - keep only representative at strain level where many strains
-Reduce set of sequences down - distinct sequences at 0.005 level? 700ish?
+Worked on slide show.
 
 
+#### Tues 3rd august
+
+Almost finished writing slideshow - haven't even read through it all once yet.
+Still missing RIT parts... haven't finished RIT analysis is why...
 
 
+RIT analysis coding
+- A6 - added comments & preamble
+- A7 - added comments & preamble
+- A8 
+  - clustering... need to find out what type of distance... still no idea,
+  - what to do to make trees even remotely readable??
+
+- A9
+  - fixed error where gaps weren't being removed, locations of IRs was NA.
+  - 
+
+#### Sun Aug 7th
+
+Trying to struggle through Methods writing
+
+
+#### Monday Aug 8th
+
+Trying to struggle through Results writing 
+Trying to struggle through Discussion writing 
+Trying to struggle through Introduction writing 
+Trying to struggle through Abstract writing 
+
+
+### Which sequences seem to be a passenger on parent element?
+
+RIT_192 in nucleotide 780080146 - same at 5'end...
+
+RIT_196 in 1015406133
+and
+RIT_196 in 938154877
+
+Are these in different strains?
+RIT_210, 1840186009
+RIT_210, 1840190378
 
 
 
@@ -526,17 +559,6 @@ Reduce set of sequences down - distinct sequences at 0.005 level? 700ish?
 - INTRO
 - ABSTRACT
 - FORMATTING
-
-
-**Part 1**
-
-  - [ ] redo plots for regular cv - compare to nested ; incorp final valid resuls and plot
-  - [ ] redo k-means with letting k be variable...
- 
-**Part 2**
-
-  - [ ] 
-
 
 
   
