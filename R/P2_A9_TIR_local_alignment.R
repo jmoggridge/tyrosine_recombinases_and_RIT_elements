@@ -111,14 +111,20 @@ multiple_rit_copies |>
   left_join(nr_rits |> select(rit_id, cluster0_3NJ) |> distinct()) |> 
   dplyr::count(cluster0_3NJ) |> 
   arrange(desc(n))
+
 # 49 clusters @ dist 0.5
 multiple_rit_copies |> 
   left_join(nr_rits |> select(rit_id, cluster0_5NJ) |> distinct()) |> 
   dplyr::count(cluster0_5NJ) |> 
   arrange(desc(n))
-
+# 
+# rits |> 
+#   group_by(cluster0_5NJ) |> 
+#   select(cluster0_5NJ, phylum) |> 
+#   count(phylum) |> View()
 
 # multiple_rit_copies |> View()
+
 skimr::skim(multiple_rit_copies)
 
 # create forward and rev complement seq to search for TIRs
@@ -137,7 +143,7 @@ write_rds(multiple_rit_copies, './data/multiple_rit_copies.rds')
 # element
 fasta <- Biostrings::DNAStringSet(multiple_rit_copies$head_tail)
 names(fasta) <- multiple_rit_copies$head_tail_name
-DECIPHER::BrowseSeqs(fasta)
+# DECIPHER::BrowseSeqs(fasta)
 
 
 do_local_alignment <- function(x, y){
@@ -176,10 +182,10 @@ rit_IRs <- multiple_rit_copies |>
   unnest_wider(col = alignment) |> 
   right_join(multiple_rit_copies, by = c("obs_id", "upstream", "rc_downstream"))
 
-rit_IRs |> 
-  select(-c(matches('head|tail|first|last|dna|upstream|downstream'))) |> 
-  relocate(contains('rit'), contains('nuc')) |> 
-  View()
+# rit_IRs |> 
+#   select(-c(matches('head|tail|first|last|dna|upstream|downstream'))) |> 
+#   relocate(contains('rit'), contains('nuc')) |> 
+#   View()
 
 sum(is.na(rit_IRs))
 
@@ -188,126 +194,8 @@ glimpse(rit_IRs)
 
 # there are 4 unusually long alignments -> RITs w/in larger element?
 rit_IRs_df <- nr_rits |> 
-  right_join(rit_IRs) |> 
-  filter(al_length < 200)
-
+  right_join(rit_IRs) 
   
 write_rds(rit_IRs_df, 'results/nr_rits_clustered_IRs.rds')
 
 glimpse(rit_IRs_df)
-
-# length, matches
-rit_IRs_df |> 
-  pivot_longer(c(al_length, al_percent_id,), names_to = 'name') |> 
-  mutate(name = case_when(
-    # str_detect(name,'al_match') ~ 'Matching positions',
-    name == 'al_length' ~ 'Alignment length',
-    name == 'al_percent_id' ~ '% Identity',
-    # name == 'al_score' ~ 'Alignment score',
-    TRUE ~ 'NA'
-  )) |> 
-  ggplot(aes(value)) +
-  geom_histogram() +
-  facet_wrap(~name, scales = 'free', nrow = 1) +
-  theme_bw() +
-  labs(
-    x = NULL,
-    title = 'Inverted repeat alignments for active RITs (multiple-copy per contig)')
-
-# length, matches
-rit_IRs_df |> 
-  filter(ir_5p_start > -400) |> 
-  filter(ir_3p_start < 400) |> 
-  ggplot(aes(al_length)) +
-  geom_histogram() +
-  theme_bw() +
-  labs(
-    x = 'bp',
-    title = 'IR aligned length')
-
-# length, matches
-rit_IRs_df |> 
-  filter(ir_5p_start > -400) |> 
-  filter(ir_3p_start < 400) |> 
-  ggplot(aes(al_percent_id)) +
-  geom_histogram() +
-  theme_bw() +
-  labs(
-    x = 'percent',
-    title = 'IR complementarity')
-
-
-rit_IRs_df |> 
-  pivot_longer(ir_5p_start:ir_3p_end) |> 
-  mutate(
-    side = ifelse(str_detect(name, '5p'), 'upstream', 'downstream'),
-    startstop = ifelse(str_detect(name, 'start'), 'start', 'stop')) |> 
-  
-  ggplot(aes(value, fill = startstop, color = startstop)) +
-  geom_density(alpha =0.2) +
-  facet_wrap(~fct_rev(side), scales = 'free') +
-  theme_light() +
-  labs(
-    x = 'bp',
-    subtitle =
-      'Where are the aligned inverted repeats located relative to beginning and end \
-of the coding sequence?', 
-    color = NULL, fill = NULL)
-
-# left TIRs
-
-rit_IRs_df |> 
-  select(rit_id, tax_id, nuc_id, al_percent_id, ir_5p_start, ir_5p_end, ir_3p_start, ir_3p_end) |> 
-  View()
-
-A <- rit_IRs_df |> 
-  mutate(row = row_number()) |> 
-  ggplot(aes(y = row, yend = row, x = ir_5p_start, xend = ir_5p_end, color = al_percent_id)) +
-  geom_segment(show.legend = F) +
-  scale_color_viridis_c(option = 'D', direction = -1) +
-  theme_bw() +
-  labs(y = 'RIT element', x = 'Upstream position')
-
-B <- rit_IRs_df |> 
-  mutate(row = row_number()) |> 
-  ggplot(aes(y = row, yend = row, x = ir_3p_start, xend = ir_3p_end, color = al_percent_id)) +
-  geom_segment() +
-  scale_color_viridis_c(option = 'D', direction = -1) +
-  theme_bw() +
-  labs(y = NULL, x = 'Downstream position', color = "% Complementarity")
-
-library(patchwork)
-A + B & plot_layout(guides = 'collect')
-
-
-
-rit_IRs_df |> 
-  ggplot(aes(al_length, al_percent_id, color = al_score)) +
-  geom_point() +
-  scale_color_viridis_c() +
-  theme_bw()
-  
-
-# show some sample alignments....
-
-rit_IRs_df$al_align[[1]]
-rit_IRs_df$al_align[[25]]
-rit_IRs_df$al_align[[46]]
-
-rit_IRs_df |> 
-  filter(al_score == max(al_score))
-
-
-
-rits_long_IR <- nr_rits |> 
-  right_join(rit_IRs) |> 
-  filter(al_length > 200)
-
-rits_long_IR |> 
-  mutate(row = row_number()) |> 
-  ggplot(aes(y = row, yend = row, x = ir_5p_start, xend = ir_5p_end, color = al_percent_id)) +
-  geom_segment(show.legend = F) +
-  scale_color_viridis_c(option = 'D', direction = -1) +
-  theme_bw() +
-  labs(y = 'RIT element', x = 'Upstream position')
-
