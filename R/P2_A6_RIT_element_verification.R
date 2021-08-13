@@ -60,7 +60,6 @@ missing_cds <-
 glimpse(missing_cds)
 
 # keep only searches that worked -> 1,789 nuc ids w success = T
-# unnesting: there are 2,762 integrase trios in those 1,789 nucleotide records 
 rits <- rits |> 
   anti_join(missing_cds, by = c("nuc_id", "file")) |> 
   unnest(cols = c(rits), keep_empty = T)
@@ -102,7 +101,7 @@ rit_rs <- rits |>
   relocate(trio_id) 
 
 glimpse(rit_rs)
-
+length(unique(rit_rs$nuc_id))
 rm(rits, missing_cds, missing_results, gb_files)
 
 ## Taxon links =======================================================
@@ -264,7 +263,7 @@ rit_rs_aligned |> dplyr::count(p1_orientation, p2_orientation, p3_orientation)
 oriented_trios <- rit_rs_aligned |> 
   filter(rit_orientation %in% c('all forward', 'all reverse'))
 glimpse(oriented_trios)
-
+length(unique(oriented_trios$nuc_id))
 # View(oriented_trios |> select(-matches('dna')) |> relocate(contains('_pred')))
 
 # 2,262 have correct A-B-C arrangement
@@ -345,7 +344,7 @@ rem - nrow(non_overlapping_trios) - nrow(overlapping_abc_trios)
 
 ### Combine RIT elements, tidy table up
 rit_elements <- 
-  bind_rows(rit_abc_elements) |> 
+  rit_abc_elements |> 
   mutate(rit_id = row_number()) |> 
   mutate(p1_overlap = overlap_p1p2,
          p2_overlap = overlap_p2p3) |> 
@@ -361,7 +360,7 @@ rit_elements <-
 
 glimpse(rit_elements)
 write_rds(rit_elements, './results/rit_elements.rds')
-
+length(unique(rit_elements$nuc_id))
 
 # tidy up
 rm(CTn_DOT_elements, rit_rs_aligned, overlapping_abc_trios, rit_abc_elements,

@@ -192,10 +192,12 @@ sum(is.na(rit_IRs))
 beepr::beep()
 glimpse(rit_IRs)
 
-# there are 4 unusually long alignments -> RITs w/in larger element?
 rit_IRs_df <- nr_rits |> 
   right_join(rit_IRs) 
   
 write_rds(rit_IRs_df, 'results/nr_rits_clustered_IRs.rds')
 
 glimpse(rit_IRs_df)
+
+# there are 4 unusually long alignments -> RITs w/in larger element?
+# Some IRs  > 700bp long

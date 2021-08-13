@@ -170,6 +170,7 @@ redundant_records <- c(
   '1213754548', '821179869', '754936391', '918697158', '1280123531', '507781804'
 )
 
+length(redundant_records)
 # Was starting to add strain info where present in title but not in proper column for strain from the taxonomy records. Gave up. Too many to fix by hand.
 strains <- tribble(
   ~nuc_id, ~strain,

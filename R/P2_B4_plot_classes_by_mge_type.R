@@ -5,6 +5,29 @@ library(glue)
 library(waffle)
 library(rcartocolor)
 
+fix_this <- 
+  read_rds('./data/iceberg/iceberg_db_classed_proteins.rds') |> 
+  ungroup() |> 
+  filter(!is.na(prot_seq)) |> 
+  # remove these improperly identified ICEs
+  filter(str_detect(name, 'ICEMlSym')) |> 
+  mutate(across(c(knn, rf, glmnet), ~as.character(.x))) |> 
+  mutate(
+    mge_name = name,
+    consensus_pred = case_when(
+      knn == glmnet ~ knn,
+      knn == rf ~  knn,
+      rf == glmnet ~ rf,
+      rf != knn & rf != glmnet ~'no consensus',
+      TRUE ~ 'NA'
+    ),
+    description = str_remove(description, '^.*?\\s')
+  ) |> 
+  select(-name, -dna_seq) |> 
+  relocate(type, id, mge_name, organism) |> 
+  distinct() |> 
+  filter(consensus_pred != 'Other')
+
 iceberg <- 
   read_rds('./data/iceberg/iceberg_db_classed_proteins.rds') |> 
   ungroup() |> 
@@ -52,19 +75,22 @@ mge_integrase_count
 # first bar plot for Nicole: ICEberg integrases counts by mge type, without mislabelled tripartite ice
 iceberg_mge_integrases_barplot <- iceberg |> 
   left_join(mge_integrase_count) |> 
-  mutate(type = glue::glue('{type} ({n_integrases})')) |> 
+  mutate(type = glue::glue('{type} ({n_integrases} integrases)')) |> 
   filter(!consensus_pred %in% c('no consensus', 'Other')) |> 
   group_by(type) |> 
-  ggplot(aes(y = fct_rev(consensus_pred), fill = type)) + 
-  geom_bar() +
+  ggplot(aes(y = fct_rev(consensus_pred))) + 
+  geom_bar(show.legend = F) +
+  facet_wrap(~type) +
+  theme_bw() +
   labs(y = 'Predicted integrase subfamily', 
        fill = 'MGE type\n(n integrases)',
        title = 'Integrase subfamilies across MGE types',
        subtitle = 'ICEberg2.0 - experimental, intact database')
-
-write_rds(iceberg_mge_integrases_barplot, './results/iceberg_mge_integrases_barplot.rds')
 iceberg_mge_integrases_barplot
 
+write_rds(iceberg_mge_integrases_barplot, './results/iceberg_mge_integrases_barplot.rds')
+
+## alternately with stacked bars
 
 
 
@@ -101,14 +127,17 @@ iceberg_integrase_counts <-
          ))
 
 glimpse(iceberg_integrase_counts)
-# iceberg_integrase_counts |> 
-#   View()
+# iceberg_integrase_counts |> View()
+# iceberg_integrase_counts |> filter(type == 'CIME') |> View()
 
 ## How many integrases are present per element?
 iceberg_integrase_counts |> 
+  filter(!type == 'T4SS-type_ICE') |> 
   ggplot(aes(x = n_integrases)) +
   geom_bar() + 
-  facet_wrap(~type)
+  theme_bw() +
+  facet_wrap(~type, nrow = 1, scales = 'free_y') +
+  labs(x = 'Number of integrases per MGE', y = 'Number of MGEs')
 
 # what integrases are present on elements with only a single integrase/ 2+ integrases?
 counts_by_element <- 
@@ -119,19 +148,25 @@ counts_by_element <-
   mutate(subfamily = fct_rev(str_remove(subfamily, 'count_')))
 
 counts_by_element |> 
+  filter(!type== 'T4SS-type_ICE') |> 
   ggplot(aes(y = subfamily, x = count)) +
   geom_col() +
-  facet_grid(type~group)
+  facet_grid(group~type) +
+  theme_bw() +
+  labs(x = 'Count', y = 'Integrase subfamily')
 
 
 # plot of co-occurrence of subfamilies on MGEs for ICEs and IMEs.
 counts_by_element |> 
   filter(group == '2+ integrases') |> 
   filter(!type == 'T4SS-type_ICE') |> 
-  ggplot(aes(y = mge_name, x = count, fill = subfamily)) +
+  ggplot(aes(y = fct_rev(mge_name), x = count, fill = fct_rev(subfamily))) +
   geom_col(position = 'stack') +
   scale_fill_carto_d() +
-  facet_grid(type~., scales = 'free_y', space = 'free_y')
+  facet_grid(type~., scales = 'free_y', space = 'free_y') +
+  labs(y = 'MGE name', x = 'Count', fill = 'subfamily') +
+  theme_bw()
+  
 
 # Do we get ICEs with both a Tn916 and an IntSXT? NO!
 # I would expect the integrons and RIT elements to only occur on elements that also carry one of the putative functional groups since they only mobilize internally within a cell and wouldn't be responsible for moving the ICE. 

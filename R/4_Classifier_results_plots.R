@@ -155,7 +155,7 @@ nest_cv_summary |>
 outer_scores_df <- 
   nest_cv_summary |> 
   filter(model_type !=  "decision tree") |> 
-  filter(!.metric %in% c('precision', 'recall', 'kap', 'f_meas', 
+  filter(!.metric %in% c('precision', 'recall', 
                          'accuracy', 'npv', 'ppv')) |> 
   mutate(
     .metric = as.character(.metric),
@@ -163,10 +163,13 @@ outer_scores_df <-
       .metric == 'sens' ~ 'Sensitivity',
       .metric == 'spec' ~ 'Specificity',
       .metric == 'mcc' ~ 'MCC',
+      .metric == 'f_meas' ~ 'F Measure',
+      .metric == 'kap' ~ "Cohen's Kappa",
       .metric == 'bal_accuracy' ~ 'Balanced Accuracy',
       TRUE ~ .metric
     )),
     model_type = ifelse(model_type == 'multinomial regression', 'logistic regression', model_type),
+    model_type = ifelse(model_type == 'maxscore + threshold', 'top-score & threshold', model_type),
     model_type = str_to_title(model_type),
     min = map_dbl(values, min),
     max = map_dbl(values, max),
@@ -185,23 +188,111 @@ all_metrics_plot <- outer_scores_df  |>
   )) +
   geom_vline(aes(xintercept = 1), alpha = 0.25) +
   ggbeeswarm::geom_quasirandom(
-    data = outer_scores_df |> unnest(values),groupOnX = F,
-    aes(x = values), shape = 1, alpha = 0.5
+    data = outer_scores_df |> unnest(values), 
+    aes(x = values), shape = 1, alpha = 0.5,
+    groupOnX = F
   ) +
   geom_pointrange(color = 'red2', alpha = 0.6, size = 1, fatten = 1.2) +
-  facet_wrap(~.metric, nrow = 3, scales = 'free_x') +
+  facet_wrap(~.metric, nrow = 2, scales = 'free_x') +
   labs(y = NULL, 
        x = NULL, 
-       title = '3-fold nested cross-validation repeated 3 times',
-       subtitle = 
-         'Performance estimates for the hyperparameter tuning process.\nPoint-ranges shows mean +/- sd; points show outer-fold performance') +
+       # title = '3-fold nested cross-validation repeated 3 times',
+       # subtitle = 
+       # 'Performance estimates for the hyperparameter tuning process.\nPoint-ranges shows mean +/- sd; points show outer-fold performance'
+  ) +
   theme_bw() +
   theme(axis.text.x = element_text(size = 10),
         axis.text.y = element_text(size = 12), 
         strip.text = element_text(size = 12)
-        )
+  )
 
 all_metrics_plot
+
+## Statistical testing -----------------------------------------------------
+
+## significance tests for nested CV
+MCC_aov <- aov(values ~ model_type, 
+      data = 
+        outer_scores_df |> 
+        unnest(values) |> 
+        filter(.metric == 'MCC')
+      )
+summary(MCC_aov)
+# check that variance is homogenous (yes)
+# plot(MCC_aov)
+TukeyHSD(MCC_aov)
+
+
+
+spec_aov <- aov(values ~ model_type, 
+               data = 
+                 outer_scores_df |> 
+                 unnest(values) |> 
+                 filter(.metric == 'Specificity')
+)
+# plot(spec_aov)
+summary(spec_aov)
+TukeyHSD(spec_aov)
+
+sens_aov <- aov(values ~ model_type, 
+                data = 
+                  outer_scores_df |> 
+                  unnest(values) |> 
+                  filter(.metric == 'Sensitivity')
+)
+# ANOVA test assumes that, the data are normally distributed and the variance across groups are homogeneous:
+# variance of sensitivity residuals doesn't conform to assumptions
+# ie. there seems to be a relationship between residuals and fitted values
+# plot(sens_aov)
+summary(sens_aov)
+TukeyHSD(sens_aov)
+
+# test for homogeneity of variance
+library(car)
+leveneTest(values ~ model_type, 
+           data = 
+             outer_scores_df |> 
+             unnest(values) |> 
+             filter(.metric == 'Sensitivity')
+           )
+# p < 0.01; variance across groups is signif different
+# use Welch's one-way test instead of anova:
+oneway.test(values ~ model_type,
+            data = outer_scores_df |>
+              unnest(values) |>
+              filter(.metric == 'Sensitivity'))
+# differences between groups are significant
+
+kruskal.test(values ~ model_type,
+            data = outer_scores_df |>
+              unnest(values) |>
+              filter(.metric == 'Sensitivity'))
+# differences between groups are significant
+
+
+bal_acc_aov <- aov(values ~ model_type, 
+                data = 
+                  outer_scores_df |> 
+                  unnest(values) |> 
+                  filter(.metric == 'Balanced Accuracy')
+)
+summary(bal_acc_aov)
+TukeyHSD(bal_acc_aov)
+
+fmeas_aov <- aov(values ~ model_type, 
+                   data = 
+                     outer_scores_df |> 
+                     unnest(values) |> 
+                     filter(.metric == 'F Measure')
+)
+summary(fmeas_aov)
+TukeyHSD(fmeas_aov)
+
+
+
+rm(sens_aov, spec_aov, MCC_aov, fmeas_aov, bal_acc_aov,
+   sens_owt)
+
 
 
 #### Inner CV results for plots ----------------------------------------
@@ -253,7 +344,7 @@ knn_plot <- knn_scores_plot +
        )
 knn_plot
 
-rm(knn_pooled_scores, grouped_knn_scores, knn_scores_plot)
+
 
 #### glmnet -------------------------------
 
@@ -293,7 +384,6 @@ glmnet_plot <- glmnet_plot +
        subtitle = 'Colors represent means of 81 inner folds, points represent sd',
        fill = 'MCC mean', size = 'MCC sd')
 
-rm(glmnet_pooled_scores)
 
 #### RF ----
 rf_scores <- 
@@ -329,9 +419,7 @@ rf_plot <- rf_scores |>
             color = 'blue1', span = 1.2,
             se = F, size = 1.5, alpha  = 0.7,
   ) +
-  theme_bw() 
-
-rf_plot + 
+  theme_bw() + 
   labs(x = 'mtry', y = 'MCC', size = 'folds', title = 'Random Forest')
 
 rf_plot <- rf_plot +
@@ -340,7 +428,19 @@ rf_plot <- rf_plot +
        subtitle = 'Points show 81 inner folds; line shows Loess fit over all inner folds.') +
   theme(plot.title = element_markdown())
 
+
+glmnet_plot <- glmnet_plot + labs(title = NULL, subtitle = NULL)
+knn_plot <- knn_plot + labs(title = NULL, subtitle = NULL)
+rf_plot <- rf_plot + labs(title = NULL, subtitle = NULL)
+glmnet_plot + knn_plot + rf_plot + plot_annotation(tag_levels = 'A')
+
+
+rm(knn_pooled_scores, grouped_knn_scores, knn_scores_plot)
+rm(glmnet_pooled_scores)
 rm(grouped_rf_scores, rf_summary, rf_scores)
+
+
+
 
 #### end of Nested CV ------
 
@@ -408,6 +508,34 @@ cv_res |>
   labs(y = 'MCC', title = 'k-Nearest neighbor classifier performance in 3-fold CV repeated 3 times',
        subtitle = 'Gray traces: individual folds; blue: pooled data')
 
+
+knn_pooled_scores <- 
+  cv_res |>
+  filter(.metric == 'mcc', model_type == 'nearest neighbor') |>
+  left_join(models) |>
+  unnest(params) |>
+  select(-c(.metric, n_folds, spec)) |>
+  unnest(values) 
+knn_pooled_scores
+
+grouped_knn_scores <- knn_pooled_scores |> 
+  mutate(values = round(values, 5)) |> 
+  count(neighbors, values)
+
+knn_plot <- 
+  knn_pooled_scores |> 
+  ggplot(aes(y = values, x = neighbors)) +
+  geom_point(data = grouped_knn_scores, 
+             aes(y = values, x = neighbors, size = n),
+             shape = 1) +
+  geom_smooth(size = 1, alpha = 0.8, color = 'blue', span = 0.3, se = F,
+              method = 'loess', formula = 'y ~ x') +
+  theme_bw() +
+  labs(y = 'MCC', size = 'folds', title = 'K-Nearest Neighbor')
+
+knn_plot 
+
+
 #### elastic net CV ------
 glmnet_mod_labels <- 
   models |> 
@@ -415,7 +543,7 @@ glmnet_mod_labels <-
   select(model_id, params) |> 
   unnest(params)
 
-cv_res |>
+glmnet_plot <- cv_res |>
   filter(.metric == 'mcc', str_detect(model_type, 'regression')) |>
   filter(mean>0.999) |> 
   left_join(models) |>
@@ -428,11 +556,11 @@ cv_res |>
   scale_x_log10() +
   theme_classic() +
   labs(
-    size = 'SD',
-    title = 'MCC as a function of mixture (alpha) and penalty (lambda) in CV',
-    subtitle = 'Tile color indicates mean MCC; points show SD') +
+    fill = 'Mean MCC',
+    size = 'MCC sd',
+    title = 'Logistic Regression')
 
-rm(glmnet_mod_labels)
+glmnet_plot
 
 #### RF CV -----------
 
@@ -454,14 +582,22 @@ grouped_rf_scores <- rf_scores |>
   mutate(values = round(values, 4)) |> 
   count(mtry, values)
 
-rf_scores |> 
+rf_plot <- rf_scores |> 
   ggplot(aes(mtry, values)) +
   geom_point(data = grouped_rf_scores, shape = 1, 
              aes(mtry, values, size = n)) +
   geom_smooth(se = F) +
   theme_bw() +
   labs(x = 'mtry', y = 'MCC', size = 'folds', 
-       title = 'Random Forest tuning 3x3-fold CV')
+       title = 'Random Forest')
+
+
+
+glmnet_plot <- glmnet_plot + labs(title = NULL) 
+knn_plot <- knn_plot + labs(title = NULL) 
+rf_plot <- rf_plot + labs(title = NULL) 
+
+glmnet_plot + knn_plot + rf_plot
 
 rm(list= ls())
 
@@ -607,47 +743,145 @@ bind_rows(
 # the in tn916/p2 preds are the same in all
 # the 916/BPP is found in knn and glmnet
 
-
+bind_rows(
+  classed_test |> 
+    count(subfamily, .pred_class) |> 
+    mutate(model = 'Top score & threshold rule'),
+  knn_conf_mat |> 
+    mutate(model = '7-nearest neighbors'),
+  glmnet_conf_mat |> 
+    mutate(model = 'Logistic regression (alpha = 0.25, lambda = 1e-5)'),
+  rf_conf_mat |> 
+    mutate(model = 'Random forest (mtry = 6)'),
+  ) |> 
+  ggplot(aes(subfamily, fct_rev(.pred_class), size = n, label = n)) +
+  geom_point(alpha = 0.2, show.legend = F) +
+  ggrepel::geom_text_repel(size = 3) +
+  facet_wrap(~model) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0)) +
+  labs(x = 'Truth', y = 'Estimate')  
 
 ## four confusion matrix plots
 conf_rules <- classed_test |> 
   count(subfamily, .pred_class) |> 
   ggplot(aes(subfamily, fct_rev(.pred_class), size = n, label = n)) +
-  geom_point(alpha = 0.4, show.legend = F) +
+  geom_point(alpha = 0.2, show.legend = F) +
   ggrepel::geom_text_repel(size = 3) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0)) +
   labs(x = NULL, y = 'Estimate', 
-       subtitle = 'Max. score & threshold rule')
+       subtitle = 'Top score & threshold rules')
 
 conf_knn <- knn_conf_mat |> 
   ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
-  geom_point(alpha = 0.4, show.legend = F) +
+  geom_point(alpha = 0.2, show.legend = F) +
   ggrepel::geom_text_repel(size = 3) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0)) +
   labs(x = NULL, y = NULL, 
        subtitle = '7-nearest neighbors')
 
 conf_glmnet <- glmnet_conf_mat |> 
   ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
-  geom_point(alpha = 0.4, show.legend = F) +
+  geom_point(alpha = 0.2, show.legend = F) +
   ggrepel::geom_text_repel(size = 3) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0)) +
   labs(x = 'Truth', y = 'Estimate', 
        subtitle = 'Logistic regression (alpha = 0.25, lambda = 1e-5)')
 
 conf_rf <- rf_conf_mat |> 
   ggplot(aes(y = fct_rev(.pred_class), x = subfamily, size = n, label = n)) +
-  geom_point(alpha = 0.4, show.legend = F) +
+  geom_point(alpha = 0.2, show.legend = F) +
   ggrepel::geom_text_repel(size = 3) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = -35, hjust = 0)) +
+  theme(axis.text.x = element_text(angle = -90, hjust = 0)) +
   labs(x = 'Truth', y = NULL, 
-       subtitle = 'Random forest (mtry = 7)')
+       subtitle = 'Random forest (mtry = 6)')
 
 conf_rules + conf_knn + conf_glmnet + conf_rf
+
+
+## final test performance metrics -----------------------
+
+# which models were used?
+final_res |> 
+  select(model_type, model_id) |> 
+  distinct() |> 
+  left_join(models) |> 
+  unnest(params)
+
+# clean up final test performance metrics
+final_rs <- final_res |> 
+    filter(model_type !=  "decision tree") |> 
+    filter(!.metric %in% c('precision', 'recall', 
+                           'accuracy', 'npv', 'ppv')) |> 
+  mutate(
+    .metric = as.character(.metric),
+    .metric = as_factor(case_when(
+      .metric == 'sens' ~ 'Sensitivity',
+      .metric == 'spec' ~ 'Specificity',
+      .metric == 'mcc' ~ 'MCC',
+      .metric == 'f_meas' ~ 'F Measure',
+      .metric == 'kap' ~ "Cohen's Kappa",
+      .metric == 'bal_accuracy' ~ 'Balanced Accuracy',
+      TRUE ~ .metric
+    )),
+    model_type = ifelse(model_type == 'multinomial regression', 'logistic regression', model_type),
+    model_type = ifelse(model_type == 'score & threshold rule', 'top-score & threshold', model_type),
+    model_type = str_to_title(model_type),
+    .metric = fct_relevel(.metric, 'Specificity', 'Sensitivity', 'MCC', 
+                          'Balanced Accuracy', 'F Measure', "Cohen's Kappa")
+    )
+
+# plot performance metrics for final test vs. nested CV
+all_metrics_plot2 <-
+  outer_scores_df  |> 
+  # mutate() |> 
+  ggplot(aes(
+    y = fct_rev(model_type), 
+    x = mean, 
+
+  )) +
+  geom_vline(aes(xintercept = 1), alpha = 0.25) +
+  ggbeeswarm::geom_quasirandom(
+    data = outer_scores_df |> unnest(values), 
+    aes(x = values), shape = 1, alpha = 0.5,
+    groupOnX = F
+  ) +
+  geom_pointrange(
+    aes(xmax = mean + err, xmin = mean - err),
+    color = 'red2', alpha = 0.6, size = 1, fatten = 1.2
+    ) +
+  geom_point(
+    data = final_rs |> transmute(model_type, .metric, .estimate),
+    aes(x = .estimate), color = 'black'
+    ) +
+  facet_wrap(~.metric, nrow = 2, scales = 'free_x') +
+  labs(y = NULL, 
+       x = NULL, 
+       # title = 'Classifier performance in final testing vs. nested CV',
+       # subtitle = 
+       # 'Black points show final test performance. \nPoint-ranges shows nested CV mean +/- sd; points show values for each outer fold of nested CV; '
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 12), 
+        strip.text = element_text(size = 12)
+  )
+
+all_metrics_plot2
+
+
+# 4 Finished Models ---------------------------------------------------------
+# check out glmnet classifier coefficients
+# for each class, may use scores from multiple HMMs to make a decision
+glmnet_mod <- read_rds('models/glmnet_classifier.rds')
+glmnet_mod |> 
+  pull_workflow_fit() %>%
+  tidy() |> 
+  View()
 
 
 
