@@ -1,6 +1,9 @@
 ## Tyrosine recombination classification for RIT element data-mining
 
-*Master's thesis work on tyrosine recombinases and recombinase-in-trio elements.*
+*BINF6999 thesis work on tyrosine recombinases and recombinase-in-trio elements.*
+
+**Documentation in progress!*8
+
 
 --------------------------------------------------------------------
 
