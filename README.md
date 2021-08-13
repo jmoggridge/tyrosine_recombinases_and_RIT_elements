@@ -2,7 +2,7 @@
 
 *BINF6999 thesis work on tyrosine recombinases and recombinase-in-trio elements.*
 
-**Documentation in progress!*8
+*Documentation still in progress!*
 
 
 --------------------------------------------------------------------
