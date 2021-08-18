@@ -1,6 +1,9 @@
 ## Tyrosine recombination classification for RIT element data-mining
 
-*Master's thesis work on tyrosine recombinases and recombinase-in-trio elements.*
+*BINF6999 thesis work on tyrosine recombinases and recombinase-in-trio elements.*
+
+*Documentation still in progress!*
+
 
 --------------------------------------------------------------------
 
@@ -12,7 +15,7 @@
 3. [Part 2: Pipeline for identification of RIT elements](#p2)
    - [Overview](#p2o)
    - [Workflow](#p2w)
-4. [Daily Progress Tracking](#dpt)
+
 
 ----------------------------------------------------------------------
 
@@ -150,5 +153,5 @@ Various scripts for obtaining & tidying mobile genetic element data to search: I
 
 <!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
 
------------------------------------------------------------------------------
 
+-----------------------------------------------------------------------------
