@@ -167,14 +167,15 @@ pre code {
 </div>
 
 
-<div id="tyrosine-recombination-classification-for-rit-element-data-mining" class="section level2">
-<h2>Tyrosine recombination classification for RIT element data-mining</h2>
-<p><em>Master’s thesis work on tyrosine recombinases and recombinase-in-trio elements.</em></p>
+<div id="tyrosine-recombination-classification-and-mining-for-recombinase-in-trio-elements" class="section level2">
+<h2>Tyrosine recombination classification and mining for Recombinase-in-Trio elements</h2>
+<p><strong>BINF6999 Thesis Project</strong></p>
+<p><em>Documentation in progress!</em></p>
 <hr />
 <div id="contents" class="section level4">
 <h4>Contents</h4>
 <ol style="list-style-type: decimal">
-<li><a href="#obj">Objectives</a></li>
+<li><a href="#obj">Project Objectives</a></li>
 <li><a href="#p1">Part 1: Classifier for tyrosine recombinases</a>
 <ul>
 <li><a href="#p1o">Overview</a></li>
@@ -185,112 +186,105 @@ pre code {
 <li><a href="#p2o">Overview</a></li>
 <li><a href="#p2w">Workflow</a></li>
 </ul></li>
-<li><a href="#dpt">Daily Progress Tracking</a></li>
 </ol>
 <hr />
 </div>
-<div id="objectives" class="section level3">
-<h3>Objectives <a name="obj"></a></h3>
-<p><strong>1 </strong>. Create a tool to <strong>classify ‘phage integrase’ proteins</strong> by their catalytic domains, in line with the <strong>20 subfamilies</strong> described by Smyshlaev <em>et al.</em> (2021).</p>
-<p><strong>2</strong>. Apply classifier to known integrases in sequenced genomes and mobile element databases. For <strong>RitA, RitB, and RitC</strong> domains, map their genomic coordinates and check whether there are multiple tyrosine recombinases constituting a <strong>RIT element</strong>. Characterize the arrangement of subfamilies, flanking inverted repeats, and their insertion sites in terms of flanking genes.</p>
+<div id="project-objectives" class="section level3">
+<h3>Project Objectives <a name="obj"></a></h3>
+<p><strong>1 </strong>. Create an amino acid sequenece classifier to assign site-specific tyrosine recombinases (aka. phage integrase) proteins to the 20 subfamilies described by <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8138268/">Smyshlaev <em>et al.</em> (2021)</a>, or ‘Other’ if the protein is not a tyrosine recombinase.</p>
+<p><strong>2</strong>. Create a pipeline for the identification of Recombinase-in-Trio (RIT) mobile elements from GenBank files, using the tyrosine recombinase classifier to identify RitA, RitB, and RitC proteins.</p>
+<p><strong>3</strong>. Classify tyrosine recombinases in the <a href="https://bioinfo-mml.sjtu.edu.cn/ICEberg2/index.php">ICEberg2.0 database</a>. to sequenced genomes and mobile element databases.</p>
 <hr />
 </div>
-<div id="part-1-classifier-for-tyrosine-recombinases" class="section level3">
-<h3>Part 1: Classifier for tyrosine recombinases <a name="p1"></a></h3>
+<div id="part-1-classifier-for-tyrosine-recombinases-yrs" class="section level3">
+<h3>Part 1: Classifier for tyrosine recombinases (YRs)<a name="p1"></a></h3>
 <div id="overview" class="section level4">
 <h4>Overview <a name="p1o"></a></h4>
-<ul class="task-list">
-<li><input type="checkbox" disabled checked></input>
-Obtain SMART reference data &amp; other non-integrase sequences as negative examples.</li>
-<li><input type="checkbox" disabled checked></input>
-Downsample &amp; Split data: Create hold-out sets for final testing.</li>
-<li><input type="checkbox" disabled checked></input>
-Modelling Pipeline - to take a data split, return model performance measures.<ul>
-<li>create 20 alignments from YR catalytic domains of training seqs</li>
-<li>create 20 HMMs from the alignments</li>
-<li>score train and test seqs against HMMs</li>
-<li>normalize scores and use SMOTE upsampling</li>
-<li>train classifier with prepared training data</li>
-<li>apply classifier to testing set.</li>
-<li>evaluate predictions and return performance metrics.</li>
+<ul>
+<li><strong>Datasets</strong>
+<ul>
+<li>SMART tyrosine recombinases reference data &amp; other non-integrase sequences as negative examples.</li>
+<li>These are combined, downsampled, and split to create a training/validation dataset for classifier development and a holdout dataset for final testing.</li>
 </ul></li>
-<li><input type="checkbox" disabled checked></input>
-3-fold Nested-CV (rep 3 times)<ul>
-<li>Apply above pipeline to with variety of models &amp; hyperparameters for nested CV resamples.<br />
+<li><strong>Modelling Pipeline</strong>
+<ul>
+<li>For a given data split (eg. training/validation samples):</li>
+<li>Create 20 alignments of YR catalytic domains, one for each subfamily.</li>
+<li>Create 20 HMMs from the alignments, one for each subfamily</li>
+<li>Score train and test seqs against HMMs using HMMER’s <code>hmmsearch</code></li>
+<li>Normalize scores (using training data only to create normalizer)</li>
+<li>Use SMOTE upsampling to create synthetic examples, bringing minority classes up to 25% of the largest class.</li>
+<li>Fit classifiers to the prepared training sample.</li>
+<li>Apply classifiers to validation sample.</li>
+<li>Evaluate predictions and return performance metrics.</li>
+</ul></li>
+<li><strong>3-fold Nested-CV (repeated 3 times)</strong>
+<ul>
+<li>Apply the above pipeline, with a variety of models &amp; hyperparameter settings, in nested CV.<br />
 </li>
-<li>Get an estimate of performance for <em>the model-fitting procedure</em> (not actually selecting the model hyperparameters for the final model).<br />
-</li>
+<li>Get an estimate of performance for the model-fitting procedure (not actually selecting the model hyperparameters at this stage).</li>
 </ul></li>
-<li><input type="checkbox" disabled checked></input>
-3-fold CV (rep 3 times).<ul>
-<li>Selection of models with best mean MCC across.</li>
+<li><strong>3-fold CV (rep 3 times)</strong>
+<ul>
+<li>For the selection of models with best mean MCC across.</li>
+<li>Best models are kept for the final holdout test.</li>
 </ul></li>
-<li><input type="checkbox" disabled checked></input>
-Last validation<ul>
-<li>Fit ‘best’ models from CV using pipeline, with all training data (75 %)<br />
-</li>
-<li>Get point estimates of performance from prediction of holdout data (25%)</li>
+<li><strong>Holdout test</strong>
+<ul>
+<li>Fit ‘best’ models from CV using pipeline, with all training data.</li>
+<li>Get point estimates of performance from prediction of holdout data.</li>
 </ul></li>
-<li><input type="checkbox" disabled checked></input>
-Fit final models.<ul>
-<li>Align all seqs, build HMMs, score all seqs, normalize &amp; SMOTE, train classifier.</li>
+<li><strong>Fit final models</strong>
+<ul>
+<li>Align all catalytic domains for each subfamily, build 20 HMMs, score all sequences by <code>hmmsearch</code>, normalize scores, upsampling by SMOTE, fit classifiers.</li>
+</ul></li>
+<li><strong>Produce visualizations</strong>
+<ul>
+<li>To show evaluation of classifiers in nested CV, CV, and final test.</li>
 </ul></li>
 </ul>
-<p><em>Then…</em> Apply classifier to MGE proteins and proteomes from assembled genomes (objective 2).</p>
 <hr />
 </div>
 <div id="workflow" class="section level4">
 <h4>Workflow <a name="p1w"></a></h4>
-<div id="obtain-data" class="section level5">
-<h5>1. Obtain data:</h5>
-<p><strong>SMART</strong></p>
-<p><code>1a_tidy_smart_data.R</code> organizes SMART data from fasta files.<br />
-<br />
-<br />
-- Has domain sequences and protein sequences for 20 integrase subfamilies.<br />
-- Total number of sequences is ~120k, but with large class imbalance, like Xer has ~34k members and Int_Des has only 62.<br />
-- Problematically, some sequences are annotated with &gt;1 subfamily, for the same portion of sequence (ambiguous classifications). I removed these double-labelled sequences, entirely.<br />
-- After filtering, 114,848 sequences remain.<br />
-- The dataset for modelling was downsampled by subfamily to a max of 10k, with the removed sequences retained for classifier validation.<br />
-<!-- *show bar chart here* --></p>
-<p><strong>Non-integrases</strong></p>
-<p><code>1b_get_refseq_non_integrases.R</code><br />
-- Uses keyword searches to Entrez API to get a variety of decoys.</p>
+<div id="dataset-acquisition" class="section level5">
+<h5>1. Dataset acquisition:</h5>
+<p><strong>SMART database</strong></p>
 <ul>
-<li>Combination of:
-<ul>
-<li>From various searches of Refseq for recombinases and nucleases,<br />
+<li>The script <code>1a_tidy_smart_data.R</code>:</li>
+<li>Organizes data from the set of fasta files downloaded from the <a href="http://smart.embl-heidelberg.de/">SMART database</a>.<br />
 </li>
+<li>Creates a dataframe with the names and sequences for tyrosine recombinase proteins and their catalytic domains.</li>
+<li>The total number of sequences is ~120k, but with large class imbalance, <em>e.g.</em>, Xer has ~34k members and Int_Des has only 62.<br />
+</li>
+<li>Problematically, some sequences are annotated with &gt;1 subfamily, for the same portion of sequence (ambiguous classifications). These double-labelled sequences are removed, leaving 114,848 sequences.<br />
+</li>
+<li>The dataset for modelling was downsampled to a max of 10k sequences per subfamily, with the removed sequences set aside for further classifier testing.<br />
+</li>
+<li>The cleaned data is saved as <code>smart_df.rds</code></li>
+</ul>
+<p><strong>Non-integrases</strong></p>
+<ul>
+<li><p>The script <code>1b_get_refseq_non_integrases.R</code> sends keyword searches to Entrez API to get a variety of non-YR protein sequences to serve as negative examples.</p></li>
+<li><p>I also downloaded:</p>
+<ul>
 <li>Several Pfam families of transposases (domain sequences only)<br />
 </li>
 <li>Uniprot proteomes of yeast, Arabidopsis, and human proteomes.<br />
 </li>
 </ul></li>
-<li>Large groups down-sampled to 2000 sequences.<br />
-</li>
-<li>A total of 39,691 sequences were retained after downsampling.</li>
+<li><p>Any large groups down-sampled to 2000 sequences.<br />
+</p></li>
+<li><p>A total of 39,691 sequences were retained after downsampling.</p></li>
+<li><p>The script <code>1c_tidy_non_integrase.R</code> cleans up data gathered by the steps above to create the dataset <code>nonint_df.rds</code></p></li>
 </ul>
-<p><code>1c_tidy_non_integrase.R</code><br />
-- Cleans up data gathered by step 1b</p>
 </div>
 </div>
 <div id="searching-for-best-models" class="section level4">
 <h4>2. Searching for best models</h4>
-<p>2a. Data splitting for classifier</p>
-<ul>
-<li>75-25 split for train (building &amp; tuning classifiers) / test (final validation)</li>
-<li>2 files in <code>./data/</code>:
-<ul>
-<li><code>classif_train_set.rds</code> (training 75 %)</li>
-<li><code>classif_test_set.rds</code> (testing 25 %)</li>
-</ul></li>
-</ul>
-<p>2b. Nested cross-validation</p>
-<ul>
-<li>Nested cv: <code>2b_nested_CV.R</code></li>
-<li>Plots: <code>2b_nested_cv_tables_and_plots.R</code></li>
-</ul>
-<p>2c. Regular CV</p>
+<p>The script <code>2a_data_splitting.R</code>: - Combines the SMART integrases dataset and the non-integrase dataset. - Splits data 75:25 for training/validation (building &amp; tuning classifiers) and testing - Creates 2 files in <code>./data/</code>: - <code>classif_train_set.rds</code> (training 75 %) - <code>classif_test_set.rds</code> (testing 25 %)</p>
+<p>The script <code>2b_nested_CV.R</code>: - Performs 3 x 3-fold nested CV - Uses functions from the script <code>00_functions.R</code> for the model fitting steps - Uses the set of model specifications created in the script <code>00_get_model_specs.R</code> (models: <code>unfitted_parsnip_model_set.rds</code>) - Results are saved to <code>results/3x3-fold_07-08_nest_cv_summary.rds</code></p>
+<p>The script <code>2c_regular_CV.R</code></p>
 <ul>
 <li><code>2c_regular_CV.R</code></li>
 </ul>
@@ -326,358 +320,6 @@ Fit final models.<ul>
 <!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
 <hr />
 </div>
-</div>
-</div>
-<div id="daily-progress-tracking" class="section level2">
-<h2>Daily Progress Tracking <a name="dpt"></a></h2>
-<div id="july-8th" class="section level4">
-<h4>July 8th</h4>
-<p>Restarted nested CV - runs ~40 hrs.</p>
-<ul class="task-list">
-<li><input type="checkbox" disabled checked></input>
-Created a new set of model specifications, including larger search grid for glmnet and rpart models, added random forest models with 5 mtry parameters.<br />
-</li>
-<li><input type="checkbox" disabled checked></input>
-Implemented new recipe with SMOTE and normalization (within CV).<br />
-</li>
-<li><input type="checkbox" disabled checked></input>
-Executed nested 3-fold CV, 3-repeats.<br />
-</li>
-<li><input type="checkbox" disabled checked></input>
-Had to fix many bugs in functions arising from adding SMOTE and different recipes…</li>
-</ul>
-</div>
-<div id="july-9th" class="section level4">
-<h4>July 9th</h4>
-<p>(<em>this wouldn’t work on the full dataset, but only on the small testing set</em>)<br />
-- Created script that gets all ids for CDD families Rit- A, B, C.<br />
-- Gets cdd ids, gets protein ids linked to each cdd id.<br />
-- Then gets nuccore ids linked to each protein id.<br />
-- Then gets taxonomy id linked to each nuccore id.</p>
-<p>Downloading the sequences is more tricky. Keep getting HTTP errors. Probably sending too many requests - &gt; maybe use post request then set get request using the webhistory token. Alternately add sleep between blocks of x ids sent in batches.</p>
-</div>
-<div id="july-10th" class="section level4">
-<h4>July 10th</h4>
-<p>Nested CV finished today.<br />
-- saved <code>./results/07-08-3x3_nested....</code>.<br />
-- Results look awesome again (too awesome).</p>
-<p>Still trying to rewrite script to retrieve NCBI data linked to cdd specific proteins…<br />
-- trying to use webhistories<br />
-- trying to chunk requests into smaller than 50 for protein,<br />
-- trying to chunk into smaller than 10 for nucleotides… (not necessary, actually) 50 or 100 is ok.).</p>
-<p>Restarting regular CV with new model set.<br />
-Needed to change:<br />
-- models<br />
-- {out_path} issues: needs to be complete path to output dirs for aligns, hmms….<br />
-- otherwise everything worked.<br />
-- Saved to <code>results/regular_cv_07-10/</code><br />
-- <em>could</em> do stupid t-tests. to check for significance….</p>
-</div>
-<div id="july-11th" class="section level4">
-<h4>July 11th</h4>
-<p>Running <code>3_final_test_set.R</code></p>
-<ul>
-<li>had to change recipe to include smote and normalize<br />
-</li>
-<li>changed file paths and names to make more sense<br />
-</li>
-<li>Issue: system runs out of memory…
-<ul>
-<li>I think this was before when trying to save unnested workflows/preds/data<br />
-</li>
-</ul></li>
-<li>Decided: just use the few specifications that performed best in regular CV<br />
-</li>
-<li>Works fine for smaller amount (&lt;10) models.</li>
-</ul>
-<p>Downloading <code>P2_A1_ncbi data.R</code>:</p>
-<ul class="task-list">
-<li><p><input type="checkbox" disabled checked></input>
-Finally managed to get all the sequences!<br />
-</p></li>
-<li><p><input type="checkbox" disabled checked></input>
-<strong>TRICK</strong> some genomes are really, large, need to get sequences in large chunks of 1000; do requests within in mini chunks of 100. Parse sequences and save compressed data. <strong>Issue</strong> even if managing to get full download complete before, ran out of memory trying to parse or save data.</p></li>
-<li><p><input type="checkbox" disabled></input>
-still need the taxonomy but no rush</p></li>
-</ul>
-</div>
-<div id="july-12th-monday" class="section level4">
-<h4>July 12th (monday)</h4>
-<p><strong>Classifiers</strong></p>
-<ul>
-<li>Re-ran final classifiers - one of each glmnet, knn, rf.
-<ul>
-<li><code>3c_fit_final_model.R</code> script updated -</li>
-<li>Now creates one model for each of rf, knn, glmnet; and two sets of thresholds: normalized+smoted or from raw hmm scores…<br />
-</li>
-<li>Still missing the parts to generate the full alignments from all smart domains, and then to create the HMMs from these, but can copy from where those were actually done or rename the files…</li>
-</ul></li>
-</ul>
-<p><strong>Part 2 data</strong></p>
-<ul>
-<li>Continuing <code>P2_A1_ncbi_downloads.R</code>
-<ul>
-<li>linking taxonomy ids to nucleotide ids. (<code>link_nuccore_taxonomy</code>)</li>
-<li>downloading taxonomy summaries (old <code>fetch_taxonomy</code>)</li>
-<li>weird error when trying to get nucleotide summaries: seems random <code>x No esummary records found in file</code></li>
-<li>splitting into half and using <code>fetch_summary</code> to get nested data worked on the first half.</li>
-<li>some cols with the same name have different types (list vs char or num); if we make all columns into character, then they can be unnested together. Not if the co</li>
-<li>the dataframes have different numbers of columns.</li>
-<li><strong>Solved</strong> by making columns as.character in each dataframe, then unnesting…</li>
-<li><strong>Finished</strong> Downloaded ids, sequences, summaries for cdd, prot, nuc, tax.</li>
-</ul></li>
-<li>Working on <code>P1_A2_repair_nucleotide_data.R</code>:
-<ul>
-<li><input type="checkbox" disabled checked></input>
-fixed 2 superceded sequences and replaced ids, got new taxonomy and seq. <em>still need to replace seq</em></li>
-<li><input type="checkbox" disabled checked></input>
-fixed 2 updated seqs… got data + linked tax</li>
-<li>still need to remove 205 seqs</li>
-<li>get updated taxonomy for remaining that are missing it from the nuc_summary$taxid column</li>
-</ul></li>
-</ul>
-</div>
-<div id="tues-july-13th" class="section level4">
-<h4>Tues, July 13th</h4>
-<p><strong>Part 2</strong></p>
-<ul>
-<li>Simplified <code>P2_A2_filter_nuc_ids_and_taxonomy</code> - first filtering is done now</li>
-<li>Wrote <code>P2_A3_fix_nucleotide_datasets.R</code>
-<ul>
-<li>fixes the nucleotide datasets -&gt; to <em>./data/CDD/nuc_data_fixed/</em></li>
-<li>tries to get the missing data for remaining few sequences</li>
-<li>9 ids are from assemblies - mulitple contigs</li>
-<li>saved gi # (nuc_ids) from browser by searching nuc_id in nucleotide, then finding the assembly, going to that, and finding the ‘nucleotide Refseq’ or ‘nucleotide INSD’ links, then downloading the list to <em>./data/CDD/assemblies_gi_lists/</em></li>
-</ul></li>
-<li>Updating clustering:
-<ul>
-<li>Added Dunn index and some other indexes using nb_clust</li>
-<li>Not sure if wanting to use PCA figures, would need to try to explain, requires many dimensions but also have many groups.</li>
-</ul>
-<br />
-</li>
-</ul>
-</div>
-<div id="weds-july-14th" class="section level4">
-<h4>Weds, July 14th</h4>
-<ul>
-<li>meeting: prioritize RIT finding + description</li>
-<li>wrote genbank fetcher and parser functions:</li>
-</ul>
-<p><br />
-</p>
-</div>
-<div id="thurs-july-15th" class="section level4">
-<h4>Thurs, July 15th</h4>
-<ul>
-<li>started: <code>P2_A4_get_genbank_data_for_probable_RITs.R</code>
-<ul>
-<li>filter ids down to nucleotide ids with three linked RIT proteins.</li>
-<li>get genbank records for those - split the downloads into chunks of 100. Saved as <code>./data/CDD/RIT_gbk_&lt;1-6&gt;.rds</code></li>
-</ul></li>
-<li>still having some issues with iceberg data - HMM scores not being created in right folder…</li>
-</ul>
-<p><br />
-</p>
-</div>
-<div id="friday-july-16th" class="section level4">
-<h4>Friday, July 16th</h4>
-<p>Iceberg data to Nicole - <em>done</em>.</p>
-<p>Working on P2_A5 - Rit identification pipeline. Documentation:</p>
-<p><strong>The main wrapper <code>rit_finder()</code> </strong>:</p>
-<ul>
-<li>uses set of probable Rits (<code>ids_w_three_integrases.rds</code>)
-<ul>
-<li>these already have genbank data from <code>P2_A3</code> + <code>A4</code>.<br />
-</li>
-</ul></li>
-<li>parses genbank record with <code>open_genbank()</code><br />
-</li>
-<li>extracts feature table with <code>extract_features_table()</code><br />
-</li>
-<li>classifies all translations of the CDSs with <code>classify_proteins()</code>
-<ul>
-<li>uses consensus of knn and glmnet to create <code>consensus_pred</code> column.<br />
-</li>
-</ul></li>
-<li>tidies up start, stop, orientation with <code>edit_feature_table()</code>.<br />
-</li>
-<li>take lag + lead row data with <code>pivot_feature_table</code>
-<ul>
-<li>now each CDS has linked up- and downstream CDSs for testing.<br />
-</li>
-</ul></li>
-<li>Test trios with <code>rit_tester</code> to check whether trio of proteins are:
-<ul>
-<li><code>rit_length_check</code>: p1 start to p3 stop &lt; 4000 bp<br />
-</li>
-<li><code>rit_distance_check</code>: CDS not separated by gap &gt; 250 bp<br />
-</li>
-<li><code>rit_all</code>: all Rit subfamily members,<br />
-</li>
-<li><code>rit_ABC</code>: trio is Rit&lt;A, B, C&gt; or Rit&lt;C, B, A&gt;<br />
-</li>
-<li><code>rit_orientation</code>: all forward or reverse? or not all same?<br />
-</li>
-</ul></li>
-<li>Select which are RITs with <code>rit_selector()</code> based on <code>rit_all</code>, <code>_distance_check</code>, and <code>_length_check</code><br />
-</li>
-<li>Return value is a tibble with nuc_id and nested tibble of Rit trios!</li>
-</ul>
-<p><strong><code>rit_finder</code> works on nucs 1-4, not 5, 6-8… </strong></p>
-<ul>
-<li><p><strong>Issue</strong> with HMM searches coming back empty for some domains.<br />
-</p></li>
-<li><p><strong>Solution</strong> create filler dataset <code>./data/hmmsearch_filler.rds</code> to concatenate with query sequences, such that there is always at least one hit and the hmmsearch output is not an empty table. Empty table causes an error because read_hmmsearches is expecting specific columns to be present in the table.</p></li>
-<li><p><strong>Issue</strong> Some genbank files are full of partial sequences and pseudogenes but the only info I have is the absence of protein_id and translation values…<br />
-</p></li>
-<li><p><strong>work-around</strong> label these as pseudo_or_partial = TRUE.</p></li>
-<li><p><strong>Issue</strong> not sure what data to collect for later analysis<br />
-</p></li>
-<li><p><strong>action</strong> show Nicole what I have so far…</p></li>
-<li><p><strong>Issue</strong> no CDS….<br />
-</p></li>
-<li><p>e.g.: 1817592545 (5),<br />
-</p></li>
-<li><p><strong>Possible</strong> download their files manually and parse the xml.</p>
-<ul>
-<li><strong>Issue</strong> parse_genbank() ‘Error: object ’GBSeq’ not found’</li>
-</ul></li>
-</ul>
-<p><br />
-</p>
-</div>
-<div id="saturday-july-17th" class="section level4">
-<h4>Saturday, July 17th</h4>
-<p>Today: 1. Find out which Genbank files in three_ints don’t have the necessary CDS. 2. Figure out if it is possible to create a different parser for genbank records downloaded via browser for those currently missing CDS.</p>
-<p>Tried to extract RIT sequences by locating protein with translation of ICEs for all reading frames, many protein simply not present in entire set of translations. Protein sequences do not seem to match the DNA sequences.</p>
-<p>Instead, just blasted proteins against strain to find location. Went to genbank and expanded range to find trio. Took start and stop from the range containing the trio. Aligned mesorhizobium rits and they were the same. Only get one blast hit despite triplicate of double RIT segment.</p>
-<p>Trying to finish RIT finder script. Still finding weird issues: - “47118329” -&gt; “Column <code>locus_tag</code> doesn’t exist.” - “339284117”, “737980678”, ‘1980667557’ -&gt; “Error in gzfile(file,”rb“) : invalid ‘description’ argument”</p>
-<p><br />
-</p>
-</div>
-<div id="sunday-july-18th" class="section level4">
-<h4>Sunday, July 18th</h4>
-<p><strong>Trying to process all genbank files with <code>rit_finder</code> (P2_A5) </strong></p>
-<ul>
-<li><strong>Done! -ish</strong></li>
-<li>Only 399 / 517 of those worked though…</li>
-<li>And ~ 25 didn’t run at all –&gt; various issues
-<ul>
-<li>some missing column ‘locus_tag’; could be a <code>select()</code> issue that might be fixed…</li>
-</ul></li>
-<li>nearly 100 missing genbank CDS!
-<ul>
-<li>tried gb download via browser earlier and file has completely different XML structure / names… <em>ffs</em>.</li>
-</ul></li>
-</ul>
-<p><strong>Started to look at the putative RITs in P2_A5</strong><br />
-- Pulled DNA sequences and joined to elements - Extracted RIT element range - Reverse-complemented sequence where RIT proteins all have reverse orientation. - Some issues with non-distinct elements to watch for in the P2_A pipeline.</p>
-<p><strong>Trying to figure out how to answer Nicole’s qs about ICEs’ RITs. </strong></p>
-<ul>
-<li>are ICEs distinct?
-<ul>
-<li>Yes to all</li>
-</ul></li>
-<li>Are RITs distinct
-<ul>
-<li>Bordetella
-<ul>
-<li>RIT1: rows (1,2,3); identical - except for insertion in ICE-GI3<br />
-</li>
-<li>one on each ICE -<br />
-</li>
-</ul></li>
-<li>RIT2
-<ul>
-<li>different from RIT1, only on third one. ICE-GI3 (222)</li>
-</ul></li>
-</ul></li>
-<li>Mesorhizobium
-<ul>
-<li>ICEberg data needs labels a,b,c for the three ICEs<br />
-</li>
-<li>each ICE is not uniquely identified in the fasta, sequences are different<br />
-</li>
-<li>this is causing wrong proteins to be joined by id….<br />
-</li>
-<li><strong>TODO</strong> need to fix this in script somewhere</li>
-</ul></li>
-</ul>
-</div>
-<div id="monday-july-19th" class="section level4">
-<h4>Monday, July 19th</h4>
-<p><strong>Continuing with P2_A6</strong> - looking at putative RIT elements extracted in P2_A5</p>
-<ul>
-<li>Confirm DNA sequences make sense… BLAST ’em</li>
-<li>Check whether protein sequences are linked</li>
-<li>EDA for basic things:
-<ul>
-<li>element lengths, overlaps, protein lengths</li>
-</ul></li>
-</ul>
-</div>
-<div id="to-do" class="section level3">
-<h3>TO DO</h3>
-<ul>
-<li>Find all RITs ~ try for other sequences that failed… what went wrong - patch functions to ameliorate or write 2nd function</li>
-<li>Retrieve/ parse full genbank for those missing CDS…</li>
-<li>ICEberg -&gt; locate, check if duplicated…</li>
-<li>Fix mesorhizobium in ICEberg data in P2_B3 before predictions…</li>
-<li>Start writing some parts…</li>
-</ul>
-</div>
-<div id="writing" class="section level3">
-<h3>Writing</h3>
-<ul>
-<li>METHODS
-<ul>
-<li>part1 data</li>
-<li>part1 classifier overview</li>
-<li>part1 classifier evaluation, CV, final validation</li>
-<li>part2 data</li>
-<li>part2 RIT pipeline / algorithm for filtering</li>
-<li>part2 further analyses</li>
-</ul></li>
-<li>RESULTS
-<ul>
-<li>part1 EDA</li>
-<li>part1 classifier assessment</li>
-<li>part2 EDA - classify all ‘specific proteins’ - note disparities.</li>
-<li>part2 RIT findings (numbers, taxonomy, lengths, overlaps)</li>
-<li>part2 further analyses…</li>
-</ul></li>
-<li>DISCUSSION / REFs….</li>
-<li>INTRO</li>
-<li>ABSTRACT</li>
-<li>FORMATTING</li>
-</ul>
-<p><strong>Part 1</strong></p>
-<ul class="task-list">
-<li><input type="checkbox" disabled></input>
-redo plots for regular cv - compare to nested ; incorp final valid resuls and plot</li>
-<li><input type="checkbox" disabled></input>
-redo k-means with letting k be variable…</li>
-</ul>
-<p><strong>Part 2</strong></p>
-<ul>
-<li>[ ]</li>
-</ul>
-<hr />
-<!-- USE THESE OLD SCRIPTS TO REUSE EXISTING CODE
-- [x] `2b_align_all_domains.R`
-  - Same as 2a but aligns all domain sequences to create the final HMMs.
-  - Uses all domain sequences from *./data/SMART/smart_df.rds* created in `1a`
-  - Saves them to *./data/SMART/domain_alignments/*.
-  
-- [x] `3b_hmmbuild_and_hmmsearch.sh`
-  - Bash script to run from the project directory.
-  - Builds the training and final HMMs from the alignments in step 2.
-  - Saves training HMMs to _./data/SMART/domain_hmm_training/_, and the final HMMs to _./data/SMART/domain_hmm/_.
-  - Run hmmsearch for sequences against 20 HMMs made from training sequences.
-  - Save hmmsearch tables to _./data/hmmsearch_res/_
-
--->
 </div>
 </div>
 
