@@ -261,11 +261,11 @@ pre code {
 </li>
 <li>The dataset for modelling was downsampled to a max of 10k sequences per subfamily, with the removed sequences set aside for further classifier testing.<br />
 </li>
-<li>The cleaned data is saved as <code>smart_df.rds</code></li>
+<li>The cleaned data was saved as <code>smart_df.rds</code></li>
 </ul>
 <p><strong>Non-integrases</strong></p>
 <ul>
-<li><p>The script <code>1b_get_refseq_non_integrases.R</code> sends keyword searches to Entrez API to get a variety of non-YR protein sequences to serve as negative examples.</p></li>
+<li><p>The script <code>1b_get_refseq_non_integrases.R</code> sent keyword searches to Entrez API to get a variety of non-YR protein sequences to serve as negative examples.</p></li>
 <li><p>I also downloaded:</p>
 <ul>
 <li>Several Pfam families of transposases (domain sequences only)<br />
@@ -273,7 +273,7 @@ pre code {
 <li>Uniprot proteomes of yeast, Arabidopsis, and human proteomes.<br />
 </li>
 </ul></li>
-<li><p>Any large groups down-sampled to 2000 sequences.<br />
+<li><p>Any large groups were down-sampled to 2000 sequences.<br />
 </p></li>
 <li><p>A total of 39,691 sequences were retained after downsampling.</p></li>
 <li><p>The script <code>1c_tidy_non_integrase.R</code> cleans up data gathered by the steps above to create the dataset <code>nonint_df.rds</code></p></li>
@@ -285,18 +285,17 @@ pre code {
 <p>The script <code>2a_data_splitting.R</code>: - Combines the SMART integrases dataset and the non-integrase dataset. - Splits data 75:25 for training/validation (building &amp; tuning classifiers) and testing - Creates 2 files in <code>./data/</code>: - <code>classif_train_set.rds</code> (training 75 %) - <code>classif_test_set.rds</code> (testing 25 %)</p>
 <p>The script <code>2b_nested_CV.R</code>: - Performs 3 x 3-fold nested CV - Uses functions from the script <code>00_functions.R</code> for the model fitting steps - Uses the set of model specifications created in the script <code>00_get_model_specs.R</code> (models: <code>unfitted_parsnip_model_set.rds</code>) - Results are saved to <code>results/3x3-fold_07-08_nest_cv_summary.rds</code></p>
 <p>The script <code>2c_regular_CV.R</code></p>
-<ul>
-<li><code>2c_regular_CV.R</code></li>
-</ul>
-<p>See also <code>Classifier_results_plots.R</code> – TODO combine all scripts with these various plots into one place for consistency….</p>
 </div>
 <div id="final-validation-and-model-fitting" class="section level4">
 <h4>3. Final validation and model fitting</h4>
 <ul>
-<li><code>3a_final_test_set.R</code> - fit/eval of best models on the final validation set</li>
-<li><code>3a_final_test_set.R</code> - visualize results from 3a.</li>
-<li><code>3c_fit_final_model.R</code> - fits one best model of each type using the full, downsampled dataset</li>
+<li><code>3a_final_test_set.R</code> - fits best models from CV using the full training data, and evaluates predictions of the test set</li>
+<li><code>3b_fit_final_model.R</code> - fits the best model of each type (Elastic Net, Random Forest, k-Nearest Neighbors) using the full, downsampled dataset</li>
 </ul>
+</div>
+<div id="visualizations" class="section level4">
+<h4>Visualizations</h4>
+<p><code>4_Classifier_results_plots.R</code> generates the figures for the manuscript and presentation</p>
 <hr />
 </div>
 </div>

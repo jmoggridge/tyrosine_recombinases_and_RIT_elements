@@ -128,6 +128,9 @@ The script `2c_regular_CV.R`
 - `3b_fit_final_model.R` - fits the best model of each type (Elastic Net, Random Forest, k-Nearest Neighbors) using the full, downsampled dataset
 
 
+#### Visualizations
+
+`4_Classifier_results_plots.R` generates the figures for the manuscript and presentation
 
 ------------------------------------------------------------------------
 
