@@ -125,7 +125,7 @@ The script `2c_regular_CV.R`
 #### 3. Final validation and model fitting
 
 - `3a_final_test_set.R` - fits best models from CV using the full training data, and evaluates predictions of the test set
-- `3b_fit_final_model.R` - fits the best model of each type (Elastic Net, Random Forest, k-Nearest Neighbors) using the full, downsampled dataset
+- `3b_fit_final_model.R` - fits the best model of each type (Elastic Net, Random Forest, k-Nearest Neighbors) using the full, down-sampled dataset
 
 
 #### Visualizations
@@ -136,8 +136,6 @@ The script `2c_regular_CV.R`
 
 
 ### Part 2: A pipeline to identify new RIT elements  <a name="p2"></a>
-
-
 
 #### Overview  <a name="p2o"></a>
 
@@ -151,11 +149,13 @@ The script `2c_regular_CV.R`
 
 
 
-#### Other random scraps of work done so far
+-----------------------------------------------------------------------------
+
+
+
+<!--
+### Other random scraps of work done so far
 
 Various scripts for obtaining & tidying mobile genetic element data to search: Iceberg, Aclame, pVOG,
 
-<!-- Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
-
-
------------------------------------------------------------------------------
+ Other possible sources for MGE sequences.... PHAST (phaster), ISfinder, (others from Smyshlaev)? -->
