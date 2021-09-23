@@ -79,6 +79,7 @@ virus_tbl <-
   mutate(number_of_segments = ifelse(is.na(number_of_segments), 1, number_of_segments))
 
 glimpse(virus_tbl)  
+write_rds(virus_tbl, 'data/ncbi_viral_genomes/phage_meta.rds')
 
 # notes:
 # 109 'incomplete' genomes

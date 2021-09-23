@@ -1,0 +1,152 @@
+---
+title: "Viral integrases"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4, message=F, warning = F, echo = F)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse, warn.conflicts = F)
+library(glue,warn.conflicts = F)
+
+hierarchy <- c("realm", "phylum", "class", "order", "family", "genus", "species", "virus", "orgn")
+phage_info <- 
+  read_rds('data/ncbi_viral_genomes/genbank_parsed.rds') |> 
+  left_join(read_rds('data/ncbi_viral_genomes/phage_meta.rds')) |> 
+  mutate(taxonomy = str_replace(taxonomy, 'Tectiliviricetes; Autolykiviridae', 'Tectiliviricetes; ; Autolykiviridae')) |> 
+  mutate(taxonomy = str_remove(taxonomy, 'Viruses; ')) |> 
+  separate(col = taxonomy, sep = '; ', into = hierarchy, remove = F) |> 
+  select(-feature_table)
+rm(hierarchy)
+
+classifier_rs <- read_rds('data/ncbi_viral_genomes/classifier_results.rds')
+
+# just take the integrases: ignore everything classifed as 'Other'
+integrases <- 
+  classifier_rs |> 
+  mutate(accession = str_remove(accession, '_[0-9]+$')) |> 
+  filter(consensus_pred != 'Other') |> 
+  left_join(phage_info)
+
+no_integrase <- 
+  phage_info |> 
+  anti_join(integrases)
+# length(unique(no_integrase$genome))
+```
+
+
+```{r fig.height=3, fig.width=4}
+# bar graph of abundances
+a <- integrases |> 
+  mutate(consensus_pred = fct_rev(consensus_pred),
+         consensus_pred = fct_relevel(consensus_pred, 'no consensus')) |> 
+  ggplot(aes(y = consensus_pred, fill = host)) +
+  geom_bar() +
+  rcartocolor::scale_fill_carto_d(palette = 1) +
+  labs(x = 'count', y = NULL, 
+       title = glue('{nrow(integrases)} Integrases found in {length(unique(integrases$genome))} phages from {length(unique(phage_info$genome))} bacterial and 
+                    archaeal virus genomes')) +
+  theme_minimal()
+```
+
+
+
+```{r}
+b <- integrases |> 
+  filter(host == 'archaea') |> 
+  ggplot(aes(y = consensus_pred)) +
+  geom_bar() +
+  labs(title='Archaeal phages', y=NULL)
+```
+
+
+```{r}
+c <- integrases |> 
+  count(genome) |> 
+  filter(n>1) |> 
+  ggplot(aes(x = n)) +
+  geom_histogram(color = 'grey60') +
+  labs(title='Number of integrases/genome', y=NULL)
+```
+
+
+```{r}
+d <- integrases |> 
+  count(accession) |> 
+  filter(n>1) |> 
+  left_join(integrases) |> 
+  count(accession, consensus_pred) |> 
+  mutate(consensus_pred = fct_rev(consensus_pred),
+         consensus_pred = fct_relevel(consensus_pred, 'no consensus')) |> 
+  ggplot(aes(y = consensus_pred, x = n, fill = accession)) +
+  geom_bar(stat = 'identity', position = 'stack', colour = 'black',
+           alpha = 0.5, show.legend = F) +
+  labs(x = 'count', y = NULL, 
+       title = glue('Which integrases are present in genomes having multiple (>1) integrases?')) +
+  theme_minimal()
+```
+
+ 
+
+ - I identified 1,082 integrases in 1,034 viral genomes, from a collection of 4,282 RefSeq genomes. 
+ 
+ - 3,248 genomes had no predicted integrases (*maybe these not temperate phages?*).
+
+- The Tn-916 subfamily is the most abundant, with smaller groups of the int-P2 and int-Brujita subfamilies.
+
+- A there are a couple of predicted integrases with no consensus on which subfamily, these could be more distant relatives with weak recognition by the trio of classifiers. Some might be from the Lambda phage, which is outside of all the other subfamilies according to the Smyshlaev paper.
+
+- Where there are multiple integrases present in a single genome, CTnDOT integrases are 
+
+
+```{r fig.height=5, fig.width=7}
+library(patchwork)
+a
+
+b
+
+c
+
+d
+```
+
+
+```{r fig.height=5, fig.width=8}
+ggplot(integrases, aes(y = fct_drop(consensus_pred), fill = genus)) +
+  geom_bar()
+
+integrases |> 
+  filter(!is.na(genus)) |> 
+  count(genus, species, sort = T) |> 
+  group_by(genus) |> 
+  dplyr::slice(1:20) |>  
+  ungroup() |> 
+  ggplot(aes(y = species, x = n)) +
+  geom_col() +
+  facet_wrap(~genus,  scales = 'free') +
+  labs(title = '')
+  
+
+  
+```
+
+
+```{r fig.height=3, fig.width=3}
+integrases |> 
+  select(length, topology) |> 
+  mutate(label = '+Integrases') |> 
+  bind_rows(no_integrase |> select(topology, length) |> mutate(label = '-Absent')) |> 
+  mutate(length = as.numeric(length)) |> 
+  ggplot(aes(x = length, y = label, color = topology)) +
+  ggbeeswarm::geom_quasirandom(shape =1, groupOnX = F, alpha = 0.5) +
+  scale_x_log10() +
+  theme(legend.position = 'top')
+  
+
+
+```
+
